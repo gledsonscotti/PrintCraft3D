@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as THREE from 'three';
 import {
   Printer as PrinterIcon,
   Flame,
@@ -17,9 +18,11 @@ import {
   Info,
   Scale,
   Layers,
-  Wrench
+  Wrench,
+  Cpu,
+  Boxes
 } from 'lucide-react';
-import { AppSettings, ExtraSupplyItem, Filament, Printer, Product, Supply } from '../types';
+import { AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, Supply } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
@@ -32,6 +35,7 @@ interface CostCalculatorViewProps {
   settings: AppSettings;
   onRefreshData: () => void;
   onNavigateToStock: () => void;
+  theme?: AppTheme;
 }
 
 export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
@@ -41,13 +45,17 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   settings,
   onRefreshData,
   onNavigateToStock,
+  theme = 'standard',
 }) => {
   // Current active 3D Model state
   const [modelBuffer, setModelBuffer] = useState<ArrayBuffer | null>(null);
-  const [sampleType, setSampleType] = useState<'keychain' | 'phone_stand' | 'gear' | 'vase'>('keychain');
+  const [modelObject, setModelObject] = useState<THREE.Object3D | null>(null);
+  const [sampleType, setSampleType] = useState<'keychain' | 'phone_stand' | 'gear' | 'vase' | 'bambu_3mf' | 'cad_bracket'>('keychain');
   const [parsedModel, setParsedModel] = useState<ParsedModelResult>({
     fileName: 'chaveiro_tag_personalizado.stl',
     fileType: 'stl',
+    formatLabel: 'STL (Standard Triangle)',
+    category: 'mesh',
     dimensions: { x: 55, y: 22, z: 4.5 },
     volumeCm3: 5.4,
     estimatedWeightGrams: 14.5,
@@ -112,24 +120,39 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   }, [selectedPrinterId]);
 
   // Handle Model Load from FileUploadZone
-  const handleModelLoaded = (result: ParsedModelResult, buffer?: ArrayBuffer) => {
+  const handleModelLoaded = (
+    result: ParsedModelResult,
+    buffer?: ArrayBuffer,
+    object3D?: THREE.Object3D
+  ) => {
     setParsedModel(result);
     setCustomWeightGrams(result.estimatedWeightGrams);
     setCustomTimeMinutes(result.estimatedTimeMinutes);
 
-    if (buffer) {
+    if (object3D) {
+      setModelObject(object3D);
+      setModelBuffer(buffer || null);
+    } else if (result.threeObject) {
+      setModelObject(result.threeObject);
+      setModelBuffer(buffer || null);
+    } else if (buffer) {
       setModelBuffer(buffer);
+      setModelObject(null);
     } else {
       setModelBuffer(null);
-      if (result.fileName.includes('chaveiro')) setSampleType('keychain');
-      else if (result.fileName.includes('suporte')) setSampleType('phone_stand');
-      else if (result.fileName.includes('engrenagem')) setSampleType('gear');
+      setModelObject(null);
+      const lower = result.fileName.toLowerCase();
+      if (lower.includes('chaveiro')) setSampleType('keychain');
+      else if (lower.includes('suporte')) setSampleType('phone_stand');
+      else if (lower.includes('engrenagem') || result.fileType === 'gcode') setSampleType('gear');
+      else if (lower.includes('container') || lower.includes('tampa') || result.fileType === '3mf') setSampleType('bambu_3mf');
+      else if (lower.includes('flange') || result.fileType === 'step' || result.fileType === 'stp' || result.fileType === 'iges') setSampleType('cad_bracket');
       else setSampleType('vase');
     }
 
     // Auto-update product name from file name
     const cleanName = result.fileName
-      .replace(/\.(stl|gcode)$/i, '')
+      .replace(/\.(stl|gcode|gco|g|nc|3mf|step|stp|iges|igs|obj|ply|amf|gltf|glb)$/i, '')
       .replace(/[_-]/g, ' ')
       .replace(/\b\w/g, (l) => l.toUpperCase());
     setProductName(cleanName);
@@ -322,19 +345,25 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-sky-400" />
-                Visualizador 3D Interativo
+                Visualizador 3D Universal
               </h3>
-              <span className="text-[11px] font-mono font-medium bg-white/[0.05] text-slate-300 px-2.5 py-1 rounded-xl border border-white/[0.08]">
-                {parsedModel.fileType.toUpperCase()}
+              <span className="text-[11px] font-mono font-semibold bg-white/[0.05] text-sky-300 px-2.5 py-1 rounded-xl border border-sky-400/20">
+                {parsedModel.formatLabel || parsedModel.fileType.toUpperCase()}
               </span>
             </div>
 
-            {/* 3D Viewport with Three.js */}
+            {/* 3D Viewport with Three.js Multi-Format Support */}
             <ModelViewer3D
+              modelObject={modelObject}
               modelBuffer={modelBuffer}
               sampleType={sampleType}
               filamentColor={activeFilament?.color_hex || '#2563eb'}
               dimensions={parsedModel.dimensions}
+              fileType={parsedModel.fileType}
+              formatLabel={parsedModel.formatLabel}
+              trianglesCount={parsedModel.trianglesCount}
+              layerCount={parsedModel.layerCount}
+              theme={theme}
             />
 
             {/* Geometry Stats Cards - Bento Micro Cells */}
@@ -352,12 +381,49 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 </span>
               </div>
               <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-2.5 hover:border-white/[0.12] transition-colors">
-                <span className="block text-[11px] text-slate-400 font-medium">Camadas</span>
+                <span className="block text-[11px] text-slate-400 font-medium">
+                  {parsedModel.category === 'cad' ? 'Faces / Malha' : 'Camadas'}
+                </span>
                 <span className="text-xs font-bold text-white font-mono">
-                  {parsedModel.layerCount || Math.round(parsedModel.dimensions.z / 0.2)}
+                  {parsedModel.category === 'cad'
+                    ? parsedModel.trianglesCount?.toLocaleString() || 'B-Rep'
+                    : parsedModel.layerCount || Math.round(parsedModel.dimensions.z / 0.2)}
                 </span>
               </div>
             </div>
+
+            {/* Extra Format Details (CAD / G-Code / 3MF) */}
+            {parsedModel.cadDetails?.cadSystem && (
+              <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-2xl text-emerald-300 font-mono">
+                <span className="flex items-center gap-1.5 font-sans font-semibold">
+                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                  Sistema CAD Detectado:
+                </span>
+                <span className="font-bold">{parsedModel.cadDetails.cadSystem}</span>
+              </div>
+            )}
+
+            {parsedModel.rawGcodeDetails?.slicer && (
+              <div className="flex items-center justify-between text-xs bg-indigo-500/10 border border-indigo-500/20 px-3.5 py-2 rounded-2xl text-indigo-300 font-mono">
+                <span className="flex items-center gap-1.5 font-sans font-semibold">
+                  <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                  Fatiador ({parsedModel.rawGcodeDetails.slicer}):
+                </span>
+                <span className="font-bold">
+                  Bico {parsedModel.rawGcodeDetails.nozzleTemp}°C • Mesa {parsedModel.rawGcodeDetails.bedTemp}°C
+                </span>
+              </div>
+            )}
+
+            {parsedModel.partsCount && parsedModel.partsCount > 1 && (
+              <div className="flex items-center justify-between text-xs bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 rounded-2xl text-amber-300 font-mono">
+                <span className="flex items-center gap-1.5 font-sans font-semibold">
+                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
+                  Montagem Multi-Peça (3MF / CAD):
+                </span>
+                <span className="font-bold">{parsedModel.partsCount} componentes</span>
+              </div>
+            )}
           </div>
 
           {/* File Upload Zone */}

@@ -11,9 +11,12 @@ import {
   RefreshCw,
   Sparkles,
   Tag,
-  AlertTriangle
+  AlertTriangle,
+  Sun,
+  Moon,
+  Eye
 } from 'lucide-react';
-import { AppSettings, Filament, Printer, PrintJob, Product, Supply } from './types';
+import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, Supply } from './types';
 import { CostCalculatorView } from './components/CostCalculatorView';
 import { StockManagementView } from './components/StockManagementView';
 import { PrintersView } from './components/PrintersView';
@@ -25,6 +28,20 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'calculator' | 'stock' | 'printers' | 'products' | 'history'>('calculator');
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Workshop High Contrast Theme State (persisted in localStorage)
+  const [theme, setTheme] = useState<AppTheme>(() => {
+    const saved = localStorage.getItem('printcraft_theme') as AppTheme;
+    if (saved === 'high-contrast-light' || saved === 'high-contrast-dark' || saved === 'standard') {
+      return saved;
+    }
+    return 'standard';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('printcraft_theme', theme);
+  }, [theme]);
 
   // App Data States
   const [printers, setPrinters] = useState<Printer[]>([]);
@@ -176,10 +193,50 @@ export default function App() {
               </button>
             </nav>
 
-            {/* Quick Actions (Refresh & Settings) */}
+            {/* Quick Actions (Theme Toggle, Refresh & Settings) */}
             <div className="flex items-center gap-2">
+              {/* Workshop High Contrast Quick Mode Toggle */}
               <button
                 type="button"
+                id="btn-workshop-contrast"
+                onClick={() => {
+                  setTheme((prev) => (prev === 'high-contrast-light' ? 'standard' : 'high-contrast-light'));
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all shadow-sm border cursor-pointer ${
+                  theme === 'high-contrast-light'
+                    ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-amber-500/20 ring-2 ring-amber-400/40'
+                    : theme === 'high-contrast-dark'
+                    ? 'bg-white text-black border-white ring-2 ring-white/40'
+                    : 'bg-[#131316] text-slate-300 border-white/[0.08] hover:border-amber-400/40 hover:text-amber-300'
+                }`}
+                title={
+                  theme === 'high-contrast-light'
+                    ? 'Modo Oficina (Alto Contraste Claro) ativo. Clique para retornar ao tema padrão.'
+                    : 'Ativar Modo Oficina: Alto Contraste para ambientes com muita luz solar/refletores'
+                }
+              >
+                {theme === 'high-contrast-light' ? (
+                  <>
+                    <Sun className="w-4 h-4 text-slate-950 animate-pulse" />
+                    <span className="hidden sm:inline font-bold">Oficina Ativa</span>
+                    <span className="text-[10px] bg-black/15 px-1.5 py-0.5 rounded font-mono uppercase">Luz</span>
+                  </>
+                ) : theme === 'high-contrast-dark' ? (
+                  <>
+                    <Sparkles className="w-4 h-4 text-black" />
+                    <span className="hidden sm:inline font-bold">Alto Contraste</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="hidden sm:inline">Modo Oficina</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                id="btn-refresh-sqlite"
                 onClick={fetchData}
                 className="p-2.5 rounded-2xl bg-[#131316] text-slate-400 hover:text-slate-200 hover:bg-[#1C1C22] transition border border-white/[0.08] hover:border-white/[0.15]"
                 title="Recarregar dados do SQLite"
@@ -189,6 +246,7 @@ export default function App() {
 
               <button
                 type="button"
+                id="btn-open-settings"
                 onClick={() => setShowSettings(true)}
                 className="flex items-center gap-2 bg-[#131316] hover:bg-[#1C1C22] text-slate-200 border border-white/[0.08] hover:border-white/[0.15] px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition shadow-sm"
               >
@@ -200,6 +258,20 @@ export default function App() {
 
           {/* Mobile Navigation Row */}
           <div className="md:hidden flex items-center gap-1.5 overflow-x-auto py-2.5 border-t border-white/[0.08] no-scrollbar">
+            {/* Quick Toggle for Mobile Workshop Operator */}
+            <button
+              type="button"
+              onClick={() => setTheme((prev) => (prev === 'high-contrast-light' ? 'standard' : 'high-contrast-light'))}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1 shrink-0 ${
+                theme === 'high-contrast-light'
+                  ? 'bg-amber-400 text-black border border-amber-500'
+                  : 'text-amber-300 bg-[#131316] border border-amber-400/30'
+              }`}
+              title="Alternar Modo Oficina"
+            >
+              <Sun className="w-3.5 h-3.5" />
+              <span>{theme === 'high-contrast-light' ? 'Oficina ON' : 'Oficina'}</span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab('calculator')}
@@ -276,6 +348,7 @@ export default function App() {
                 settings={settings}
                 onRefreshData={fetchData}
                 onNavigateToStock={() => setActiveTab('stock')}
+                theme={theme}
               />
             )}
 
@@ -330,6 +403,8 @@ export default function App() {
         settings={settings}
         onClose={() => setShowSettings(false)}
         onSaveSettings={(newSet) => setSettings(newSet)}
+        currentTheme={theme}
+        onChangeTheme={(newTheme) => setTheme(newTheme)}
       />
     </div>
   );

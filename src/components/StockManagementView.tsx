@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Package,
@@ -8,6 +8,8 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
+  XCircle,
+  X,
   ArrowDownRight,
   ArrowUpRight,
   TrendingDown,
@@ -15,6 +17,7 @@ import {
   Scale
 } from 'lucide-react';
 import { Filament, Supply } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 
 interface StockManagementViewProps {
   filaments: Filament[];
@@ -28,6 +31,26 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<'filaments' | 'supplies'>('filaments');
+
+  // Deletion Modal State
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'supply' | 'filament';
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // In-app Notification Feedback Banner
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notification]);
 
   // Filament Modal State
   const [showFilamentModal, setShowFilamentModal] = useState(false);
@@ -121,34 +144,34 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
       }
 
       setShowFilamentModal(false);
+      setNotification({
+        type: 'success',
+        message: editingFilament ? 'Filamento atualizado com sucesso!' : 'Novo filamento cadastrado com sucesso!'
+      });
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao salvar filamento: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao salvar filamento: ' + (err.message || 'Falha na requisição')
+      });
     }
   };
 
   // Quick adjust filament stock
   const handleAdjustFilamentStock = async (id: string, deltaG: number) => {
     try {
-      await fetch(`/api/filaments/${id}/stock`, {
+      const res = await fetch(`/api/filaments/${encodeURIComponent(id)}/stock`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adjustment_g: deltaG }),
       });
+      if (!res.ok) throw new Error('Falha ao atualizar estoque');
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao ajustar estoque: ' + err.message);
-    }
-  };
-
-  // Delete Filament
-  const handleDeleteFilament = async (id: string) => {
-    if (!confirm('Deseja realmente remover este carretel de filamento?')) return;
-    try {
-      await fetch(`/api/filaments/${id}`, { method: 'DELETE' });
-      onRefreshData();
-    } catch (err: any) {
-      alert('Erro ao excluir filamento: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao ajustar estoque: ' + (err.message || 'Erro de conexão')
+      });
     }
   };
 
@@ -184,54 +207,120 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
         min_stock_alert: supMinAlert,
       };
 
+      let res: globalThis.Response;
       if (editingSupply) {
-        await fetch(`/api/supplies/${editingSupply.id}`, {
+        res = await fetch(`/api/supplies/${encodeURIComponent(editingSupply.id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } else {
-        await fetch('/api/supplies', {
+        res = await fetch('/api/supplies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       }
 
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao processar dados no servidor');
+      }
+
       setShowSupplyModal(false);
+      setNotification({
+        type: 'success',
+        message: editingSupply ? 'Insumo atualizado com sucesso!' : 'Novo insumo cadastrado com sucesso!'
+      });
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao salvar insumo: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao salvar insumo: ' + (err.message || 'Falha na requisição')
+      });
     }
   };
 
   // Quick adjust supply stock
   const handleAdjustSupplyStock = async (id: string, deltaQty: number) => {
     try {
-      await fetch(`/api/supplies/${id}/stock`, {
+      const res = await fetch(`/api/supplies/${encodeURIComponent(id)}/stock`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adjustment_qty: deltaQty }),
       });
+      if (!res.ok) throw new Error('Falha ao atualizar estoque');
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao ajustar estoque: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao ajustar estoque: ' + (err.message || 'Erro de conexão')
+      });
     }
   };
 
-  // Delete Supply
-  const handleDeleteSupply = async (id: string) => {
-    if (!confirm('Deseja realmente remover este insumo?')) return;
+  // Perform Delete when confirmed in in-app modal
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await fetch(`/api/supplies/${id}`, { method: 'DELETE' });
+      const endpoint =
+        deleteTarget.type === 'supply'
+          ? `/api/supplies/${encodeURIComponent(deleteTarget.id)}`
+          : `/api/filaments/${encodeURIComponent(deleteTarget.id)}`;
+
+      const res = await fetch(endpoint, { method: 'DELETE' });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Falha ao remover ${deleteTarget.type === 'supply' ? 'o insumo' : 'o filamento'}`);
+      }
+
+      setNotification({
+        type: 'success',
+        message: `${deleteTarget.type === 'supply' ? 'Insumo' : 'Filamento'} "${deleteTarget.name}" excluído com sucesso!`
+      });
+      setDeleteTarget(null);
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao excluir insumo: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: `Erro ao excluir: ${err.message || 'Falha na requisição'}`
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* In-app Notification Banner */}
+      {notification && (
+        <div
+          role="alert"
+          className={`flex items-center justify-between p-3.5 rounded-2xl border text-xs font-semibold animate-fadeIn shadow-sm ${
+            notification.type === 'success'
+              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.08] transition"
+            aria-label="Fechar notificação"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       {/* Top Inventory Dashboard Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
@@ -379,9 +468,9 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteFilament(f.id)}
+                      onClick={() => setDeleteTarget({ type: 'filament', id: f.id, name: `${f.name} (${f.brand})` })}
                       className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
-                      title="Excluir"
+                      title="Excluir filamento"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -498,8 +587,9 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteSupply(s.id)}
+                      onClick={() => setDeleteTarget({ type: 'supply', id: s.id, name: s.name })}
                       className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
+                      title="Excluir insumo do estoque"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -806,6 +896,23 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
           </div>
         </div>
       )}
+      {/* Confirmation Modal for deletion (replaces window.confirm) */}
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title={deleteTarget?.type === 'supply' ? 'Excluir Insumo do Estoque' : 'Excluir Carretel de Filamento'}
+        itemName={deleteTarget?.name}
+        message={
+          deleteTarget?.type === 'supply'
+            ? 'Tem certeza que deseja excluir este insumo? Ele deixará de constar nas opções de montagem e BOM de produtos.'
+            : 'Tem certeza que deseja excluir este carretel? Os dados de pesagem e saldo em estoque serão apagados permanentemente.'
+        }
+        confirmLabel="Sim, Excluir"
+        cancelLabel="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+      />
     </div>
   );
 };

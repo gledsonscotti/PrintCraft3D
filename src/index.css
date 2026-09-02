@@ -41,3 +41,315 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-out forwards;
 }
+
+/* =========================================================================
+   MODO OFICINA - ALTO CONTRASTE CLARO (Workshop Anti-Glare Light Theme)
+   Projetado especificamente para legibilidade superior em ambientes de 
+   oficina 3D com luz solar direta, lâmpadas fluorescentes e refletores.
+   ========================================================================= */
+
+html[data-theme="high-contrast-light"] {
+  color-scheme: light;
+}
+
+html[data-theme="high-contrast-light"] body,
+html[data-theme="high-contrast-light"] .min-h-screen {
+  background-color: #F1F3F5 !important;
+  color: #09090B !important;
+}
+
+/* Scrollbar in Light High-Contrast */
+html[data-theme="high-contrast-light"] ::-webkit-scrollbar-track {
+  background: #E2E8F0;
+}
+html[data-theme="high-contrast-light"] ::-webkit-scrollbar-thumb {
+  background: #09090B;
+}
+
+/* Header & Footer Bento frame */
+html[data-theme="high-contrast-light"] header {
+  background-color: #FFFFFF !important;
+  border-bottom: 2px solid #09090B !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-theme="high-contrast-light"] footer {
+  background-color: #FFFFFF !important;
+  border-top: 2px solid #09090B !important;
+  color: #27272A !important;
+}
+
+/* Main Bento Grid Cards - Pure White with Sharp Solid Borders */
+html[data-theme="high-contrast-light"] .bg-\[\#121215\],
+html[data-theme="high-contrast-light"] .bg-\[\#131316\],
+html[data-theme="high-contrast-light"] .bg-\[\#141418\],
+html[data-theme="high-contrast-light"] .bg-\[\#16161A\],
+html[data-theme="high-contrast-light"] .bg-\[\#16161C\],
+html[data-theme="high-contrast-light"] .bg-\[\#18181E\],
+html[data-theme="high-contrast-light"] .bg-\[\#1C1C22\],
+html[data-theme="high-contrast-light"] .bg-\[\#1F1F24\] {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Inner Bento Sub-cells - High Contrast Slate-50 Background & Defined Edges */
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/80,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/50,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/40,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\] {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #27272A !important;
+}
+
+/* Solid Borders for all Bento elements */
+html[data-theme="high-contrast-light"] [class*="border-white"] {
+  border-color: #27272A !important;
+}
+
+/* High Contrast Headings and Text */
+html[data-theme="high-contrast-light"] .text-white,
+html[data-theme="high-contrast-light"] .text-slate-100,
+html[data-theme="high-contrast-light"] .text-slate-200 {
+  color: #09090B !important;
+  font-weight: 700;
+}
+
+html[data-theme="high-contrast-light"] .text-slate-300,
+html[data-theme="high-contrast-light"] .text-slate-400 {
+  color: #18181B !important;
+  font-weight: 600;
+}
+
+html[data-theme="high-contrast-light"] .text-slate-500 {
+  color: #3F3F46 !important;
+  font-weight: 600;
+}
+
+/* High-Contrast WCAG AAA Accent Colors */
+html[data-theme="high-contrast-light"] .text-sky-400,
+html[data-theme="high-contrast-light"] .text-sky-300 {
+  color: #0369A1 !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-emerald-400,
+html[data-theme="high-contrast-light"] .text-emerald-300,
+html[data-theme="high-contrast-light"] .text-emerald-200 {
+  color: #047857 !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-amber-400,
+html[data-theme="high-contrast-light"] .text-amber-300 {
+  color: #92400E !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-rose-400,
+html[data-theme="high-contrast-light"] .text-rose-300 {
+  color: #BE123C !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-purple-400,
+html[data-theme="high-contrast-light"] .text-purple-300 {
+  color: #6D28D9 !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-teal-400,
+html[data-theme="high-contrast-light"] .text-teal-300 {
+  color: #0F766E !important;
+  font-weight: 800;
+}
+
+html[data-theme="high-contrast-light"] .text-indigo-400,
+html[data-theme="high-contrast-light"] .text-indigo-300 {
+  color: #3730A3 !important;
+  font-weight: 800;
+}
+
+/* High-Visibility Badges */
+html[data-theme="high-contrast-light"] .bg-sky-500\/10,
+html[data-theme="high-contrast-light"] .bg-sky-500\/20 {
+  background-color: #E0F2FE !important;
+  border: 1.5px solid #0284C7 !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-emerald-500\/10,
+html[data-theme="high-contrast-light"] .bg-emerald-500\/20,
+html[data-theme="high-contrast-light"] .bg-emerald-950\/70,
+html[data-theme="high-contrast-light"] .bg-emerald-950\/40 {
+  background-color: #DCFCE7 !important;
+  border: 1.5px solid #16A34A !important;
+  color: #14532D !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-amber-500\/10,
+html[data-theme="high-contrast-light"] .bg-amber-500\/20 {
+  background-color: #FEF3C7 !important;
+  border: 1.5px solid #D97706 !important;
+  color: #92400E !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-rose-500\/10,
+html[data-theme="high-contrast-light"] .bg-rose-500\/20 {
+  background-color: #FFE4E6 !important;
+  border: 1.5px solid #E11D48 !important;
+  color: #9F1239 !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-indigo-500\/10,
+html[data-theme="high-contrast-light"] .bg-indigo-500\/20 {
+  background-color: #EEF2FF !important;
+  border: 1.5px solid #6366F1 !important;
+  color: #312E81 !important;
+}
+
+/* High Contrast Form Controls (Inputs, Selects, Buttons) */
+html[data-theme="high-contrast-light"] input:not([type="range"]),
+html[data-theme="high-contrast-light"] select,
+html[data-theme="high-contrast-light"] textarea {
+  background-color: #FFFFFF !important;
+  color: #09090B !important;
+  border: 2px solid #09090B !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] input:focus,
+html[data-theme="high-contrast-light"] select:focus,
+html[data-theme="high-contrast-light"] textarea:focus {
+  border-color: #0284C7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.4) !important;
+}
+
+/* High-Contrast Range Sliders */
+html[data-theme="high-contrast-light"] input[type="range"] {
+  background-color: #E2E8F0 !important;
+  border: 1px solid #09090B !important;
+  height: 8px !important;
+}
+
+/* Bento Navigation Segmented Control */
+html[data-theme="high-contrast-light"] nav {
+  background-color: #E2E8F0 !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] nav button {
+  color: #18181B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] nav button:hover {
+  background-color: #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] nav button.bg-sky-500 {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #075985 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Hero Metric Cards in Cost Calculator */
+html[data-theme="high-contrast-light"] .bg-gradient-to-br {
+  background: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
+
+/* Modal Dialogs */
+html[data-theme="high-contrast-light"] .fixed.inset-0.bg-black\/80,
+html[data-theme="high-contrast-light"] .fixed.inset-0.bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+html[data-theme="high-contrast-light"] .fixed.inset-0 .bg-\[\#121215\] {
+  background-color: #FFFFFF !important;
+  border: 2.5px solid #09090B !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* File Upload Zone in High-Contrast */
+html[data-theme="high-contrast-light"] #file-dropzone {
+  background-color: #FFFFFF !important;
+  border: 2.5px dashed #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] #file-dropzone:hover {
+  background-color: #F8FAFC !important;
+  border-color: #0284C7 !important;
+}
+
+/* =========================================================================
+   MODO ALTO CONTRASTE ESCURO (High Contrast Dark / OLED High-Vis)
+   Para operadores que preferem modo escuro com contraste máximo e bordas sólidas.
+   ========================================================================= */
+
+html[data-theme="high-contrast-dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="high-contrast-dark"] body,
+html[data-theme="high-contrast-dark"] .min-h-screen {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] header {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] footer {
+  background-color: #000000 !important;
+  border-top: 2px solid #FFFFFF !important;
+}
+
+/* Cards with Bright Solid White Borders */
+html[data-theme="high-contrast-dark"] .bg-\[\#121215\],
+html[data-theme="high-contrast-dark"] .bg-\[\#131316\],
+html[data-theme="high-contrast-dark"] .bg-\[\#141418\],
+html[data-theme="high-contrast-dark"] .bg-\[\#16161A\],
+html[data-theme="high-contrast-dark"] .bg-\[\#16161C\],
+html[data-theme="high-contrast-dark"] .bg-\[\#18181E\],
+html[data-theme="high-contrast-dark"] .bg-\[\#1C1C22\],
+html[data-theme="high-contrast-dark"] .bg-\[\#1F1F24\] {
+  background-color: #050505 !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/80,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/50,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/40,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\] {
+  background-color: #000000 !important;
+  border: 1.5px solid #D4D4D8 !important;
+}
+
+html[data-theme="high-contrast-dark"] [class*="border-white"] {
+  border-color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .text-slate-400,
+html[data-theme="high-contrast-dark"] .text-slate-500 {
+  color: #E4E4E7 !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="high-contrast-dark"] input:not([type="range"]),
+html[data-theme="high-contrast-dark"] select,
+html[data-theme="high-contrast-dark"] textarea {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] nav {
+  background-color: #09090B !important;
+  border: 2px solid #FFFFFF !important;
+}

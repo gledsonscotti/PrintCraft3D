@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Printer as PrinterIcon,
   Zap,
@@ -7,12 +7,15 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
+  XCircle,
+  X,
   Wrench,
   Activity,
   AlertCircle,
   HelpCircle
 } from 'lucide-react';
 import { Printer } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 
 interface PrintersViewProps {
   printers: Printer[];
@@ -22,6 +25,22 @@ interface PrintersViewProps {
 export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshData }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
+
+  // Deletion Modal State
+  const [deleteTarget, setDeleteTarget] = useState<Printer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // In-app Notification Feedback Banner
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notification]);
 
   const [name, setName] = useState('');
   const [printerPowerWatts, setPrinterPowerWatts] = useState(80);
@@ -106,24 +125,74 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       }
 
       setShowModal(false);
+      setNotification({
+        type: 'success',
+        message: editingPrinter ? 'Impressora atualizada com sucesso!' : 'Nova impressora adicionada!'
+      });
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao salvar impressora: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao salvar impressora: ' + (err.message || 'Falha na requisição')
+      });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente remover esta impressora?')) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await fetch(`/api/printers/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/printers/${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Falha ao remover impressora');
+      }
+      setNotification({
+        type: 'success',
+        message: `Impressora "${deleteTarget.name}" excluída com sucesso!`
+      });
+      setDeleteTarget(null);
       onRefreshData();
     } catch (err: any) {
-      alert('Erro ao excluir impressora: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao excluir impressora: ' + (err.message || 'Falha na requisição')
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* In-app Notification Banner */}
+      {notification && (
+        <div
+          role="alert"
+          className={`flex items-center justify-between p-3.5 rounded-2xl border text-xs font-semibold animate-fadeIn shadow-sm ${
+            notification.type === 'success'
+              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.08] transition"
+            aria-label="Fechar notificação"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -193,9 +262,9 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(p.id)}
+                    onClick={() => setDeleteTarget(p)}
                     className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
-                    title="Excluir"
+                    title="Excluir impressora"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -385,6 +454,19 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
           </div>
         </div>
       )}
+      {/* Confirmation Modal for deletion */}
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title="Excluir Impressora"
+        itemName={deleteTarget?.name}
+        message="Tem certeza que deseja remover esta impressora do parque? As especificações de potência e taxa de depreciação calculadas para esta máquina serão excluídas."
+        confirmLabel="Sim, Excluir"
+        cancelLabel="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+      />
     </div>
   );
 };

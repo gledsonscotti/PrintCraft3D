@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Layers,
@@ -8,10 +8,13 @@ import {
   Play,
   Trash2,
   CheckCircle2,
+  XCircle,
+  X,
   Tag,
   AlertCircle
 } from 'lucide-react';
 import { ExtraSupplyItem, Filament, Printer, Product } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 
 interface ProductsViewProps {
   products: Product[];
@@ -33,13 +36,44 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja excluir este produto do catálogo?')) return;
+  // Deletion Modal State
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // In-app Notification Feedback Banner
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notification]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/products/${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Falha ao remover produto');
+      }
+      setNotification({
+        type: 'success',
+        message: `Produto "${deleteTarget.name}" excluído do catálogo!`
+      });
+      setDeleteTarget(null);
       onRefreshData();
     } catch (e: any) {
-      alert('Erro ao excluir: ' + e.message);
+      setNotification({
+        type: 'error',
+        message: 'Erro ao excluir produto: ' + (e.message || 'Falha na requisição')
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -96,6 +130,34 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* In-app Notification Banner */}
+      {notification && (
+        <div
+          role="alert"
+          className={`flex items-center justify-between p-3.5 rounded-2xl border text-xs font-semibold animate-fadeIn shadow-sm ${
+            notification.type === 'success'
+              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.08] transition"
+            aria-label="Fechar notificação"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -144,7 +206,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleDelete(prod.id)}
+                      onClick={() => setDeleteTarget(prod)}
                       className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
                       title="Excluir Produto"
                     >
@@ -314,6 +376,19 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           </div>
         </div>
       )}
+      {/* Confirmation Modal for deletion */}
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title="Excluir Produto do Catálogo"
+        itemName={deleteTarget?.name}
+        message="Tem certeza que deseja excluir este modelo 3D cadastrado? Seus parâmetros pré-calculados e lista de insumos associados serão removidos."
+        confirmLabel="Sim, Excluir"
+        cancelLabel="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+      />
     </div>
   );
 };

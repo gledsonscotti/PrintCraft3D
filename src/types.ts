@@ -107,3 +107,5 @@ export interface CostCalculationResult {
   profitAmount: number;
   profitMarginPercent: number;
 }
+
+export type AppTheme = 'standard' | 'high-contrast-light' | 'high-contrast-dark';

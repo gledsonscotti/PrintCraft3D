@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock } from 'lucide-react';
-import { AppSettings } from '../types';
+import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock, Sun, Moon, Sparkles } from 'lucide-react';
+import { AppSettings, AppTheme } from '../types';
 
 interface SettingsModalProps {
   settings: AppSettings;
   isOpen: boolean;
   onClose: () => void;
   onSaveSettings: (newSettings: AppSettings) => void;
+  currentTheme?: AppTheme;
+  onChangeTheme?: (theme: AppTheme) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,6 +16,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   onSaveSettings,
+  currentTheme = 'standard',
+  onChangeTheme,
 }) => {
   const [energyKwhRate, setEnergyKwhRate] = useState(settings.energy_kwh_rate);
   const [currency, setCurrency] = useState(settings.currency);
@@ -131,6 +135,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="text-[11px] text-slate-400 mt-1 block">
                 Percentual adicionado ao filamento para cobrir purgas, brim, suportes e falhas.
               </span>
+            </div>
+
+            {/* High Contrast / Workshop Lighting Theme */}
+            <div className="pt-2 border-t border-white/[0.08]">
+              <label className="block text-xs font-medium text-slate-300 mb-2 flex items-center gap-1.5">
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                Modo de Contraste Bento Grid (Oficina de Impressão)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChangeTheme && onChangeTheme('standard')}
+                  className={`p-2.5 rounded-2xl text-left border transition ${
+                    currentTheme === 'standard'
+                      ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
+                      : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Moon className="w-3.5 h-3.5 text-slate-400" />
+                    Padrão Dark
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Dark Studio</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onChangeTheme && onChangeTheme('high-contrast-light')}
+                  className={`p-2.5 rounded-2xl text-left border transition ${
+                    currentTheme === 'high-contrast-light'
+                      ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-2 ring-amber-400'
+                      : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    Oficina Clara
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Anti-reflexo solar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onChangeTheme && onChangeTheme('high-contrast-dark')}
+                  className={`p-2.5 rounded-2xl text-left border transition ${
+                    currentTheme === 'high-contrast-dark'
+                      ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
+                      : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    Preto Puro
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Linhas sólidas</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2.5 pt-3.5 border-t border-white/[0.08]">

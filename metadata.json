@@ -2,5 +2,7 @@
   "name": "Controle de Impressão 3D e Custos",
   "description": "Sistema completo para controle de impressão 3D, cálculo automático de custos de STL e G-code, gestão de impressoras, filamentos, insumos e estoque em tempo real com SQLite.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

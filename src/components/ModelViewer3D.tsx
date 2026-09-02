@@ -1,35 +1,61 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { RotateCw, ZoomIn, ZoomOut, Box, Eye, RefreshCw } from 'lucide-react';
+import {
+  RotateCw,
+  ZoomIn,
+  ZoomOut,
+  Box,
+  RefreshCw,
+  Compass,
+  Layers,
+  Sparkles,
+  Maximize2
+} from 'lucide-react';
 
-interface ModelViewer3DProps {
+import { AppTheme } from '../types';
+
+export interface ModelViewer3DProps {
+  modelObject?: THREE.Object3D | null;
   modelBuffer?: ArrayBuffer | null;
-  sampleType?: 'keychain' | 'phone_stand' | 'gear' | 'vase';
+  sampleType?: 'keychain' | 'phone_stand' | 'gear' | 'vase' | 'bambu_3mf' | 'cad_bracket';
   filamentColor?: string;
   dimensions?: { x: number; y: number; z: number };
+  fileType?: string;
+  formatLabel?: string;
+  trianglesCount?: number;
+  layerCount?: number;
+  theme?: AppTheme;
 }
 
 export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
+  modelObject,
   modelBuffer,
   sampleType = 'keychain',
   filamentColor = '#2563eb',
   dimensions,
+  fileType = 'stl',
+  formatLabel,
+  trianglesCount,
+  layerCount,
+  theme = 'standard',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const meshRef = useRef<THREE.Mesh | null>(null);
+  const activeRootGroupRef = useRef<THREE.Group | null>(null);
+  const bedMeshRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number>(0);
 
   const [isWireframe, setIsWireframe] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [cameraView, setCameraView] = useState<'iso' | 'top' | 'front'>('iso');
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
-  const rotationRef = useRef({ x: 0.4, y: -0.6 });
-  const zoomRef = useRef(75);
+  const rotationRef = useRef({ x: 0.45, y: -0.65 });
+  const zoomRef = useRef(85);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -42,8 +68,14 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     scene.background = new THREE.Color('#0A0A0B'); // Bento dark canvas
     sceneRef.current = scene;
 
+    // Root group for model rotation & centering
+    const rootGroup = new THREE.Group();
+    rootGroup.name = 'Model_Root_Container';
+    scene.add(rootGroup);
+    activeRootGroupRef.current = rootGroup;
+
     // Camera
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 2000);
     camera.position.set(0, 50, 85);
     cameraRef.current = camera;
 
@@ -52,41 +84,49 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
 
     containerRef.current.innerHTML = '';
     containerRef.current.appendChild(renderer.domElement);
 
-    // Build plate / Heated bed grid (e.g. 200x200mm)
-    const bedSize = 140;
-    const gridHelper = new THREE.GridHelper(bedSize, 28, 0x38bdf8, 0x334155);
-    gridHelper.position.y = -0.1;
+    // Build plate / Heated bed grid (e.g. 220x220mm standard Ender-3 / Bambu Lab build volume)
+    const bedSize = 160;
+    const gridHelper = new THREE.GridHelper(bedSize, 32, 0x38bdf8, 0x1f293d);
+    gridHelper.position.y = -0.05;
     scene.add(gridHelper);
 
     // Heated bed surface plate
     const bedGeo = new THREE.BoxGeometry(bedSize, 1.2, bedSize);
     const bedMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.8,
-      metalness: 0.2,
+      color: theme === 'high-contrast-light' ? 0xE2E8F0 : theme === 'high-contrast-dark' ? 0x050505 : 0x111827,
+      roughness: 0.85,
+      metalness: 0.15,
     });
     const bedMesh = new THREE.Mesh(bedGeo, bedMat);
-    bedMesh.position.y = -0.7;
+    bedMesh.position.y = -0.65;
     bedMesh.receiveShadow = true;
+    bedMeshRef.current = bedMesh;
     scene.add(bedMesh);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // Lighting setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     scene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight1.position.set(60, 100, 60);
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.4);
+    dirLight1.position.set(70, 110, 70);
     dirLight1.castShadow = true;
+    dirLight1.shadow.mapSize.width = 1024;
+    dirLight1.shadow.mapSize.height = 1024;
     scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x93c5fd, 0.5);
-    dirLight2.position.set(-60, 40, -60);
+    const dirLight2 = new THREE.DirectionalLight(0x93c5fd, 0.6);
+    dirLight2.position.set(-70, 50, -70);
     scene.add(dirLight2);
+
+    const pointLight = new THREE.PointLight(0x38bdf8, 0.4, 300);
+    pointLight.position.set(0, 40, 0);
+    scene.add(pointLight);
 
     // Resize observer
     const resizeObserver = new ResizeObserver((entries) => {
@@ -105,20 +145,19 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     const animate = () => {
       animFrameRef.current = requestAnimationFrame(animate);
 
-      if (autoRotate && !isDraggingRef.current && meshRef.current) {
-        rotationRef.current.y += 0.006;
+      if (autoRotate && !isDraggingRef.current && activeRootGroupRef.current) {
+        rotationRef.current.y += 0.005;
       }
 
-      if (meshRef.current && cameraRef.current) {
-        // Orbit camera around center
+      if (cameraRef.current) {
         const radius = zoomRef.current;
-        const phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, rotationRef.current.x));
+        const phi = Math.max(0.05, Math.min(Math.PI / 2 - 0.02, rotationRef.current.x));
         const theta = rotationRef.current.y;
 
         cameraRef.current.position.x = radius * Math.sin(phi) * Math.sin(theta);
-        cameraRef.current.position.y = Math.max(10, radius * Math.cos(phi));
+        cameraRef.current.position.y = Math.max(8, radius * Math.cos(phi));
         cameraRef.current.position.z = radius * Math.sin(phi) * Math.cos(theta);
-        cameraRef.current.lookAt(0, 10, 0);
+        cameraRef.current.lookAt(0, 12, 0);
       }
 
       renderer.render(scene, camera);
@@ -132,69 +171,106 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     };
   }, []);
 
-  // Update Geometry whenever modelBuffer or sampleType changes
+  // Update Geometry whenever modelObject, modelBuffer, sampleType or filamentColor changes
   useEffect(() => {
-    if (!sceneRef.current) return;
-    const scene = sceneRef.current;
+    if (!activeRootGroupRef.current) return;
+    const root = activeRootGroupRef.current;
 
-    // Remove old mesh
-    if (meshRef.current) {
-      scene.remove(meshRef.current);
-      meshRef.current.geometry.dispose();
-      if (Array.isArray(meshRef.current.material)) {
-        meshRef.current.material.forEach((m) => m.dispose());
-      } else {
-        meshRef.current.material.dispose();
-      }
-      meshRef.current = null;
+    // Clear previous model objects
+    while (root.children.length > 0) {
+      const obj = root.children[0];
+      root.remove(obj);
+      disposeObject(obj);
     }
 
-    let geometry: THREE.BufferGeometry;
+    let displayObject: THREE.Object3D;
 
-    if (modelBuffer && modelBuffer.byteLength > 84) {
+    if (modelObject) {
+      // Use parsed object from universal 3D parser (3MF, CAD, STEP, OBJ, PLY, GLTF, STL, GCode)
+      displayObject = modelObject.clone();
+    } else if (modelBuffer && modelBuffer.byteLength > 84) {
+      // Fallback direct buffer parse
       try {
-        geometry = parseSTLToThreeGeometry(modelBuffer);
-      } catch (err) {
-        console.warn('Error parsing uploaded STL buffer, falling back to sample:', err);
-        geometry = createSampleGeometry(sampleType);
+        const geom = parseSTLBufferToGeometry(modelBuffer);
+        geom.computeVertexNormals();
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(filamentColor),
+          roughness: 0.35,
+          metalness: 0.15,
+          wireframe: isWireframe,
+        });
+        displayObject = new THREE.Mesh(geom, mat);
+      } catch {
+        displayObject = createSampleObject(sampleType, filamentColor, isWireframe);
       }
     } else {
-      geometry = createSampleGeometry(sampleType);
+      displayObject = createSampleObject(sampleType, filamentColor, isWireframe);
     }
 
-    geometry.computeVertexNormals();
-    geometry.center();
+    // Apply materials and wireframe settings
+    const isToolpath = fileType === 'gcode' || sampleType === 'gear';
+    if (!isToolpath) {
+      displayObject.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
 
-    // Align bottom of model to the build plate surface (y = 0)
-    geometry.computeBoundingBox();
-    if (geometry.boundingBox) {
-      const height = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
-      geometry.translate(0, height / 2, 0);
+          // If child already has standard material, update color & wireframe
+          if (mesh.material instanceof THREE.MeshStandardMaterial) {
+            mesh.material.color.set(filamentColor);
+            mesh.material.wireframe = isWireframe;
+            mesh.material.roughness = 0.35;
+            mesh.material.metalness = 0.15;
+            mesh.material.needsUpdate = true;
+          } else {
+            mesh.material = new THREE.MeshStandardMaterial({
+              color: new THREE.Color(filamentColor),
+              roughness: 0.35,
+              metalness: 0.15,
+              wireframe: isWireframe,
+            });
+          }
+        }
+      });
     }
 
-    const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(filamentColor),
-      roughness: 0.35,
-      metalness: 0.15,
-      wireframe: isWireframe,
-    });
+    // Center and align bottom to build plate (y = 0)
+    const box = new THREE.Box3().setFromObject(displayObject);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-    meshRef.current = mesh;
-  }, [modelBuffer, sampleType, filamentColor, isWireframe]);
+    displayObject.position.x = -center.x;
+    displayObject.position.z = -center.z;
+    displayObject.position.y = -box.min.y;
 
-  // Update material color if filament changes without rebuilding geometry
+    root.add(displayObject);
+
+    // Adjust zoom smoothly based on object size
+    const maxDim = Math.max(size.x, size.y, size.z, 20);
+    const idealZoom = Math.min(180, Math.max(45, maxDim * 1.55));
+    zoomRef.current = idealZoom;
+  }, [modelObject, modelBuffer, sampleType, filamentColor, isWireframe, fileType]);
+
+  // Update wireframe & color dynamically on existing mesh
   useEffect(() => {
-    if (meshRef.current && meshRef.current.material) {
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-      mat.color.set(filamentColor);
-      mat.wireframe = isWireframe;
-      mat.needsUpdate = true;
-    }
-  }, [filamentColor, isWireframe]);
+    if (!activeRootGroupRef.current) return;
+    const isToolpath = fileType === 'gcode' || sampleType === 'gear';
+    if (isToolpath) return;
+
+    activeRootGroupRef.current.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.material instanceof THREE.MeshStandardMaterial) {
+          mesh.material.color.set(filamentColor);
+          mesh.material.wireframe = isWireframe;
+          mesh.material.needsUpdate = true;
+        }
+      }
+    });
+  }, [filamentColor, isWireframe, fileType, sampleType]);
 
   // Mouse / Touch handlers for 3D Orbiting
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -208,7 +284,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     const deltaY = e.clientY - previousMousePositionRef.current.y;
 
     rotationRef.current.y += deltaX * 0.01;
-    rotationRef.current.x = Math.max(0.1, Math.min(1.4, rotationRef.current.x - deltaY * 0.01));
+    rotationRef.current.x = Math.max(0.05, Math.min(1.45, rotationRef.current.x - deltaY * 0.01));
 
     previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
   };
@@ -219,16 +295,68 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    zoomRef.current = Math.max(30, Math.min(150, zoomRef.current + e.deltaY * 0.05));
+    zoomRef.current = Math.max(25, Math.min(220, zoomRef.current + e.deltaY * 0.05));
+  };
+
+  const setViewAngle = (view: 'iso' | 'top' | 'front') => {
+    setCameraView(view);
+    setAutoRotate(false);
+    if (view === 'iso') {
+      rotationRef.current = { x: 0.5, y: -0.65 };
+    } else if (view === 'top') {
+      rotationRef.current = { x: 0.05, y: 0 };
+    } else if (view === 'front') {
+      rotationRef.current = { x: 1.45, y: 0 };
+    }
   };
 
   const handleResetCamera = () => {
-    rotationRef.current = { x: 0.5, y: -0.6 };
-    zoomRef.current = 75;
+    setViewAngle('iso');
+    setAutoRotate(true);
+    zoomRef.current = 85;
   };
 
+  const formatBadgeColor = () => {
+    switch (fileType) {
+      case '3mf':
+        return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
+      case 'step':
+      case 'stp':
+      case 'cad':
+        return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+      case 'gcode':
+        return 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30';
+      case 'obj':
+      case 'ply':
+      case 'amf':
+        return 'bg-purple-500/10 text-purple-300 border-purple-500/30';
+      default:
+        return 'bg-sky-500/10 text-sky-300 border-sky-500/30';
+    }
+  };
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    if (theme === 'high-contrast-light') {
+      sceneRef.current.background = new THREE.Color('#F1F5F9');
+      if (bedMeshRef.current) {
+        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0xE2E8F0);
+      }
+    } else if (theme === 'high-contrast-dark') {
+      sceneRef.current.background = new THREE.Color('#000000');
+      if (bedMeshRef.current) {
+        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0x050505);
+      }
+    } else {
+      sceneRef.current.background = new THREE.Color('#0A0A0B');
+      if (bedMeshRef.current) {
+        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0x111827);
+      }
+    }
+  }, [theme]);
+
   return (
-    <div className="relative w-full h-72 md:h-80 rounded-2xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
+    <div className="relative w-full h-72 md:h-80 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
       {/* 3D Canvas Mount */}
       <div
         ref={containerRef}
@@ -240,23 +368,77 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
         onWheel={handleWheel}
       />
 
-      {/* Floating Controls Overlay */}
-      <div className="absolute top-3 left-3 flex items-center gap-2 bg-[#121215]/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/[0.1] text-xs text-slate-300 shadow-lg">
-        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-0.5" />
-        <span className="font-semibold text-white">Mesa 3D</span>
-        {dimensions && (
-          <span className="text-slate-400 border-l border-white/[0.1] pl-2 font-mono text-[11px]">
-            {dimensions.x}×{dimensions.y}×{dimensions.z}mm
+      {/* Floating Header Overlay: Format, Dimensions & Triangles */}
+      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-none">
+        <div className="flex items-center gap-2 bg-[#121215]/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/[0.1] text-xs shadow-lg">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-0.5" />
+          <span className="font-semibold text-white">Mesa 3D</span>
+          <span className={`text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded-lg border ${formatBadgeColor()}`}>
+            {formatLabel || fileType.toUpperCase()}
           </span>
-        )}
+          {dimensions && (
+            <span className="text-slate-300 border-l border-white/[0.1] pl-2 font-mono text-[11px]">
+              {dimensions.x}×{dimensions.y}×{dimensions.z}mm
+            </span>
+          )}
+        </div>
+
+        {trianglesCount && trianglesCount > 0 ? (
+          <div className="hidden sm:flex items-center gap-1.5 bg-[#121215]/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/[0.08] text-[10px] text-slate-300 font-mono">
+            <Sparkles className="w-3 h-3 text-sky-400" />
+            {trianglesCount.toLocaleString()} faces
+          </div>
+        ) : null}
+
+        {layerCount && layerCount > 0 ? (
+          <div className="hidden sm:flex items-center gap-1.5 bg-[#121215]/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/[0.08] text-[10px] text-slate-300 font-mono">
+            <Layers className="w-3 h-3 text-indigo-400" />
+            {layerCount} camadas
+          </div>
+        ) : null}
       </div>
 
-      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#121215]/90 backdrop-blur-md p-1 rounded-xl border border-white/[0.1] shadow-lg">
+      {/* Floating Action Controls */}
+      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#121215]/90 backdrop-blur-md p-1 rounded-2xl border border-white/[0.1] shadow-lg">
+        {/* Camera View Presets */}
+        <div className="flex items-center gap-0.5 border-r border-white/[0.08] pr-1 mr-0.5">
+          <button
+            type="button"
+            onClick={() => setViewAngle('iso')}
+            title="Vista Isométrica (3D)"
+            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
+              cameraView === 'iso' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            ISO
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewAngle('top')}
+            title="Vista Superior (Planta 2D)"
+            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
+              cameraView === 'top' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            TOP
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewAngle('front')}
+            title="Vista Frontal"
+            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
+              cameraView === 'front' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            FRT
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() => setIsWireframe(!isWireframe)}
           title="Alternar Modo Aramado (Wireframe)"
-          className={`p-1.5 rounded-lg transition ${
+          className={`p-1.5 rounded-xl transition ${
             isWireframe ? 'bg-sky-500/20 text-sky-400 border border-sky-400/40' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
           }`}
         >
@@ -267,7 +449,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
           type="button"
           onClick={() => setAutoRotate(!autoRotate)}
           title="Alternar Giro Automático"
-          className={`p-1.5 rounded-lg transition ${
+          className={`p-1.5 rounded-xl transition ${
             autoRotate ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-400/40' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
           }`}
         >
@@ -276,18 +458,18 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
         <button
           type="button"
-          onClick={() => (zoomRef.current = Math.max(30, zoomRef.current - 12))}
+          onClick={() => (zoomRef.current = Math.max(25, zoomRef.current - 12))}
           title="Aproximar Zoom"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </button>
 
         <button
           type="button"
-          onClick={() => (zoomRef.current = Math.min(140, zoomRef.current + 12))}
+          onClick={() => (zoomRef.current = Math.min(220, zoomRef.current + 12))}
           title="Afastar Zoom"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </button>
@@ -296,30 +478,117 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
           type="button"
           onClick={handleResetCamera}
           title="Resetar Vista 3D"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Interactive Helper note at bottom */}
-      <div className="absolute bottom-2.5 right-3 text-[11px] text-slate-400 font-mono bg-[#0A0A0B]/80 px-2.5 py-1 rounded-lg border border-white/[0.06] backdrop-blur-sm pointer-events-none">
-        Arraste para rotacionar • Scroll para zoom
+      {/* Helper footer */}
+      <div className="absolute bottom-2.5 right-3 text-[11px] text-slate-400 font-mono bg-[#0A0A0B]/85 px-2.5 py-1 rounded-xl border border-white/[0.06] backdrop-blur-sm pointer-events-none flex items-center gap-2">
+        <Compass className="w-3 h-3 text-sky-400" />
+        <span>Arraste para rotacionar • Scroll para zoom</span>
       </div>
     </div>
   );
 };
 
+function disposeObject(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((m) => m.dispose());
+      } else if (mesh.material) {
+        mesh.material.dispose();
+      }
+    }
+  });
+}
+
 // Generates procedural geometries for sample 3D items
-function createSampleGeometry(sampleType: string): THREE.BufferGeometry {
+function createSampleObject(
+  sampleType: string,
+  filamentColor: string,
+  isWireframe: boolean
+): THREE.Object3D {
+  const group = new THREE.Group();
+
+  if (sampleType === 'bambu_3mf') {
+    // A modern 3MF multi-component assembly: threaded container body + lid
+    const bodyGeom = new THREE.CylinderGeometry(24, 24, 32, 36);
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor),
+      roughness: 0.35,
+      metalness: 0.15,
+      wireframe: isWireframe,
+    });
+    const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
+    bodyMesh.position.y = 16;
+    group.add(bodyMesh);
+
+    // Knurled lid on top
+    const lidGeom = new THREE.CylinderGeometry(25.5, 25.5, 8, 48);
+    const lidMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor).offsetHSL(0, 0, 0.08),
+      roughness: 0.25,
+      metalness: 0.2,
+      wireframe: isWireframe,
+    });
+    const lidMesh = new THREE.Mesh(lidGeom, lidMat);
+    lidMesh.position.y = 36;
+    group.add(lidMesh);
+
+    return group;
+  }
+
+  if (sampleType === 'cad_bracket') {
+    // Mechanical L-Bracket with mounting flange & fillet (standard CAD STEP model)
+    const shape = new THREE.Shape();
+    shape.moveTo(-30, 0);
+    shape.lineTo(30, 0);
+    shape.lineTo(30, 10);
+    shape.lineTo(5, 10);
+    shape.lineTo(5, 45);
+    shape.lineTo(-30, 45);
+    shape.lineTo(-30, 0);
+
+    // Counterbore holes
+    const hole1 = new THREE.Path();
+    hole1.absarc(-15, 25, 4.5, 0, Math.PI * 2, true);
+    shape.holes.push(hole1);
+
+    const hole2 = new THREE.Path();
+    hole2.absarc(18, 5, 4.5, 0, Math.PI * 2, true);
+    shape.holes.push(hole2);
+
+    const extrudeSettings = {
+      depth: 35,
+      bevelEnabled: true,
+      bevelThickness: 1.5,
+      bevelSize: 1.5,
+      bevelSegments: 4,
+    };
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor),
+      roughness: 0.3,
+      metalness: 0.3,
+      wireframe: isWireframe,
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.rotation.x = Math.PI / 2;
+    group.add(mesh);
+    return group;
+  }
+
   if (sampleType === 'keychain') {
-    // A realistic 3D Keychain Tag with rounded bevel and keyring attachment hole!
     const shape = new THREE.Shape();
     const width = 50;
     const height = 22;
     const radius = 6;
 
-    // Rounded rectangle shape
     shape.moveTo(-width / 2 + radius, -height / 2);
     shape.lineTo(width / 2 - radius, -height / 2);
     shape.quadraticCurveTo(width / 2, -height / 2, width / 2, -height / 2 + radius);
@@ -330,7 +599,6 @@ function createSampleGeometry(sampleType: string): THREE.BufferGeometry {
     shape.lineTo(-width / 2, -height / 2 + radius);
     shape.quadraticCurveTo(-width / 2, -height / 2, -width / 2 + radius, -height / 2);
 
-    // Hole for keyring
     const holePath = new THREE.Path();
     holePath.absarc(-width / 2 + 7, 0, 3.2, 0, Math.PI * 2, true);
     shape.holes.push(holePath);
@@ -346,11 +614,17 @@ function createSampleGeometry(sampleType: string): THREE.BufferGeometry {
 
     const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     geom.rotateX(Math.PI / 2);
-    return geom;
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor),
+      roughness: 0.35,
+      metalness: 0.15,
+      wireframe: isWireframe,
+    });
+    group.add(new THREE.Mesh(geom, mat));
+    return group;
   }
 
   if (sampleType === 'phone_stand') {
-    // Angled phone stand base
     const shape = new THREE.Shape();
     shape.moveTo(-25, 0);
     shape.lineTo(25, 0);
@@ -371,47 +645,70 @@ function createSampleGeometry(sampleType: string): THREE.BufferGeometry {
       bevelSegments: 2,
     };
     const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    return geom;
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor),
+      roughness: 0.35,
+      metalness: 0.15,
+      wireframe: isWireframe,
+    });
+    group.add(new THREE.Mesh(geom, mat));
+    return group;
   }
 
   if (sampleType === 'gear') {
-    // Mechanical gear
-    const shape = new THREE.Shape();
-    const teeth = 12;
-    const rInner = 16;
+    // Mechanical toolpath gear with visible layer lines for G-code simulation
+    const toolpathGroup = new THREE.Group();
+    const teeth = 14;
+    const rInner = 15;
     const rOuter = 24;
 
-    for (let i = 0; i < teeth; i++) {
-      const angle1 = (i / teeth) * Math.PI * 2;
-      const angle2 = ((i + 0.3) / teeth) * Math.PI * 2;
-      const angle3 = ((i + 0.5) / teeth) * Math.PI * 2;
-      const angle4 = ((i + 0.8) / teeth) * Math.PI * 2;
+    for (let layer = 0; layer < 15; layer++) {
+      const z = layer * 0.8;
+      const points: THREE.Vector3[] = [];
 
-      if (i === 0) shape.moveTo(Math.cos(angle1) * rInner, Math.sin(angle1) * rInner);
-      else shape.lineTo(Math.cos(angle1) * rInner, Math.sin(angle1) * rInner);
+      for (let i = 0; i <= teeth; i++) {
+        const a1 = (i / teeth) * Math.PI * 2;
+        const a2 = ((i + 0.3) / teeth) * Math.PI * 2;
+        const a3 = ((i + 0.5) / teeth) * Math.PI * 2;
+        const a4 = ((i + 0.8) / teeth) * Math.PI * 2;
 
-      shape.lineTo(Math.cos(angle2) * rOuter, Math.sin(angle2) * rOuter);
-      shape.lineTo(Math.cos(angle3) * rOuter, Math.sin(angle3) * rOuter);
-      shape.lineTo(Math.cos(angle4) * rInner, Math.sin(angle4) * rInner);
+        points.push(new THREE.Vector3(Math.cos(a1) * rInner, z, Math.sin(a1) * rInner));
+        points.push(new THREE.Vector3(Math.cos(a2) * rOuter, z, Math.sin(a2) * rOuter));
+        points.push(new THREE.Vector3(Math.cos(a3) * rOuter, z, Math.sin(a3) * rOuter));
+        points.push(new THREE.Vector3(Math.cos(a4) * rInner, z, Math.sin(a4) * rInner));
+      }
+
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({
+        color: new THREE.Color(filamentColor).offsetHSL(0, 0, (layer / 15) * 0.2 - 0.1),
+        linewidth: 2,
+      });
+      toolpathGroup.add(new THREE.Line(geom, mat));
     }
 
-    const centerHole = new THREE.Path();
-    centerHole.absarc(0, 0, 6, 0, Math.PI * 2, true);
-    shape.holes.push(centerHole);
+    // Add solid hub
+    const hubGeom = new THREE.CylinderGeometry(8, 8, 12, 24);
+    const hubMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(filamentColor), roughness: 0.4 });
+    const hubMesh = new THREE.Mesh(hubGeom, hubMat);
+    hubMesh.position.y = 6;
+    toolpathGroup.add(hubMesh);
 
-    const extrudeSettings = { depth: 10, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.8 };
-    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geom.rotateX(Math.PI / 2);
-    return geom;
+    return toolpathGroup;
   }
 
   // Geometric vase default
   const geom = new THREE.CylinderGeometry(14, 18, 38, 7, 1);
-  return geom;
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(filamentColor),
+    roughness: 0.35,
+    metalness: 0.15,
+    wireframe: isWireframe,
+  });
+  group.add(new THREE.Mesh(geom, mat));
+  return group;
 }
 
-// Parses raw STL ArrayBuffer into Three.js BufferGeometry
-function parseSTLToThreeGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
+function parseSTLBufferToGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
   const isBinary = buffer.byteLength > 84 && new DataView(buffer).getUint32(80, true) * 50 + 84 === buffer.byteLength;
   const geometry = new THREE.BufferGeometry();
 
@@ -424,7 +721,6 @@ function parseSTLToThreeGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
 
     for (let i = 0; i < triangles; i++) {
       if (offset + 50 > buffer.byteLength) break;
-
       const nx = reader.getFloat32(offset, true);
       const ny = reader.getFloat32(offset + 4, true);
       const nz = reader.getFloat32(offset + 8, true);
@@ -438,20 +734,19 @@ function parseSTLToThreeGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
 
         const idx = i * 9 + j * 3;
         vertices[idx] = vx;
-        vertices[idx + 1] = vz; // Convert Z-up to Y-up in Three.js
+        vertices[idx + 1] = vz;
         vertices[idx + 2] = -vy;
 
         normals[idx] = nx;
         normals[idx + 1] = nz;
         normals[idx + 2] = -ny;
       }
-      offset += 2; // attribute byte count
+      offset += 2;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   } else {
-    // ASCII STL parser
     const text = new TextDecoder('utf-8').decode(buffer);
     const lines = text.split(/\r?\n/);
     const verts: number[] = [];
@@ -464,8 +759,7 @@ function parseSTLToThreeGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
       }
     }
 
-    const vertices = new Float32Array(verts);
-    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
     geometry.computeVertexNormals();
   }
 
