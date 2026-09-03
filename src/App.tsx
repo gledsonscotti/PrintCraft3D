@@ -43,19 +43,65 @@ export default function App() {
     localStorage.setItem('printcraft_theme', theme);
   }, [theme]);
 
-  // App Data States
-  const [printers, setPrinters] = useState<Printer[]>([]);
-  const [filaments, setFilaments] = useState<Filament[]>([]);
-  const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [printJobs, setPrintJobs] = useState<PrintJob[]>([]);
-  const [settings, setSettings] = useState<AppSettings>({
-    energy_kwh_rate: 0.85,
-    currency: 'R$',
-    default_loss_margin: 10,
-    hourly_labor_rate: 20.00,
-    default_infill: 20,
-    default_layer_height: 0.2,
+  // App Data States with localStorage initial hydration for instant load and resilience
+  const [printers, setPrinters] = useState<Printer[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_printers');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [filaments, setFilaments] = useState<Filament[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_filaments');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [supplies, setSupplies] = useState<Supply[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_supplies');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_products');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [printJobs, setPrintJobs] = useState<PrintJob[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_jobs');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_settings');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      energy_kwh_rate: 0.85,
+      currency: 'R$',
+      default_loss_margin: 10,
+      hourly_labor_rate: 20.00,
+      default_infill: 20,
+      default_layer_height: 0.2,
+    };
   });
 
   // Low stock counter for badge alert
@@ -63,7 +109,7 @@ export default function App() {
     filaments.filter((f) => f.remaining_weight_g < 200).length +
     supplies.filter((s) => s.in_stock_qty <= s.min_stock_alert).length;
 
-  // Load all initial data from SQLite
+  // Load all data from SQLite and synchronize with localStorage
   const fetchData = async () => {
     try {
       const [printersRes, filamentsRes, suppliesRes, productsRes, jobsRes, settingsRes] = await Promise.all([
@@ -75,12 +121,37 @@ export default function App() {
         fetch('/api/settings').then((r) => r.json()),
       ]);
 
-      if (Array.isArray(printersRes)) setPrinters(printersRes);
-      if (Array.isArray(filamentsRes)) setFilaments(filamentsRes);
-      if (Array.isArray(suppliesRes)) setSupplies(suppliesRes);
-      if (Array.isArray(productsRes)) setProducts(productsRes);
-      if (Array.isArray(jobsRes)) setPrintJobs(jobsRes);
-      if (settingsRes && !settingsRes.error) setSettings(settingsRes);
+      const serverPrinters: Printer[] = Array.isArray(printersRes) ? printersRes : [];
+      const serverFilaments: Filament[] = Array.isArray(filamentsRes) ? filamentsRes : [];
+      const serverSupplies: Supply[] = Array.isArray(suppliesRes) ? suppliesRes : [];
+      const serverProducts: Product[] = Array.isArray(productsRes) ? productsRes : [];
+      const serverJobs: PrintJob[] = Array.isArray(jobsRes) ? jobsRes : [];
+
+      // Always trust the SQLite server as the single source of truth
+      if (Array.isArray(serverPrinters)) {
+        setPrinters(serverPrinters);
+        try { localStorage.setItem('printcraft_printers', JSON.stringify(serverPrinters)); } catch {}
+      }
+      if (Array.isArray(serverFilaments)) {
+        setFilaments(serverFilaments);
+        try { localStorage.setItem('printcraft_filaments', JSON.stringify(serverFilaments)); } catch {}
+      }
+      if (Array.isArray(serverSupplies)) {
+        setSupplies(serverSupplies);
+        try { localStorage.setItem('printcraft_supplies', JSON.stringify(serverSupplies)); } catch {}
+      }
+      if (Array.isArray(serverProducts)) {
+        setProducts(serverProducts);
+        try { localStorage.setItem('printcraft_products', JSON.stringify(serverProducts)); } catch {}
+      }
+      if (Array.isArray(serverJobs)) {
+        setPrintJobs(serverJobs);
+        try { localStorage.setItem('printcraft_jobs', JSON.stringify(serverJobs)); } catch {}
+      }
+      if (settingsRes && !settingsRes.error) {
+        setSettings(settingsRes);
+        try { localStorage.setItem('printcraft_settings', JSON.stringify(settingsRes)); } catch {}
+      }
     } catch (err) {
       console.error('Error fetching data from SQLite API:', err);
     } finally {
@@ -405,6 +476,7 @@ export default function App() {
         onSaveSettings={(newSet) => setSettings(newSet)}
         currentTheme={theme}
         onChangeTheme={(newTheme) => setTheme(newTheme)}
+        onRefreshData={fetchData}
       />
     </div>
   );

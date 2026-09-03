@@ -20,7 +20,7 @@ interface ProductsViewProps {
   products: Product[];
   printers: Printer[];
   filaments: Filament[];
-  onRefreshData: () => void;
+  onRefreshData: () => void | Promise<void>;
   onSelectProductForCalculator?: (product: Product) => void;
 }
 
@@ -66,7 +66,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         message: `Produto "${deleteTarget.name}" excluído do catálogo!`
       });
       setDeleteTarget(null);
-      onRefreshData();
+      await onRefreshData();
     } catch (e: any) {
       setNotification({
         type: 'error',

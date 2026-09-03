@@ -26,11 +26,163 @@ async function startServer() {
   // Initialize SQLite database
   const db = await getDb();
 
-  // --- API ROUTES ---
+  // Ensure no caching on API endpoints so client always gets live data
+  app.use('/api', (req: Request, res: Response, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+  });
 
   // Health check
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  // --- BACKUP & PERSISTENCE SYNC ENDPOINTS ---
+  // Export complete workshop database as JSON
+  app.get('/api/backup/export', (req: Request, res: Response) => {
+    try {
+      const printers = queryAll(db, 'SELECT * FROM printers ORDER BY name ASC');
+      const filaments = queryAll(db, 'SELECT * FROM filaments ORDER BY material ASC, name ASC');
+      const supplies = queryAll(db, 'SELECT * FROM supplies ORDER BY name ASC');
+      const products = queryAll(db, 'SELECT * FROM products ORDER BY created_at DESC');
+      const printJobs = queryAll(db, 'SELECT * FROM print_jobs ORDER BY created_at DESC');
+      const settingsRows = queryAll<{ key: string; value: string }>(db, 'SELECT key, value FROM settings');
+      const settingsMap: Record<string, any> = {};
+      for (const r of settingsRows) {
+        settingsMap[r.key] = isNaN(Number(r.value)) ? r.value : Number(r.value);
+      }
+
+      res.json({
+        app: 'PrintCraft3D',
+        version: '1.2.0',
+        exported_at: new Date().toISOString(),
+        printers,
+        filaments,
+        supplies,
+        products,
+        printJobs,
+        settings: settingsMap,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Import complete workshop database from JSON
+  app.post('/api/backup/import', (req: Request, res: Response) => {
+    try {
+      const { printers, filaments, supplies, products, printJobs, settings: importedSettings } = req.body;
+
+      if (Array.isArray(printers)) {
+        for (const p of printers) {
+          if (!p.id || !p.name) continue;
+          db.run(`
+            INSERT OR REPLACE INTO printers (id, name, printer_power_watts, bed_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            p.id,
+            p.name,
+            Number(p.printer_power_watts) || 80,
+            Number(p.bed_heater_watts) || 200,
+            Number(p.total_power_watts) || 280,
+            Number(p.hourly_depreciation) || 0.60,
+            Number(p.failure_rate_default) || 10,
+            p.status || 'available'
+          ]);
+        }
+      }
+
+      if (Array.isArray(filaments)) {
+        for (const f of filaments) {
+          if (!f.id || !f.name) continue;
+          db.run(`
+            INSERT OR REPLACE INTO filaments (id, name, brand, material, color, color_hex, total_weight_g, remaining_weight_g, cost_per_spool, diameter, density)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            f.id,
+            f.name,
+            f.brand || 'Genérico',
+            f.material || 'PLA',
+            f.color || 'Preto',
+            f.color_hex || '#475569',
+            Number(f.total_weight_g) || 1000,
+            Number(f.remaining_weight_g !== undefined ? f.remaining_weight_g : 1000),
+            Number(f.cost_per_spool) || 90.0,
+            Number(f.diameter) || 1.75,
+            Number(f.density) || 1.24
+          ]);
+        }
+      }
+
+      if (Array.isArray(supplies)) {
+        for (const s of supplies) {
+          if (!s.id || !s.name) continue;
+          db.run(`
+            INSERT OR REPLACE INTO supplies (id, name, unit, unit_cost, in_stock_qty, min_stock_alert)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [
+            s.id,
+            s.name,
+            s.unit || 'un',
+            Number(s.unit_cost) || 0,
+            Number(s.in_stock_qty) || 0,
+            Number(s.min_stock_alert) || 10
+          ]);
+        }
+      }
+
+      if (Array.isArray(products)) {
+        for (const pr of products) {
+          if (!pr.id || !pr.name) continue;
+          db.run(`
+            INSERT OR REPLACE INTO products (
+              id, name, category, description, stl_filename, gcode_filename,
+              printer_id, filament_id, filament_weight_g, print_time_minutes,
+              energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
+              labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
+              markup_percent, suggested_price, sale_price, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            pr.id,
+            pr.name,
+            pr.category || 'Geral',
+            pr.description || '',
+            pr.stl_filename || '',
+            pr.gcode_filename || '',
+            pr.printer_id || '',
+            pr.filament_id || '',
+            Number(pr.filament_weight_g) || 0,
+            Number(pr.print_time_minutes) || 0,
+            Number(pr.energy_cost) || 0,
+            Number(pr.filament_cost) || 0,
+            Number(pr.loss_margin_percent) || 10,
+            Number(pr.depreciation_cost) || 0,
+            Number(pr.labor_cost) || 0,
+            typeof pr.extra_supplies_json === 'string' ? pr.extra_supplies_json : JSON.stringify(pr.extra_supplies_json || []),
+            Number(pr.extra_supplies_cost) || 0,
+            Number(pr.total_cost) || 0,
+            Number(pr.markup_percent) || 100,
+            Number(pr.suggested_price) || 0,
+            Number(pr.sale_price) || 0,
+            pr.created_at || new Date().toISOString()
+          ]);
+        }
+      }
+
+      if (importedSettings && typeof importedSettings === 'object') {
+        for (const [k, v] of Object.entries(importedSettings)) {
+          db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [k, String(v)]);
+        }
+      }
+
+      saveDb();
+      res.json({ success: true, message: 'Dados restaurados com sucesso!' });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Settings

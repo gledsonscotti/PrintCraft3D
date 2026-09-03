@@ -19,7 +19,7 @@ import { ConfirmModal } from './ConfirmModal';
 
 interface PrintersViewProps {
   printers: Printer[];
-  onRefreshData: () => void;
+  onRefreshData: () => void | Promise<void>;
 }
 
 export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshData }) => {
@@ -110,18 +110,24 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
         status,
       };
 
+      let res: globalThis.Response;
       if (editingPrinter) {
-        await fetch(`/api/printers/${editingPrinter.id}`, {
+        res = await fetch(`/api/printers/${encodeURIComponent(editingPrinter.id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } else {
-        await fetch('/api/printers', {
+        res = await fetch('/api/printers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Falha ao processar impressora no servidor');
       }
 
       setShowModal(false);
@@ -152,7 +158,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
         message: `Impressora "${deleteTarget.name}" excluída com sucesso!`
       });
       setDeleteTarget(null);
-      onRefreshData();
+      await onRefreshData();
     } catch (err: any) {
       setNotification({
         type: 'error',

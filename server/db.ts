@@ -140,19 +140,32 @@ function initTables(database: Database) {
     );
   `);
 
-  // Check if seeded
-  const res = database.exec('SELECT COUNT(*) as count FROM printers');
-  const count = res.length > 0 && res[0].values.length > 0 ? Number(res[0].values[0][0]) : 0;
+  // 7. System metadata table to prevent re-seeding if user deletes records
+  database.run(`
+    CREATE TABLE IF NOT EXISTS system_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
 
-  if (count === 0) {
-    seedInitialData(database);
+  // Check if seeded previously
+  const metaRes = database.exec("SELECT value FROM system_meta WHERE key = 'initialized'");
+  const isInitialized = metaRes.length > 0 && metaRes[0].values.length > 0;
+
+  if (!isInitialized) {
+    const existingPrinters = database.exec("SELECT COUNT(*) as c FROM printers");
+    const count = existingPrinters.length > 0 && existingPrinters[0].values.length > 0 ? Number(existingPrinters[0].values[0][0]) : 0;
+    if (count === 0) {
+      seedInitialData(database);
+    }
+    database.run("INSERT OR REPLACE INTO system_meta (key, value) VALUES ('initialized', '1')");
   }
 }
 
 function seedInitialData(database: Database) {
   // Default printers
   database.run(`
-    INSERT INTO printers (id, name, printer_power_watts, bed_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
+    INSERT OR IGNORE INTO printers (id, name, printer_power_watts, bed_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
     VALUES
       ('p-1', 'Creality Ender 3 S1 Pro', 70, 220, 290, 0.60, 10, 'available'),
       ('p-2', 'Bambu Lab P1S Combo', 90, 260, 350, 1.20, 5, 'available'),
@@ -161,7 +174,7 @@ function seedInitialData(database: Database) {
 
   // Default filaments
   database.run(`
-    INSERT INTO filaments (id, name, brand, material, color, color_hex, total_weight_g, remaining_weight_g, cost_per_spool, diameter, density)
+    INSERT OR IGNORE INTO filaments (id, name, brand, material, color, color_hex, total_weight_g, remaining_weight_g, cost_per_spool, diameter, density)
     VALUES
       ('fil-1', 'PLA Preto Fosco', 'Voolt3D', 'PLA', 'Preto', '#1e293b', 1000, 850, 89.90, 1.75, 1.24),
       ('fil-2', 'PLA Silk Prata', '3D Fila', 'PLA', 'Prata Silk', '#94a3b8', 1000, 620, 119.00, 1.75, 1.24),
@@ -172,7 +185,7 @@ function seedInitialData(database: Database) {
 
   // Default supplies (insumos para chaveiros, embalagens, montagens)
   database.run(`
-    INSERT INTO supplies (id, name, unit, unit_cost, in_stock_qty, min_stock_alert)
+    INSERT OR IGNORE INTO supplies (id, name, unit, unit_cost, in_stock_qty, min_stock_alert)
     VALUES
       ('sup-1', 'Argola de Chaveiro com Corrente Italiana 25mm', 'un', 0.35, 180, 30),
       ('sup-2', 'Mosquetão Pequeno Articulado Níquel', 'un', 0.85, 95, 20),
@@ -184,7 +197,7 @@ function seedInitialData(database: Database) {
 
   // Default settings
   database.run(`
-    INSERT INTO settings (key, value)
+    INSERT OR IGNORE INTO settings (key, value)
     VALUES
       ('energy_kwh_rate', '0.85'),
       ('currency', 'R$'),
@@ -201,7 +214,7 @@ function seedInitialData(database: Database) {
   ]);
 
   database.run(`
-    INSERT INTO products (
+    INSERT OR IGNORE INTO products (
       id, name, category, description, stl_filename, gcode_filename,
       printer_id, filament_id, filament_weight_g, print_time_minutes,
       energy_cost, filament_cost, loss_margin_percent, depreciation_cost,

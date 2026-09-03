@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock, Sun, Moon, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock, Sun, Moon, Sparkles, Download, Upload, Database, RefreshCw } from 'lucide-react';
 import { AppSettings, AppTheme } from '../types';
 
 interface SettingsModalProps {
@@ -9,6 +9,7 @@ interface SettingsModalProps {
   onSaveSettings: (newSettings: AppSettings) => void;
   currentTheme?: AppTheme;
   onChangeTheme?: (theme: AppTheme) => void;
+  onRefreshData?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -18,6 +19,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSaveSettings,
   currentTheme = 'standard',
   onChangeTheme,
+  onRefreshData,
 }) => {
   const [energyKwhRate, setEnergyKwhRate] = useState(settings.energy_kwh_rate);
   const [currency, setCurrency] = useState(settings.currency);
@@ -26,7 +28,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Backup & Import states
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [backupMsg, setBackupMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
+
+  const handleExportBackup = async () => {
+    setIsExporting(true);
+    setBackupMsg(null);
+    try {
+      const res = await fetch('/api/backup/export');
+      if (!res.ok) throw new Error('Falha ao gerar arquivo de exportação');
+      const data = await res.json();
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `printcraft3d_backup_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setBackupMsg({ type: 'success', text: 'Backup exportado com sucesso!' });
+      setTimeout(() => setBackupMsg(null), 4000);
+    } catch (err: any) {
+      setBackupMsg({ type: 'error', text: 'Erro ao exportar backup: ' + err.message });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setBackupMsg(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const res = await fetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Falha ao restaurar dados no servidor');
+      }
+
+      setBackupMsg({ type: 'success', text: 'Dados restaurados com sucesso!' });
+      if (onRefreshData) onRefreshData();
+      setTimeout(() => setBackupMsg(null), 4000);
+    } catch (err: any) {
+      setBackupMsg({ type: 'error', text: 'Erro ao importar arquivo: ' + err.message });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +259,65 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                   <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Linhas sólidas</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Backup & Persistence Section */}
+            <div className="pt-3 border-t border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-emerald-400" />
+                  Persistência & Backup do Sistema
+                </label>
+                <span className="text-[10px] text-emerald-400/90 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  SQLite + LocalStorage
+                </span>
+              </div>
+
+              {backupMsg && (
+                <div
+                  className={`p-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                    backupMsg.type === 'success'
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{backupMsg.text}</span>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Exporte todos os seus carretéis, insumos cadastrados, produtos e impressoras para um arquivo de segurança, ou importe para restaurar instantaneamente:
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  disabled={isExporting}
+                  className="p-2.5 rounded-2xl bg-[#0A0A0B] border border-white/[0.08] hover:border-sky-500/40 text-slate-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold transition"
+                >
+                  <Download className="w-3.5 h-3.5 text-sky-400" />
+                  {isExporting ? 'Exportando...' : 'Exportar Backup JSON'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                  className="p-2.5 rounded-2xl bg-[#0A0A0B] border border-white/[0.08] hover:border-emerald-500/40 text-slate-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold transition"
+                >
+                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                  {isImporting ? 'Restaurando...' : 'Importar Backup JSON'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
               </div>
             </div>
 

@@ -33,7 +33,7 @@ interface CostCalculatorViewProps {
   filaments: Filament[];
   supplies: Supply[];
   settings: AppSettings;
-  onRefreshData: () => void;
+  onRefreshData: () => void | Promise<void>;
   onNavigateToStock: () => void;
   theme?: AppTheme;
 }
@@ -243,7 +243,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
       if (res.ok) {
         setSaveSuccessMessage(`"${productName}" salvo com sucesso no catálogo!`);
-        onRefreshData();
+        await onRefreshData();
         setTimeout(() => setSaveSuccessMessage(null), 4000);
       }
     } catch (err: any) {
@@ -286,7 +286,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         setPrintSuccessMessage(
           `Impressão de ${printQuantity}x "${productName}" confirmada! Baixa automática realizada: ${totalGrams}g de filamento e ${productSupplies.length} insumos debitados do SQLite em tempo real.`
         );
-        onRefreshData();
+        await onRefreshData();
         setTimeout(() => setPrintSuccessMessage(null), 6000);
       }
     } catch (err: any) {

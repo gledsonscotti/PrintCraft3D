@@ -22,7 +22,7 @@ import { ConfirmModal } from './ConfirmModal';
 interface StockManagementViewProps {
   filaments: Filament[];
   supplies: Supply[];
-  onRefreshData: () => void;
+  onRefreshData: () => void | Promise<void>;
 }
 
 export const StockManagementView: React.FC<StockManagementViewProps> = ({
@@ -129,18 +129,24 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
         density,
       };
 
+      let res: globalThis.Response;
       if (editingFilament) {
-        await fetch(`/api/filaments/${editingFilament.id}`, {
+        res = await fetch(`/api/filaments/${encodeURIComponent(editingFilament.id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } else {
-        await fetch('/api/filaments', {
+        res = await fetch('/api/filaments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Falha ao salvar filamento no servidor');
       }
 
       setShowFilamentModal(false);
@@ -280,7 +286,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
         message: `${deleteTarget.type === 'supply' ? 'Insumo' : 'Filamento'} "${deleteTarget.name}" excluído com sucesso!`
       });
       setDeleteTarget(null);
-      onRefreshData();
+      await onRefreshData();
     } catch (err: any) {
       setNotification({
         type: 'error',
