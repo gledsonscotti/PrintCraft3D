@@ -33,6 +33,15 @@ body {
   background: #3F3F46;
 }
 
+/* Hide scrollbar for horizontal single-line menus */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -82,12 +91,24 @@ html[data-theme="high-contrast-light"] footer {
 /* Main Bento Grid Cards - Pure White with Sharp Solid Borders */
 html[data-theme="high-contrast-light"] .bg-\[\#121215\],
 html[data-theme="high-contrast-light"] .bg-\[\#131316\],
+html[data-theme="high-contrast-light"] .bg-\[\#141416\],
+html[data-theme="high-contrast-light"] .bg-\[\#141417\],
 html[data-theme="high-contrast-light"] .bg-\[\#141418\],
+html[data-theme="high-contrast-light"] .bg-\[\#14141A\],
 html[data-theme="high-contrast-light"] .bg-\[\#16161A\],
 html[data-theme="high-contrast-light"] .bg-\[\#16161C\],
+html[data-theme="high-contrast-light"] .bg-\[\#16161E\],
+html[data-theme="high-contrast-light"] .bg-\[\#18181b\],
+html[data-theme="high-contrast-light"] .bg-\[\#18181B\],
 html[data-theme="high-contrast-light"] .bg-\[\#18181E\],
+html[data-theme="high-contrast-light"] .bg-\[\#181820\],
 html[data-theme="high-contrast-light"] .bg-\[\#1C1C22\],
-html[data-theme="high-contrast-light"] .bg-\[\#1F1F24\] {
+html[data-theme="high-contrast-light"] .bg-\[\#1c1c22\],
+html[data-theme="high-contrast-light"] .bg-\[\#1c1c20\],
+html[data-theme="high-contrast-light"] .bg-\[\#1F1F24\],
+html[data-theme="high-contrast-light"] .bg-\[\#121214\],
+html[data-theme="high-contrast-light"] .bg-\[\#22222A\],
+html[data-theme="high-contrast-light"] .bg-\[\#22222C\] {
   background-color: #FFFFFF !important;
   border: 2px solid #09090B !important;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06) !important;
@@ -98,7 +119,9 @@ html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/80,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/85,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/40,
-html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\] {
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\],
+html[data-theme="high-contrast-light"] .bg-\[\#101012\],
+html[data-theme="high-contrast-light"] .bg-\[\#0D0D11\] {
   background-color: #F8FAFC !important;
   border: 1.5px solid #27272A !important;
 }
@@ -353,3 +376,598 @@ html[data-theme="high-contrast-dark"] nav {
   background-color: #09090B !important;
   border: 2px solid #FFFFFF !important;
 }
+
+/* =========================================================================
+   PERFIL EQUILÍBRIO SAGE & LINHO (Wellness Bento Design)
+   Inspirado na paleta orgânica: Verde Sálvia, Folha Suave, Azul Pastel,
+   Linho Quente e formas curvas suaves estilo Bento Grid.
+   ========================================================================= */
+
+html[data-theme="sage-bento"] {
+  color-scheme: light;
+}
+
+html[data-theme="sage-bento"] body,
+html[data-theme="sage-bento"] .min-h-screen {
+  background-color: #F5F2EB !important;
+  background-image: 
+    radial-gradient(at 100% 0%, rgba(156, 180, 165, 0.22) 0px, transparent 55%),
+    radial-gradient(at 0% 100%, rgba(157, 191, 214, 0.2) 0px, transparent 55%),
+    radial-gradient(at 50% 50%, rgba(237, 232, 222, 0.4) 0px, transparent 100%) !important;
+  color: #1B2D25 !important;
+}
+
+/* Soft Organic Scrollbar */
+html[data-theme="sage-bento"] ::-webkit-scrollbar-track {
+  background: #ECE6DA;
+}
+html[data-theme="sage-bento"] ::-webkit-scrollbar-thumb {
+  background: #AABEA8;
+  border-radius: 9999px;
+  border: 2px solid #ECE6DA;
+}
+html[data-theme="sage-bento"] ::-webkit-scrollbar-thumb:hover {
+  background: #7B9B88;
+}
+
+/* Header & Footer - Soft Frosted Linen Bento */
+html[data-theme="sage-bento"] header {
+  background-color: rgba(247, 244, 238, 0.94) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1.5px solid #E2DCcf !important;
+  box-shadow: 0 4px 20px -2px rgba(86, 125, 107, 0.06) !important;
+}
+
+html[data-theme="sage-bento"] footer {
+  background-color: #EDE8DE !important;
+  border-top: 1.5px solid #DFD9CB !important;
+  color: #4C6055 !important;
+}
+
+/* Bento Grid Cards - Pure White Surface, Organic Rounded Curves & Soft Shadows */
+html[data-theme="sage-bento"] .bg-\[\#121214\],
+html[data-theme="sage-bento"] .bg-\[\#121215\],
+html[data-theme="sage-bento"] .bg-\[\#121216\],
+html[data-theme="sage-bento"] .bg-\[\#131316\],
+html[data-theme="sage-bento"] .bg-\[\#141416\],
+html[data-theme="sage-bento"] .bg-\[\#141417\],
+html[data-theme="sage-bento"] .bg-\[\#141418\],
+html[data-theme="sage-bento"] .bg-\[\#14141A\],
+html[data-theme="sage-bento"] .bg-\[\#16161A\],
+html[data-theme="sage-bento"] .bg-\[\#16161C\],
+html[data-theme="sage-bento"] .bg-\[\#16161E\],
+html[data-theme="sage-bento"] .bg-\[\#18181b\],
+html[data-theme="sage-bento"] .bg-\[\#18181B\],
+html[data-theme="sage-bento"] .bg-\[\#18181E\],
+html[data-theme="sage-bento"] .bg-\[\#181820\],
+html[data-theme="sage-bento"] .bg-\[\#1A1A1E\],
+html[data-theme="sage-bento"] .bg-\[\#1c1c20\],
+html[data-theme="sage-bento"] .bg-\[\#1C1C20\],
+html[data-theme="sage-bento"] .bg-\[\#1c1c22\],
+html[data-theme="sage-bento"] .bg-\[\#1C1C22\],
+html[data-theme="sage-bento"] .bg-\[\#1F1F24\],
+html[data-theme="sage-bento"] .bg-\[\#22222A\],
+html[data-theme="sage-bento"] .bg-\[\#22222C\] {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Inner Bento Sub-cells - Gentle Sand / Warm Milk background */
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/80,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/50,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/40,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\],
+html[data-theme="sage-bento"] .bg-\[\#101012\],
+html[data-theme="sage-bento"] .bg-\[\#0D0D11\],
+html[data-theme="sage-bento"] .bg-\[\#0A0A0E\],
+html[data-theme="sage-bento"] .bg-\[\#111113\] {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  border-radius: 1.125rem !important;
+}
+
+/* Thin border adjustments */
+html[data-theme="sage-bento"] [class*="border-white"] {
+  border-color: #E2DBD0 !important;
+}
+
+/* Typography Hierarchy - Deep Forest Charcoal with High Legibility */
+html[data-theme="sage-bento"] .text-white,
+html[data-theme="sage-bento"] .text-slate-100,
+html[data-theme="sage-bento"] .text-slate-200 {
+  color: #192C23 !important;
+  font-weight: 700;
+}
+
+html[data-theme="sage-bento"] .text-slate-300,
+html[data-theme="sage-bento"] .text-slate-400 {
+  color: #465B51 !important;
+  font-weight: 500;
+}
+
+html[data-theme="sage-bento"] .text-slate-500 {
+  color: #6C8176 !important;
+}
+
+/* Palette Accents */
+html[data-theme="sage-bento"] .text-sky-400,
+html[data-theme="sage-bento"] .text-sky-300 {
+  color: #396382 !important;
+  font-weight: 700;
+}
+
+html[data-theme="sage-bento"] .text-emerald-400,
+html[data-theme="sage-bento"] .text-emerald-300,
+html[data-theme="sage-bento"] .text-emerald-200 {
+  color: #446C58 !important;
+  font-weight: 700;
+}
+
+html[data-theme="sage-bento"] .text-amber-400,
+html[data-theme="sage-bento"] .text-amber-300 {
+  color: #8C6628 !important;
+  font-weight: 700;
+}
+
+html[data-theme="sage-bento"] .text-rose-400,
+html[data-theme="sage-bento"] .text-rose-300 {
+  color: #9C3D43 !important;
+  font-weight: 700;
+}
+
+html[data-theme="sage-bento"] .text-indigo-400,
+html[data-theme="sage-bento"] .text-indigo-300 {
+  color: #435E7D !important;
+  font-weight: 700;
+}
+
+/* Soft Wellness Badges & Pill Chips */
+html[data-theme="sage-bento"] .bg-sky-500\/10,
+html[data-theme="sage-bento"] .bg-sky-500\/20 {
+  background-color: #E8F1F7 !important;
+  border: 1px solid #C4DCEE !important;
+  color: #335977 !important;
+}
+
+html[data-theme="sage-bento"] .bg-emerald-500\/10,
+html[data-theme="sage-bento"] .bg-emerald-500\/20,
+html[data-theme="sage-bento"] .bg-emerald-950\/70,
+html[data-theme="sage-bento"] .bg-emerald-950\/40 {
+  background-color: #EAF2EC !important;
+  border: 1px solid #C8DDD0 !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .bg-amber-500\/10,
+html[data-theme="sage-bento"] .bg-amber-500\/20 {
+  background-color: #F8F2E7 !important;
+  border: 1px solid #E9DDCE !important;
+  color: #7A5B23 !important;
+}
+
+html[data-theme="sage-bento"] .bg-rose-500\/10,
+html[data-theme="sage-bento"] .bg-rose-500\/20 {
+  background-color: #F8ECEE !important;
+  border: 1px solid #EAC4C8 !important;
+  color: #8F343A !important;
+}
+
+/* Form Controls - Clean White with Smooth Pill/Rounded borders */
+html[data-theme="sage-bento"] input:not([type="range"]),
+html[data-theme="sage-bento"] select,
+html[data-theme="sage-bento"] textarea {
+  background-color: #FFFFFF !important;
+  color: #192C23 !important;
+  border: 1.5px solid #D8D1C4 !important;
+  border-radius: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="sage-bento"] input:focus,
+html[data-theme="sage-bento"] select:focus,
+html[data-theme="sage-bento"] textarea:focus {
+  border-color: #567D6B !important;
+  box-shadow: 0 0 0 3px rgba(86, 125, 107, 0.22) !important;
+}
+
+/* Primary Action Buttons (Sky & Emerald converted to Deep Sage Green from palette) */
+html[data-theme="sage-bento"] .bg-sky-500 {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.3) !important;
+}
+
+html[data-theme="sage-bento"] .bg-sky-500:hover,
+html[data-theme="sage-bento"] .hover\:bg-sky-400:hover {
+  background-color: #446857 !important;
+}
+
+html[data-theme="sage-bento"] .bg-emerald-500 {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+}
+
+/* Bento Navigation Segmented Control */
+html[data-theme="sage-bento"] nav {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] nav button {
+  color: #4A6054 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] nav button:hover {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] nav button.bg-sky-500,
+html[data-theme="sage-bento"] nav button.bg-emerald-500 {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+}
+
+/* Modal Dialogs */
+html[data-theme="sage-bento"] .fixed.inset-0.bg-black\/80,
+html[data-theme="sage-bento"] .fixed.inset-0.bg-black\/70 {
+  background-color: rgba(27, 45, 37, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+html[data-theme="sage-bento"] .fixed.inset-0 .bg-\[\#121215\] {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+}
+
+/* File Upload Dropzone in Sage Bento */
+html[data-theme="sage-bento"] #file-dropzone {
+  background-color: #FAF8F4 !important;
+  border: 2px dashed #B8CABE !important;
+  border-radius: 1.5rem !important;
+}
+
+html[data-theme="sage-bento"] #file-dropzone:hover {
+  background-color: #EFF5F1 !important;
+  border-color: #567D6B !important;
+}
+
+/* Gradient Result Cards */
+html[data-theme="sage-bento"] .bg-gradient-to-br {
+  background: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 4px 16px -2px rgba(86, 125, 107, 0.08) !important;
+}
+
+/* Range Sliders */
+html[data-theme="sage-bento"] input[type="range"] {
+  accent-color: #567D6B !important;
+  background-color: #E8E2D6 !important;
+}
+
+/* Secondary Buttons & Icons */
+html[data-theme="sage-bento"] .bg-\[\#131316\],
+html[data-theme="sage-bento"] .bg-\[\#1C1C22\] {
+  background-color: #FFFFFF !important;
+  border-color: #E4DDD2 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .bg-\[\#131316\]:hover,
+html[data-theme="sage-bento"] .bg-\[\#1C1C22\]:hover {
+  background-color: #F8F6F1 !important;
+  border-color: #BAC8BF !important;
+}
+
+/* Tables & Lists */
+html[data-theme="sage-bento"] th {
+  background-color: #F8F6F1 !important;
+  color: #192C23 !important;
+  border-bottom: 1.5px solid #E2DCD0 !important;
+}
+
+html[data-theme="sage-bento"] td {
+  border-bottom: 1px solid #ECE6DA !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] tr:hover td {
+  background-color: #F6F3EC !important;
+}
+
+/* =========================================================================
+   CATÁLOGO DE PRODUTOS - BOTÕES E CONTROLES EM SAGE BENTO
+   ========================================================================= */
+
+/* Botão "Produzir (+Estoque)" do Catálogo */
+html[data-theme="sage-bento"] .catalog-btn-produce,
+html[data-theme="sage-bento"] button.catalog-btn-produce {
+  background-color: #EDE8DE !important;
+  border: 1.5px solid #BAC8BF !important;
+  color: #192C23 !important;
+  font-weight: 700 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.08) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .catalog-btn-produce:hover,
+html[data-theme="sage-bento"] button.catalog-btn-produce:hover {
+  background-color: #567D6B !important;
+  border-color: #446857 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .catalog-btn-produce svg {
+  color: #446C58 !important;
+  fill: #446C58 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .catalog-btn-produce:hover svg {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* Botão "Vender" do Catálogo */
+html[data-theme="sage-bento"] .catalog-btn-sell,
+html[data-theme="sage-bento"] button.catalog-btn-sell {
+  background-color: #567D6B !important;
+  border: 1px solid #446857 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.3) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .catalog-btn-sell:hover,
+html[data-theme="sage-bento"] button.catalog-btn-sell:hover {
+  background-color: #446857 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .catalog-btn-sell svg {
+  color: #FFFFFF !important;
+}
+
+/* Composição de Insumos Pills no Catálogo */
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\].text-slate-300 {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  color: #192C23 !important;
+  font-weight: 600 !important;
+}
+
+/* =========================================================================
+   ÁREA DE CONTROLE DE VENDAS (SalesManagementView) EM SAGE BENTO
+   ========================================================================= */
+
+/* Botão "Registrar Nova Venda" */
+html[data-theme="sage-bento"] button.bg-emerald-500,
+html[data-theme="sage-bento"] .bg-emerald-500 {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] button.bg-emerald-500:hover,
+html[data-theme="sage-bento"] .bg-emerald-500:hover {
+  background-color: #446857 !important;
+  color: #FFFFFF !important;
+}
+
+/* Barra de Filtros e Busca */
+html[data-theme="sage-bento"] button.bg-white.text-black {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(86, 125, 107, 0.2) !important;
+}
+
+/* Campo de busca da área de vendas */
+html[data-theme="sage-bento"] input.bg-\[\#1c1c20\] {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="sage-bento"] input.bg-\[\#1c1c20\]::placeholder {
+  color: #7A8F83 !important;
+}
+
+html[data-theme="sage-bento"] input.bg-\[\#1c1c20\]:focus {
+  border-color: #567D6B !important;
+  box-shadow: 0 0 0 3px rgba(86, 125, 107, 0.2) !important;
+}
+
+/* Tabela de Vendas - Cabeçalho e Linhas */
+html[data-theme="sage-bento"] tr.bg-\[\#101012\],
+html[data-theme="sage-bento"] .bg-\[\#101012\] {
+  background-color: #F5F2EB !important;
+  border-bottom: 1.5px solid #E2DCD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] table tr:hover {
+  background-color: #FAF8F4 !important;
+}
+
+/* Badges de Quantidade de Venda (ex: 2x) */
+html[data-theme="sage-bento"] .bg-white\/\[0\.08\] {
+  background-color: #EDE8DE !important;
+  color: #192C23 !important;
+  border: 1px solid #DFD9CB !important;
+}
+
+/* =========================================================================
+   MODAIS (RegisterSaleModal e Produção) EM SAGE BENTO
+   ========================================================================= */
+html[data-theme="sage-bento"] .bg-\[\#18181b\] {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .bg-\[\#141416\] {
+  background-color: #F8F6F1 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .bg-\[\#121214\] {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  color: #192C23 !important;
+}
+
+/* =========================================================================
+   VISUALIZADOR 3D - OVERLAYS, BADGES E CONTROLES (Contraste Nítido em Qualquer Tema)
+   ========================================================================= */
+
+#v3d-canvas-wrap .v3d-badge,
+#v3d-canvas-wrap .v3d-sub-badge,
+#v3d-canvas-wrap .v3d-toolbar,
+#v3d-canvas-wrap .v3d-footer,
+.v3d-badge,
+.v3d-sub-badge,
+.v3d-toolbar,
+.v3d-footer {
+  background-color: rgba(12, 18, 26, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+#v3d-canvas-wrap .v3d-title,
+.v3d-title {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+}
+
+#v3d-canvas-wrap .v3d-dim,
+#v3d-canvas-wrap .v3d-sub-badge span,
+#v3d-canvas-wrap .v3d-footer span,
+.v3d-dim {
+  color: #E2E8F0 !important;
+}
+
+/* Preset buttons: ISO, TOP, FRT */
+#v3d-canvas-wrap .v3d-cam-btn,
+.v3d-cam-btn {
+  color: #E2E8F0 !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+}
+
+#v3d-canvas-wrap .v3d-cam-btn:hover,
+#v3d-canvas-wrap .v3d-tool-btn:hover,
+.v3d-cam-btn:hover,
+.v3d-tool-btn:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+#v3d-canvas-wrap .v3d-cam-btn.v3d-active,
+.v3d-cam-btn.v3d-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Icons inside 3D toolbar */
+#v3d-canvas-wrap .v3d-tool-btn,
+.v3d-tool-btn {
+  color: #E2E8F0 !important;
+}
+
+#v3d-canvas-wrap .v3d-tool-btn svg,
+.v3d-tool-btn svg {
+  color: #E2E8F0 !important;
+  stroke: #E2E8F0 !important;
+}
+
+#v3d-canvas-wrap .v3d-tool-btn:hover svg,
+.v3d-tool-btn:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+/* Em Sage Bento: manter visualizer overlays nítidos sobre o canvas escuro */
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-badge,
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-sub-badge,
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-toolbar,
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-footer {
+  background-color: rgba(10, 18, 15, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-title {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-cam-btn {
+  color: #E2E8F0 !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-cam-btn.v3d-active {
+  background-color: #446C58 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #719F88 !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-tool-btn svg {
+  color: #E2E8F0 !important;
+  stroke: #E2E8F0 !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-tool-btn:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-dim,
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-sub-badge span,
+html[data-theme="sage-bento"] #v3d-canvas-wrap .v3d-footer span {
+  color: #CBD5E1 !important;
+}
+
+/* Botão "Otimizar com IA" e Pill de Formato STL em Sage Bento */
+html[data-theme="sage-bento"] .v3d-optimize-btn {
+  background-color: #FEF7EE !important;
+  border: 1.5px solid #F5D2AC !important;
+  color: #92580E !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(146, 88, 14, 0.08) !important;
+}
+
+html[data-theme="sage-bento"] .v3d-optimize-btn:hover {
+  background-color: #FEEED8 !important;
+  border-color: #EBBF8A !important;
+}
+
+html[data-theme="sage-bento"] .v3d-format-pill {
+  background-color: #F1F6F9 !important;
+  border: 1.5px solid #CADFEA !important;
+  color: #245373 !important;
+  font-weight: 700 !important;
+}
+
+
+

@@ -25,6 +25,7 @@ export interface ModelViewer3DProps {
   trianglesCount?: number;
   layerCount?: number;
   theme?: AppTheme;
+  onSnapshotReady?: (captureSnapshot: () => string | null) => void;
 }
 
 export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
@@ -38,6 +39,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   trianglesCount,
   layerCount,
   theme = 'standard',
+  onSnapshotReady,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -80,12 +82,37 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     cameraRef.current = camera;
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
+
+    if (onSnapshotReady) {
+      onSnapshotReady(() => {
+        if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return null;
+        try {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+          const dom = rendererRef.current.domElement;
+          // Downscale to max 480px for lightning-fast and reliable AI vision payload
+          const maxDim = 480;
+          const scale = Math.min(1, maxDim / Math.max(dom.width || 1, dom.height || 1));
+          const thumb = document.createElement('canvas');
+          thumb.width = Math.max(1, Math.round(dom.width * scale));
+          thumb.height = Math.max(1, Math.round(dom.height * scale));
+          const ctx = thumb.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(dom, 0, 0, thumb.width, thumb.height);
+            return thumb.toDataURL('image/jpeg', 0.72);
+          }
+          return dom.toDataURL('image/jpeg', 0.7);
+        } catch (e) {
+          console.warn('Could not capture canvas snapshot:', e);
+          return null;
+        }
+      });
+    }
 
     containerRef.current.innerHTML = '';
     containerRef.current.appendChild(renderer.domElement);
@@ -356,7 +383,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   }, [theme]);
 
   return (
-    <div className="relative w-full h-72 md:h-80 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
+    <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-80 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
       {/* 3D Canvas Mount */}
       <div
         ref={containerRef}
@@ -368,46 +395,42 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
         onWheel={handleWheel}
       />
 
-      {/* Floating Header Overlay: Format, Dimensions & Triangles */}
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-none">
-        <div className="flex items-center gap-2 bg-[#121215]/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/[0.1] text-xs shadow-lg">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-0.5" />
-          <span className="font-semibold text-white">Mesa 3D</span>
-          <span className={`text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded-lg border ${formatBadgeColor()}`}>
-            {formatLabel || fileType.toUpperCase()}
-          </span>
-          {dimensions && (
-            <span className="text-slate-300 border-l border-white/[0.1] pl-2 font-mono text-[11px]">
-              {dimensions.x}×{dimensions.y}×{dimensions.z}mm
-            </span>
-          )}
+      {/* Floating Header Overlay: Mesa 3D Status & Geometry Badges */}
+      <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1 pointer-events-none z-10">
+        {/* Mesa 3D Status Pill - Compact */}
+        <div className="v3d-badge flex items-center gap-1.5 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span className="v3d-title text-[11px] tracking-wide">Mesa 3D</span>
         </div>
 
-        {trianglesCount && trianglesCount > 0 ? (
-          <div className="hidden sm:flex items-center gap-1.5 bg-[#121215]/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/[0.08] text-[10px] text-slate-300 font-mono">
-            <Sparkles className="w-3 h-3 text-sky-400" />
-            {trianglesCount.toLocaleString()} faces
-          </div>
-        ) : null}
+        {/* Faces and Layers Badges - Compact & subtle */}
+        <div className="flex items-center gap-1">
+          {trianglesCount && trianglesCount > 0 ? (
+            <div className="v3d-sub-badge flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono shadow-sm backdrop-blur-md">
+              <Sparkles className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+              <span className="v3d-dim">{trianglesCount.toLocaleString()} faces</span>
+            </div>
+          ) : null}
 
-        {layerCount && layerCount > 0 ? (
-          <div className="hidden sm:flex items-center gap-1.5 bg-[#121215]/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/[0.08] text-[10px] text-slate-300 font-mono">
-            <Layers className="w-3 h-3 text-indigo-400" />
-            {layerCount} camadas
-          </div>
-        ) : null}
+          {layerCount && layerCount > 0 ? (
+            <div className="v3d-sub-badge flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono shadow-sm backdrop-blur-md">
+              <Layers className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+              <span className="v3d-dim">{layerCount} cam</span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* Floating Action Controls */}
-      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#121215]/90 backdrop-blur-md p-1 rounded-2xl border border-white/[0.1] shadow-lg">
+      {/* Floating Action Controls - Compact & Non-overlapping */}
+      <div className="v3d-toolbar absolute top-2.5 right-2.5 flex items-center gap-0.5 backdrop-blur-md p-1 rounded-xl shadow-md z-10">
         {/* Camera View Presets */}
-        <div className="flex items-center gap-0.5 border-r border-white/[0.08] pr-1 mr-0.5">
+        <div className="flex items-center gap-0.5 border-r border-white/[0.15] pr-1 mr-0.5">
           <button
             type="button"
             onClick={() => setViewAngle('iso')}
             title="Vista Isométrica (3D)"
-            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
-              cameraView === 'iso' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+              cameraView === 'iso' ? 'v3d-active' : ''
             }`}
           >
             ISO
@@ -416,8 +439,8 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
             type="button"
             onClick={() => setViewAngle('top')}
             title="Vista Superior (Planta 2D)"
-            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
-              cameraView === 'top' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+              cameraView === 'top' ? 'v3d-active' : ''
             }`}
           >
             TOP
@@ -426,8 +449,8 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
             type="button"
             onClick={() => setViewAngle('front')}
             title="Vista Frontal"
-            className={`text-[10px] font-mono px-1.5 py-1 rounded-lg transition ${
-              cameraView === 'front' ? 'bg-sky-500/20 text-sky-300 font-bold' : 'text-slate-400 hover:text-white'
+            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+              cameraView === 'front' ? 'v3d-active' : ''
             }`}
           >
             FRT
@@ -438,56 +461,57 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
           type="button"
           onClick={() => setIsWireframe(!isWireframe)}
           title="Alternar Modo Aramado (Wireframe)"
-          className={`p-1.5 rounded-xl transition ${
-            isWireframe ? 'bg-sky-500/20 text-sky-400 border border-sky-400/40' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
+          className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
+            isWireframe ? 'v3d-active bg-sky-500/30' : ''
           }`}
         >
-          <Box className="w-3.5 h-3.5" />
+          <Box className="w-3 h-3" />
         </button>
 
         <button
           type="button"
           onClick={() => setAutoRotate(!autoRotate)}
           title="Alternar Giro Automático"
-          className={`p-1.5 rounded-xl transition ${
-            autoRotate ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-400/40' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
+          className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
+            autoRotate ? 'v3d-active bg-indigo-500/30' : ''
           }`}
         >
-          <RotateCw className="w-3.5 h-3.5" />
+          <RotateCw className="w-3 h-3" />
         </button>
 
         <button
           type="button"
           onClick={() => (zoomRef.current = Math.max(25, zoomRef.current - 12))}
           title="Aproximar Zoom"
-          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
         >
-          <ZoomIn className="w-3.5 h-3.5" />
+          <ZoomIn className="w-3 h-3" />
         </button>
 
         <button
           type="button"
           onClick={() => (zoomRef.current = Math.min(220, zoomRef.current + 12))}
           title="Afastar Zoom"
-          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
         >
-          <ZoomOut className="w-3.5 h-3.5" />
+          <ZoomOut className="w-3 h-3" />
         </button>
 
         <button
           type="button"
           onClick={handleResetCamera}
           title="Resetar Vista 3D"
-          className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-3 h-3" />
         </button>
       </div>
 
       {/* Helper footer */}
-      <div className="absolute bottom-2.5 right-3 text-[11px] text-slate-400 font-mono bg-[#0A0A0B]/85 px-2.5 py-1 rounded-xl border border-white/[0.06] backdrop-blur-sm pointer-events-none flex items-center gap-2">
-        <Compass className="w-3 h-3 text-sky-400" />
-        <span>Arraste para rotacionar • Scroll para zoom</span>
+      <div className="v3d-footer absolute bottom-2.5 right-2.5 text-[10px] font-mono px-2 py-0.5 rounded-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 shadow-sm">
+        <Compass className="w-3 h-3 text-sky-400 shrink-0" />
+        <span className="v3d-dim hidden sm:inline">Arraste para rotacionar • Scroll para zoom</span>
+        <span className="v3d-dim sm:hidden">Girar • Zoom</span>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
   Printer as PrinterIcon,
@@ -20,13 +20,17 @@ import {
   Layers,
   Wrench,
   Cpu,
-  Boxes
+  Boxes,
+  Shield,
+  Sliders
 } from 'lucide-react';
-import { AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, Supply } from '../types';
+import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SlicingProfile, Supply } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
 import { FileUploadZone } from './FileUploadZone';
+import { SlicingAdvisorModal } from './SlicingAdvisorModal';
+import { safeFetchJson } from '../utils/api';
 
 interface CostCalculatorViewProps {
   printers: Printer[];
@@ -95,9 +99,14 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
   const [printSuccessMessage, setPrintSuccessMessage] = useState<string | null>(null);
 
-  // AI tips
+  // AI tips & Slicing Advisor
   const [aiTips, setAiTips] = useState<string[]>([]);
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
+  const [isAdvisorModalOpen, setIsAdvisorModalOpen] = useState<boolean>(false);
+  const [aiOptimizationResult, setAiOptimizationResult] = useState<AiOptimizationResult | null>(null);
+  const [snapshotDataUrl, setSnapshotDataUrl] = useState<string | null>(null);
+  const [activeProfileAppliedId, setActiveProfileAppliedId] = useState<string | null>(null);
+  const canvasSnapshotGetterRef = useRef<(() => string | null) | null>(null);
 
   // Save product state
   const [savingProduct, setSavingProduct] = useState(false);
@@ -296,28 +305,171 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     }
   };
 
-  // Request AI Optimization
-  const handleRequestAiOptimization = async () => {
+  // Request AI Optimization & Slicing Profiles
+  const handleRequestAiOptimization = async (options?: {
+    customImage?: string;
+    userNotes?: string;
+    intentCategory?: string;
+  }) => {
     setLoadingAi(true);
     try {
-      const res = await fetch('/api/ai-optimize', {
+      let imageToUse = options?.customImage;
+      if (!imageToUse && canvasSnapshotGetterRef.current) {
+        const snap = canvasSnapshotGetterRef.current();
+        if (snap) {
+          imageToUse = snap;
+          setSnapshotDataUrl(snap);
+        }
+      }
+
+      const data = await safeFetchJson<AiOptimizationResult>('/api/ai-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           modelName: productName,
+          category: options?.intentCategory || productCategory,
           dimensions: parsedModel.dimensions,
           weightGrams: customWeightGrams,
           printTimeMinutes: customTimeMinutes,
           material: activeFilament?.material || 'PLA',
+          printerName: activePrinter?.name || 'Impressora 3D FDM',
+          imageDataUrl: imageToUse,
+          userNotes: options?.userNotes,
         }),
       });
-      const data = await res.json();
-      if (data.tips) setAiTips(data.tips);
+
+      if (data && data.profiles && Array.isArray(data.profiles) && data.profiles.length > 0) {
+        setAiOptimizationResult(data);
+        setIsAdvisorModalOpen(true);
+        if (data.tips) setAiTips(data.tips);
+      } else {
+        // Instant local backup generation if network or proxy failed
+        const baseW = customWeightGrams || 20;
+        const baseT = customTimeMinutes || 60;
+        const fallbackResult: AiOptimizationResult = {
+          diagnostic: {
+            pieceType: options?.intentCategory === 'keychain' ? 'Chaveiro / Acessório' : 'Peça Técnica / Modelo FDM',
+            structuralAnalysis: 'Áreas finas exigem perímetros contínuos para evitar descolamento ou quebra por cisalhamento mecânico.',
+            idealBedOrientation: 'Posicione a maior face plana assentada diretamente na mesa para maximizar área de contato e eliminar suportes.',
+            supportNeeded: 'Desnecessário se a orientação mantiver saliências sob 45° de inclinação.',
+            layerAdhesionTips: 'Limpe a chapa com álcool isopropílico 99% e mantenha a primeira camada a 0.24mm com ventoinha desligada.'
+          },
+          profiles: [
+            {
+              id: 'eco',
+              name: '1. Economia Inteligente (Peça Leve & Rápida sem Quebrar)',
+              tier: 1,
+              badge: 'Custo Mínimo',
+              badgeColor: 'emerald',
+              description: 'Otimização com 2 paredes e preenchimento Gyroid 10% para corte de custo sem fragilidade.',
+              summary: '2 paredes, 10% infill Gyroid, camada 0.24mm.',
+              specs: {
+                layerHeight: '0.24 mm',
+                wallLoops: 2,
+                infillPercent: 10,
+                infillPattern: 'Gyroid',
+                topLayers: 3,
+                bottomLayers: 3,
+                printSpeed: '60 - 80 mm/s',
+                nozzleTemp: '205 °C',
+                bedTemp: '60 °C',
+                fanSpeed: '100%'
+              },
+              estimatedWeightGrams: Math.max(1, Math.round(baseW * 0.75)),
+              estimatedTimeMinutes: Math.max(5, Math.round(baseT * 0.7)),
+              actionableTips: [
+                '2 paredes com Gyroid impedem que o anel do chaveiro quebre com o peso das chaves.',
+                'Aumente a velocidade de deslocamento para 150mm/s reduzindo o tempo morto.',
+                'Camada a 0.24mm economiza até 30% no tempo de máquina.'
+              ],
+              metrics: { strengthScore: 6, speedScore: 9, economyScore: 10, finishScore: 7 }
+            },
+            {
+              id: 'balanced',
+              name: '2. Equilibrado / Padrão Oficina (Qualidade Comercial & Firmeza)',
+              tier: 2,
+              badge: 'Recomendado',
+              badgeColor: 'sky',
+              description: 'Configuração padrão ouro com 3 paredes e camada 0.20mm para vendas comerciais.',
+              summary: '3 paredes, 18% infill Gyroid, camada 0.20mm com acabamento refinado.',
+              specs: {
+                layerHeight: '0.20 mm',
+                wallLoops: 3,
+                infillPercent: 18,
+                infillPattern: 'Gyroid',
+                topLayers: 4,
+                bottomLayers: 4,
+                printSpeed: '50 - 65 mm/s',
+                nozzleTemp: '210 °C',
+                bedTemp: '60 °C',
+                fanSpeed: '100%'
+              },
+              estimatedWeightGrams: baseW,
+              estimatedTimeMinutes: baseT,
+              actionableTips: [
+                '3 perímetros criam casca sólida de 1.2mm eliminando qualquer transparência.',
+                'Costura Z alinhada na parte traseira ou quina viva oculta imperfeições.',
+                'Ative Ironing (alisamento de topo) para textura lisa e aspecto injetado.'
+              ],
+              metrics: { strengthScore: 8, speedScore: 7, economyScore: 8, finishScore: 9 }
+            },
+            {
+              id: 'strength',
+              name: '3. Ultra Resistência Mecânica (Carga & Impacto)',
+              tier: 3,
+              badge: 'Carga Máxima',
+              badgeColor: 'amber',
+              description: 'Máxima fusão molecular com 5 perímetros e 40% de infill cúbico estrutural.',
+              summary: '5 paredes, 40% infill Cúbico, camada 0.16mm com alta fusão térmica.',
+              specs: {
+                layerHeight: '0.16 mm',
+                wallLoops: 5,
+                infillPercent: 40,
+                infillPattern: 'Cúbico',
+                topLayers: 5,
+                bottomLayers: 5,
+                printSpeed: '35 - 45 mm/s',
+                nozzleTemp: '218 °C',
+                bedTemp: '65 °C',
+                fanSpeed: '60%'
+              },
+              estimatedWeightGrams: Math.round(baseW * 1.45),
+              estimatedTimeMinutes: Math.round(baseT * 1.55),
+              actionableTips: [
+                '5 paredes transformam elementos finos e furos em plástico 100% maciço.',
+                '+8°C no bico garante fusão contínua entre camadas impedindo delaminação.',
+                'Reduza a ventoinha para 60% para que as camadas se fundam molecularmente.'
+              ],
+              metrics: { strengthScore: 10, speedScore: 5, economyScore: 6, finishScore: 8 }
+            }
+          ],
+          slicerSnippets: {
+            recommendedSlicer: 'Bambu Studio / OrcaSlicer / Cura / PrusaSlicer',
+            quickCopyNotes: 'Perfis ajustados para bico 0.4mm em filamento ' + (activeFilament?.material || 'PLA')
+          },
+          tips: [
+            'Paredes extras conferem até 3x mais resistência mecânica do que aumentar apenas o preenchimento.',
+            'O padrão Gyroid dissipa tensões multidirecionais e nunca colide com o bico.',
+            'A primeira camada deve ser nivelada a 0.24mm com fluxo a 105% para garantir adesão perfeita.'
+          ]
+        };
+        setAiOptimizationResult(fallbackResult);
+        setIsAdvisorModalOpen(true);
+        if (fallbackResult.tips) setAiTips(fallbackResult.tips);
+      }
     } catch (err) {
-      console.error(err);
+      console.warn('Erro ao solicitar otimização de fatiamento:', err);
     } finally {
       setLoadingAi(false);
     }
+  };
+
+  const handleApplyProfile = (profile: SlicingProfile) => {
+    setCustomWeightGrams(profile.estimatedWeightGrams);
+    setCustomTimeMinutes(profile.estimatedTimeMinutes);
+    setActiveProfileAppliedId(profile.id);
+    setPrintSuccessMessage(`✨ Perfil "${profile.name}" aplicado! Peso ajustado para ${profile.estimatedWeightGrams}g e tempo para ${profile.estimatedTimeMinutes} min.`);
+    setTimeout(() => setPrintSuccessMessage(null), 6000);
   };
 
   return (
@@ -342,14 +494,42 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         {/* Left Column (5 cols): 3D Canvas, File Upload, Dimensions */}
         <div className="lg:col-span-5 space-y-5">
           <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm shadow-black/40 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-sky-400" />
-                Visualizador 3D Universal
-              </h3>
-              <span className="text-[11px] font-mono font-semibold bg-white/[0.05] text-sky-300 px-2.5 py-1 rounded-xl border border-sky-400/20">
-                {parsedModel.formatLabel || parsedModel.fileType.toUpperCase()}
-              </span>
+            {/* Header: Title in full single row, actions in the row below */}
+            <div className="space-y-2.5">
+              {/* Line 1: Title full width in one clean line */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
+                  <Layers className="w-4 h-4 text-sky-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  Visualizador 3D Universal
+                </h3>
+              </div>
+
+              {/* Line 2: Actions & Format in one clean horizontal row */}
+              <div className="flex items-center justify-between gap-2.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (aiOptimizationResult) {
+                      setIsAdvisorModalOpen(true);
+                    } else {
+                      handleRequestAiOptimization();
+                    }
+                  }}
+                  disabled={loadingAi}
+                  className="v3d-optimize-btn text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 whitespace-nowrap shadow-sm cursor-pointer shrink-0"
+                  title="Analisar geometria e obter 3 perfis de fatiamento recomendados"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 text-amber-400 ${loadingAi ? 'animate-spin' : ''}`} />
+                  <span>{loadingAi ? 'Analisando...' : 'Otimizar com IA'}</span>
+                </button>
+
+                <div className="v3d-format-pill flex items-center gap-1.5 text-xs font-mono font-semibold bg-white/[0.06] text-sky-300 px-3 py-1.5 rounded-xl border border-sky-400/25 whitespace-nowrap shadow-sm shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                  <span>{parsedModel.formatLabel || parsedModel.fileType.toUpperCase()}</span>
+                </div>
+              </div>
             </div>
 
             {/* 3D Viewport with Three.js Multi-Format Support */}
@@ -364,6 +544,9 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               trianglesCount={parsedModel.trianglesCount}
               layerCount={parsedModel.layerCount}
               theme={theme}
+              onSnapshotReady={(getter) => {
+                canvasSnapshotGetterRef.current = getter;
+              }}
             />
 
             {/* Geometry Stats Cards - Bento Micro Cells */}
@@ -924,7 +1107,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
             </div>
 
             {/* AI Optimization Accordion */}
-            <div className="pt-2 border-t border-white/[0.08]">
+            <div className="pt-2 border-t border-white/[0.08] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -932,16 +1115,81 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={handleRequestAiOptimization}
+                  onClick={() => {
+                    if (aiOptimizationResult) {
+                      setIsAdvisorModalOpen(true);
+                    } else {
+                      handleRequestAiOptimization();
+                    }
+                  }}
                   disabled={loadingAi}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1 transition"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition disabled:opacity-50"
                 >
-                  {loadingAi ? 'Analisando modelo...' : 'Obter Recomendações →'}
+                  {loadingAi ? 'Analisando modelo com IA...' : aiOptimizationResult ? 'Abrir Estúdio Completo →' : 'Obter Recomendações →'}
                 </button>
               </div>
 
-              {aiTips.length > 0 && (
-                <div className="mt-3 bg-[#0A0A0B]/80 border border-amber-500/30 rounded-2xl p-3.5 space-y-2 animate-fadeIn">
+              {/* Quick Profile Cards if AI result available */}
+              {aiOptimizationResult && (
+                <div className="space-y-2.5 animate-fadeIn">
+                  <div className="grid grid-cols-3 gap-2">
+                    {aiOptimizationResult.profiles.map((p) => {
+                      const isApplied = activeProfileAppliedId === p.id;
+                      const isEco = p.id === 'eco';
+                      const isStrength = p.id === 'strength';
+                      return (
+                        <div
+                          key={p.id}
+                          className={`p-2.5 rounded-xl border transition flex flex-col justify-between ${
+                            isApplied
+                              ? 'border-emerald-500 bg-emerald-950/25 ring-1 ring-emerald-500/40'
+                              : 'border-white/[0.08] bg-[#0A0A0E] hover:border-white/[0.18]'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono ${
+                                isEco ? 'bg-emerald-500/20 text-emerald-300' : isStrength ? 'bg-purple-500/20 text-purple-300' : 'bg-sky-500/20 text-sky-300'
+                              }`}>
+                                {p.badge}
+                              </span>
+                              {isApplied && <span className="text-[10px] text-emerald-400 font-bold">✓ Ativo</span>}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-200 block leading-tight line-clamp-1">
+                              {p.name.split('(')[0]}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 pt-1.5 border-t border-white/[0.06] flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400 font-mono">
+                              {p.estimatedWeightGrams}g / {p.estimatedTimeMinutes}m
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyProfile(p)}
+                              className="text-amber-400 hover:text-amber-300 font-bold transition"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvisorModalOpen(true)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-sky-500/10 hover:from-amber-500/20 hover:to-sky-500/20 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-center gap-2 transition font-bold"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Ver Parecer com Imagem & Dicas Detalhadas do Fatiador →
+                  </button>
+                </div>
+              )}
+
+              {aiTips.length > 0 && !aiOptimizationResult && (
+                <div className="bg-[#0A0A0B]/80 border border-amber-500/30 rounded-2xl p-3.5 space-y-2 animate-fadeIn">
                   {aiTips.map((tip, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs text-slate-300">
                       <span className="text-amber-400 font-bold mt-0.5">•</span>
@@ -954,6 +1202,24 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Intelligent Slicing Advisor Studio Modal */}
+      <SlicingAdvisorModal
+        isOpen={isAdvisorModalOpen}
+        onClose={() => setIsAdvisorModalOpen(false)}
+        modelName={productName}
+        category={productCategory}
+        dimensions={parsedModel.dimensions}
+        currentWeightGrams={customWeightGrams}
+        currentTimeMinutes={customTimeMinutes}
+        material={activeFilament?.material || 'PLA'}
+        printerName={activePrinter?.name || 'Impressora 3D'}
+        snapshotDataUrl={snapshotDataUrl}
+        optimizationResult={aiOptimizationResult}
+        isLoading={loadingAi}
+        onReanalyze={handleRequestAiOptimization}
+        onApplyProfile={handleApplyProfile}
+      />
     </div>
   );
 };

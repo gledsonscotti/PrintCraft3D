@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { getDb, queryAll, queryOne, saveDb } from './server/db';
 import { GoogleGenAI } from '@google/genai';
+import { analyzePieceWithGemini, generateDynamicFallbackAdvice } from './server/aiAdvisor';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,7 +12,14 @@ let aiClient: GoogleGenAI | null = null;
 function getAI(): GoogleGenAI | null {
   if (!process.env.GEMINI_API_KEY) return null;
   if (!aiClient) {
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    aiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
   return aiClient;
 }
@@ -538,7 +546,9 @@ async function startServer() {
         total_cost,
         markup_percent = 100,
         suggested_price,
-        sale_price
+        sale_price,
+        ready_stock_qty = 0,
+        min_stock_alert = 5
       } = req.body;
 
       const id = 'prod-' + Date.now();
@@ -550,20 +560,45 @@ async function startServer() {
           printer_id, filament_id, filament_weight_g, print_time_minutes,
           energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
           labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
-          markup_percent, suggested_price, sale_price, created_at
+          markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         id, name, category, description, stl_filename, gcode_filename,
         printer_id, filament_id, Number(filament_weight_g), Number(print_time_minutes),
         Number(energy_cost), Number(filament_cost), Number(loss_margin_percent), Number(depreciation_cost),
         Number(labor_cost), extra_supplies_json, Number(extra_supplies_cost), Number(total_cost),
-        Number(markup_percent), Number(suggested_price), Number(sale_price || suggested_price), createdAt
+        Number(markup_percent), Number(suggested_price), Number(sale_price || suggested_price),
+        Number(ready_stock_qty), Number(min_stock_alert), createdAt
       ]);
 
       saveDb();
       const created = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
       res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch('/api/products/:id/stock', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adjustment_qty, new_stock_qty } = req.body;
+
+      const current = queryOne<{ ready_stock_qty: number }>(db, 'SELECT ready_stock_qty FROM products WHERE id = ?', [id]);
+      if (!current) return res.status(404).json({ error: 'Produto não encontrado' });
+
+      let nextStock = current.ready_stock_qty || 0;
+      if (new_stock_qty !== undefined) {
+        nextStock = Math.max(0, Number(new_stock_qty));
+      } else if (adjustment_qty !== undefined) {
+        nextStock = Math.max(0, (current.ready_stock_qty || 0) + Number(adjustment_qty));
+      }
+
+      db.run('UPDATE products SET ready_stock_qty = ? WHERE id = ?', [nextStock, id]);
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
+      res.json(updated);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -650,15 +685,37 @@ async function startServer() {
         totalJobCost, JSON.stringify(supplies_used), 1, status, createdAt
       ]);
 
+      // Automatic Ready-Product Stock Addition (Acrescentar as peças prontas no estoque de produtos)
+      let matchedProductId = product_id;
+      if (!matchedProductId && product_name) {
+        const found = queryOne<{ id: string }>(db, 'SELECT id FROM products WHERE LOWER(name) = LOWER(?) LIMIT 1', [product_name.trim()]);
+        if (found) matchedProductId = found.id;
+      }
+
+      if (matchedProductId) {
+        db.run(`
+          UPDATE products
+          SET ready_stock_qty = ready_stock_qty + ?
+          WHERE id = ?
+        `, [qty, matchedProductId]);
+      }
+
       saveDb();
 
       const createdJob = queryOne(db, 'SELECT * FROM print_jobs WHERE id = ?', [jobId]);
+      const updatedProduct = matchedProductId ? queryOne(db, 'SELECT * FROM products WHERE id = ?', [matchedProductId]) : null;
+
       res.status(201).json({
         success: true,
         job: createdJob,
         stockDeducted: {
           filament_g: totalFilament,
           suppliesCount: supplies_used.length
+        },
+        readyStockAdded: {
+          quantity: qty,
+          product_id: matchedProductId || null,
+          product: updatedProduct
         }
       });
     } catch (e: any) {
@@ -666,55 +723,136 @@ async function startServer() {
     }
   });
 
-  // AI Assistant for Print Optimization (using Gemini Server-Side)
+  // Sales Management API (Controle de Vendas de Produtos Prontos: Plataformas, CNPJ, PF)
+  app.get('/api/sales', (req: Request, res: Response) => {
+    try {
+      const sales = queryAll(db, 'SELECT * FROM product_sales ORDER BY created_at DESC');
+      res.json(sales);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/sales', (req: Request, res: Response) => {
+    try {
+      const {
+        product_id,
+        product_name,
+        quantity,
+        unit_price,
+        channel_type, // 'platform' | 'cnpj' | 'pf'
+        channel_name, // 'Mercado Livre', 'Shopee', 'CNPJ: Razão Social', 'Pessoa Física: Nome'
+        customer_document = null,
+        customer_name = null,
+        platform_fee_percent = 0,
+        payment_method = null,
+        notes = null
+      } = req.body;
+
+      const qty = Math.max(1, Number(quantity) || 1);
+      const price = Number(unit_price) || 0;
+      const totalRevenue = price * qty;
+
+      let unitCost = 0;
+      let targetProdName = product_name || 'Produto Impresso 3D';
+
+      if (product_id) {
+        const prod = queryOne<{ name: string; total_cost: number; ready_stock_qty: number }>(
+          db,
+          'SELECT name, total_cost, ready_stock_qty FROM products WHERE id = ?',
+          [product_id]
+        );
+        if (prod) {
+          unitCost = prod.total_cost || 0;
+          targetProdName = prod.name;
+          // Deduct from finished product stock
+          db.run('UPDATE products SET ready_stock_qty = MAX(0, ready_stock_qty - ?) WHERE id = ?', [qty, product_id]);
+        }
+      }
+
+      const totalCost = unitCost * qty;
+      const feePercent = Math.max(0, Number(platform_fee_percent) || 0);
+      const platformFeeAmount = totalRevenue * (feePercent / 100);
+      const profit = totalRevenue - totalCost - platformFeeAmount;
+
+      const saleId = 'sale-' + Date.now();
+      const createdAt = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO product_sales (
+          id, product_id, product_name, quantity, unit_price, total_revenue,
+          unit_cost, total_cost, profit, channel_type, channel_name,
+          customer_document, customer_name, platform_fee_percent, platform_fee_amount,
+          payment_method, notes, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        saleId, product_id || null, targetProdName, qty, price, totalRevenue,
+        unitCost, totalCost, profit, channel_type || 'platform', channel_name || 'Plataforma',
+        customer_document, customer_name, feePercent, platformFeeAmount,
+        payment_method, notes, createdAt
+      ]);
+
+      saveDb();
+
+      const createdSale = queryOne(db, 'SELECT * FROM product_sales WHERE id = ?', [saleId]);
+      const updatedProduct = product_id ? queryOne(db, 'SELECT * FROM products WHERE id = ?', [product_id]) : null;
+
+      res.status(201).json({
+        success: true,
+        sale: createdSale,
+        updatedProduct
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/sales/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { restore_stock = true } = req.query;
+
+      const sale = queryOne<{ product_id: string; quantity: number }>(db, 'SELECT product_id, quantity FROM product_sales WHERE id = ?', [id]);
+      if (!sale) return res.status(404).json({ error: 'Venda não encontrada' });
+
+      // Restore finished product stock on cancellation/delete
+      if (restore_stock && sale.product_id) {
+        db.run('UPDATE products SET ready_stock_qty = ready_stock_qty + ? WHERE id = ?', [sale.quantity, sale.product_id]);
+      }
+
+      db.run('DELETE FROM product_sales WHERE id = ?', [id]);
+      saveDb();
+
+      const updatedProduct = sale.product_id ? queryOne(db, 'SELECT * FROM products WHERE id = ?', [sale.product_id]) : null;
+
+      res.json({
+        success: true,
+        id,
+        restoredStock: restore_stock && sale.product_id ? sale.quantity : 0,
+        updatedProduct
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // AI Assistant for Print Optimization (using Gemini Server-Side Multimodal or Fallback)
   app.post('/api/ai-optimize', async (req: Request, res: Response) => {
+    const input = req.body;
     try {
       const ai = getAI();
       if (!ai) {
-        return res.json({
-          tips: [
-            'Para chaveiros e peças de uso diário, utilize 3 a 4 paredes (perímetros) em vez de aumentar o preenchimento: isso confere rigidez mecânica sem gastar filamento extra no interior.',
-            'Chaveiros funcionam excelentemente bem com 15% a 20% de infill Gyroid ou Honeycomb, garantindo resistência isotrópica.',
-            'Para economizar energia, agrupe impressões em lotes na mesma mesa, aproveitando o pré-aquecimento do aquecedor da mesa (bed).'
-          ]
-        });
+        const fallback = generateDynamicFallbackAdvice(input);
+        return res.json(fallback);
       }
 
-      const { modelName, dimensions, weightGrams, printTimeMinutes, material } = req.body;
-      const prompt = `Você é um especialista sênior em manufatura aditiva e impressão 3D (FDM).
-Analise os seguintes parâmetros de uma peça a ser produzida:
-- Nome do modelo: ${modelName || 'Peça 3D'}
-- Dimensões: ${dimensions?.x || 0}mm x ${dimensions?.y || 0}mm x ${dimensions?.z || 0}mm
-- Peso estimado: ${weightGrams || 0}g
-- Tempo estimado: ${printTimeMinutes || 0} min
-- Material: ${material || 'PLA'}
-
-Forneça 3 dicas práticas e concisas em português para:
-1. Otimização de tempo e consumo de filamento (ex: paredes vs infill, orientação na mesa).
-2. Eficiência energética e redução do custo de produção.
-3. Resistência mecânica ideal para este tipo de produto (ex: chaveiro, suporte ou utilidade).
-Responda em formato JSON: { "tips": ["dica 1", "dica 2", "dica 3"] }`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json'
-        }
-      });
-
-      const text = response.text || '{}';
-      const parsed = JSON.parse(text);
-      res.json(parsed);
+      const result = await analyzePieceWithGemini(ai, input);
+      return res.json(result);
     } catch (e: any) {
-      console.error('Gemini optimization error:', e);
-      res.json({
-        tips: [
-          'Aumente a velocidade de deslocamento (travel speed) para reduzir o tempo sem comprometer a qualidade da superfície.',
-          'Considere usar infill Gyroid de 15% para chaveiros: ele distribui forças em todos os eixos consumindo menos gramas.',
-          'Ao produzir lotes de chaveiros, utilize a função "Imprimir um por um" ou maximize a área de impressão para economizar ciclos de aquecimento.'
-        ]
-      });
+      console.warn('Gemini optimization notice, serving resilient fallback:', e?.message || e);
+      const fallback = generateDynamicFallbackAdvice(input);
+      return res.json(fallback);
     }
   });
 

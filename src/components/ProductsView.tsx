@@ -11,7 +11,11 @@ import {
   XCircle,
   X,
   Tag,
-  AlertCircle
+  AlertCircle,
+  ShoppingBag,
+  Plus,
+  Minus,
+  Sparkles
 } from 'lucide-react';
 import { ExtraSupplyItem, Filament, Printer, Product } from '../types';
 import { ConfirmModal } from './ConfirmModal';
@@ -22,6 +26,7 @@ interface ProductsViewProps {
   filaments: Filament[];
   onRefreshData: () => void | Promise<void>;
   onSelectProductForCalculator?: (product: Product) => void;
+  onOpenSaleModal?: (product: Product) => void;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
@@ -30,11 +35,13 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   filaments,
   onRefreshData,
   onSelectProductForCalculator,
+  onOpenSaleModal,
 }) => {
   const [printModalProduct, setPrintModalProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [stockAdjustingId, setStockAdjustingId] = useState<string | null>(null);
 
   // Deletion Modal State
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
@@ -51,6 +58,32 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     const timer = setTimeout(() => setNotification(null), 4000);
     return () => clearTimeout(timer);
   }, [notification]);
+
+  const handleQuickStockAdjust = async (product: Product, delta: number) => {
+    const current = product.ready_stock_qty || 0;
+    const nextStock = Math.max(0, current + delta);
+    setStockAdjustingId(product.id);
+    try {
+      const res = await fetch(`/api/products/${encodeURIComponent(product.id)}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_stock_qty: nextStock }),
+      });
+      if (!res.ok) throw new Error('Falha ao atualizar estoque');
+      await onRefreshData();
+      setNotification({
+        type: 'success',
+        message: `Estoque de "${product.name}" atualizado para ${nextStock} un.`,
+      });
+    } catch (e: any) {
+      setNotification({
+        type: 'error',
+        message: e.message || 'Erro ao ajustar estoque',
+      });
+    } finally {
+      setStockAdjustingId(null);
+    }
+  };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -113,7 +146,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
       if (res.ok) {
         setSuccessMsg(
-          `Impressão de ${quantity}x "${printModalProduct.name}" concluída! Estoque de filamento e insumos debitado com sucesso no SQLite.`
+          `Impressão de ${quantity}x "${printModalProduct.name}" concluída! +${quantity} peças adicionadas ao Estoque de Produtos Prontos e insumos debitados com sucesso.`
         );
         onRefreshData();
         setTimeout(() => {
@@ -199,19 +232,70 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-xl uppercase tracking-wider">
-                        {prod.category}
-                      </span>
-                      <h3 className="text-base font-bold text-white mt-1.5">{prod.name}</h3>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-xl uppercase tracking-wider">
+                          {prod.category}
+                        </span>
+
+                        {/* Ready Stock Status Badge */}
+                        <span
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                            (prod.ready_stock_qty || 0) > 0
+                              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                              : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                          }`}
+                        >
+                          {(prod.ready_stock_qty || 0) > 0 ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              {prod.ready_stock_qty} un. em estoque
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3 h-3 text-slate-400" />
+                              0 un. em estoque
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-white">{prod.name}</h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget(prod)}
-                      className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
-                      title="Excluir Produto"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {/* Quick stock adjustment buttons */}
+                      <div className="flex items-center bg-[#0A0A0B] border border-white/[0.08] rounded-xl p-0.5 text-xs text-slate-400">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockAdjust(prod, -1)}
+                          disabled={stockAdjustingId === prod.id || (prod.ready_stock_qty || 0) <= 0}
+                          className="p-1 hover:text-white rounded-lg hover:bg-white/[0.08] disabled:opacity-30 transition"
+                          title="Diminuir 1 un. do estoque pronto"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="px-1.5 font-mono font-bold text-white text-[11px]" title="Estoque pronto">
+                          {prod.ready_stock_qty || 0}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockAdjust(prod, 1)}
+                          disabled={stockAdjustingId === prod.id}
+                          className="p-1 hover:text-white rounded-lg hover:bg-white/[0.08] disabled:opacity-30 transition"
+                          title="Adicionar 1 un. ao estoque pronto"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(prod)}
+                        className="text-slate-400 hover:text-rose-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
+                        title="Excluir Produto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {prod.description && (
@@ -284,18 +368,35 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Print button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPrintModalProduct(prod);
-                    setQuantity(1);
-                  }}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-white py-2.5 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-sm mt-3"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  Imprimir Peça & Baixar Estoque
-                </button>
+                {/* Action buttons: Vender e Imprimir */}
+                <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenSaleModal) {
+                        onOpenSaleModal(prod);
+                      }
+                    }}
+                    className="catalog-btn-sell bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2.5 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                    title="Registrar venda por Plataforma, CNPJ ou PF"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    Vender
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrintModalProduct(prod);
+                      setQuantity(1);
+                    }}
+                    className="catalog-btn-produce bg-[#1c1c22] hover:bg-sky-500 hover:text-white text-slate-200 border border-white/[0.1] py-2.5 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                    title="Imprimir lote e alimentar estoque pronto"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Produzir (+Estoque)
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -307,8 +408,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Play className="w-5 h-5 text-emerald-400 fill-emerald-400" />
-              Executar Impressão & Baixa de Estoque
+              <Play className="w-5 h-5 text-sky-400 fill-sky-400" />
+              Produzir Lote & Entrada em Estoque
             </h3>
 
             {successMsg ? (
@@ -320,6 +421,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
               <div className="space-y-4">
                 <div className="bg-[#0A0A0B]/80 p-4 rounded-2xl border border-white/[0.08] text-xs space-y-2 font-mono">
                   <div className="text-sm font-bold text-white font-sans">{printModalProduct.name}</div>
+                  <div className="text-slate-400 flex justify-between">
+                    <span className="font-sans">Estoque atual pronto:</span>
+                    <strong className="text-white font-sans">{printModalProduct.ready_stock_qty || 0} unidades</strong>
+                  </div>
                   <div className="text-slate-400 flex justify-between">
                     <span className="font-sans">Peso unitário:</span>
                     <strong className="text-white">{printModalProduct.filament_weight_g} g</strong>
@@ -345,12 +450,24 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                       max="1000"
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                      className="w-24 bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold text-white focus:outline-none focus:border-emerald-400/60"
+                      className="w-24 bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold text-white focus:outline-none focus:border-sky-400/60"
                     />
-                    <span className="text-xs text-slate-400 font-mono">
-                      Total a baixar: <strong className="text-white">{(printModalProduct.filament_weight_g * quantity).toFixed(1)}g</strong> de filamento
-                    </span>
+                    <div className="text-xs text-slate-400 font-mono space-y-0.5">
+                      <div>
+                        Baixa de filamento: <strong className="text-white">{(printModalProduct.filament_weight_g * quantity).toFixed(1)}g</strong>
+                      </div>
+                      <div className="text-emerald-400 font-sans font-semibold">
+                        + {quantity} un. no estoque de peças prontas
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                <div className="bg-sky-500/10 border border-sky-500/20 p-3 rounded-2xl text-[11px] text-sky-300 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 shrink-0 text-sky-400" />
+                  <span>
+                    Ao confirmar, o filamento e insumos serão baixados automaticamente e as <strong>{quantity} peças</strong> serão adicionadas ao estoque pronto para venda.
+                  </span>
                 </div>
 
                 <div className="flex justify-end gap-2.5 pt-3.5 border-t border-white/[0.08]">
@@ -366,9 +483,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     type="button"
                     onClick={handleExecutePrint}
                     disabled={isSubmitting}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-2xl text-xs font-semibold shadow flex items-center gap-2 transition"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
                   >
-                    {isSubmitting ? 'Processando baixa...' : 'Confirmar & Baixar Estoque'}
+                    {isSubmitting ? 'Processando baixa...' : `Confirmar Impressão (+${quantity} no Estoque)`}
                   </button>
                 </div>
               </div>

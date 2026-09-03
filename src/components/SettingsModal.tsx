@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock, Sun, Moon, Sparkles, Download, Upload, Database, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, X, CheckCircle2, Zap, DollarSign, Percent, Clock, Sun, Moon, Sparkles, Download, Upload, Database, RefreshCw, Leaf } from 'lucide-react';
 import { AppSettings, AppTheme } from '../types';
 
 interface SettingsModalProps {
@@ -207,57 +207,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* High Contrast / Workshop Lighting Theme */}
             <div className="pt-2 border-t border-white/[0.08]">
-              <label className="block text-xs font-medium text-slate-300 mb-2 flex items-center gap-1.5">
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
-                Modo de Contraste Bento Grid (Oficina de Impressão)
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  Modo de Contraste Bento Grid (Oficina de Impressão)
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">4 Perfis</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => onChangeTheme && onChangeTheme('standard')}
-                  className={`p-2.5 rounded-2xl text-left border transition ${
+                  className={`p-2.5 rounded-2xl text-left border transition cursor-pointer ${
                     currentTheme === 'standard'
                       ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
                       : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 text-xs">
-                    <Moon className="w-3.5 h-3.5 text-slate-400" />
-                    Padrão Dark
+                    <Moon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate">Dark Studio</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Dark Studio</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Padrão Escuro</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onChangeTheme && onChangeTheme('high-contrast-light')}
-                  className={`p-2.5 rounded-2xl text-left border transition ${
+                  className={`p-2.5 rounded-2xl text-left border transition cursor-pointer ${
                     currentTheme === 'high-contrast-light'
                       ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-2 ring-amber-400'
                       : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
-                    Oficina Clara
+                    <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="truncate">Oficina Clara</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Anti-reflexo solar</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Anti-reflexo</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onChangeTheme && onChangeTheme('high-contrast-dark')}
-                  className={`p-2.5 rounded-2xl text-left border transition ${
+                  className={`p-2.5 rounded-2xl text-left border transition cursor-pointer ${
                     currentTheme === 'high-contrast-dark'
                       ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
                       : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 text-xs">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                    Preto Puro
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">Preto Puro</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Linhas sólidas</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Linhas OLED</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onChangeTheme && onChangeTheme('sage-bento')}
+                  className={`p-2.5 rounded-2xl text-left border transition cursor-pointer relative ${
+                    currentTheme === 'sage-bento'
+                      ? 'bg-emerald-900/30 border-emerald-400 text-emerald-300 font-bold ring-2 ring-emerald-400/80'
+                      : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">Equilíbrio Sage</span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#567D6B] inline-block shadow-xs" title="Verde Sálvia" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#9CB4A5] inline-block shadow-xs" title="Folha Suave" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#9DBFD6] inline-block shadow-xs" title="Azul Pastel" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#EDE8DE] inline-block shadow-xs" title="Linho Quente" />
+                  </div>
+                  <span className="text-[9px] text-emerald-400/80 block mt-1 leading-tight">Wellness Bento</span>
                 </button>
               </div>
             </div>

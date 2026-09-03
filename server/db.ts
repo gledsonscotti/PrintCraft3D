@@ -107,6 +107,40 @@ function initTables(database: Database) {
       markup_percent REAL NOT NULL DEFAULT 100,
       suggested_price REAL NOT NULL,
       sale_price REAL NOT NULL,
+      ready_stock_qty INTEGER NOT NULL DEFAULT 0,
+      min_stock_alert INTEGER NOT NULL DEFAULT 5,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Run migration safely for existing databases
+  try {
+    database.run('ALTER TABLE products ADD COLUMN ready_stock_qty INTEGER NOT NULL DEFAULT 0;');
+  } catch {}
+  try {
+    database.run('ALTER TABLE products ADD COLUMN min_stock_alert INTEGER NOT NULL DEFAULT 5;');
+  } catch {}
+
+  // 5. Product Sales table (vendas por plataforma, CNPJ ou Pessoa Física)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS product_sales (
+      id TEXT PRIMARY KEY,
+      product_id TEXT,
+      product_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_price REAL NOT NULL,
+      total_revenue REAL NOT NULL,
+      unit_cost REAL NOT NULL DEFAULT 0,
+      total_cost REAL NOT NULL DEFAULT 0,
+      profit REAL NOT NULL DEFAULT 0,
+      channel_type TEXT NOT NULL, -- 'platform' | 'cnpj' | 'pf'
+      channel_name TEXT NOT NULL, -- 'Mercado Livre', 'Shopee', 'Amazon', 'Elo7', 'CNPJ: ...', 'PF: ...'
+      customer_document TEXT, -- CPF / CNPJ
+      customer_name TEXT,
+      platform_fee_percent REAL NOT NULL DEFAULT 0,
+      platform_fee_amount REAL NOT NULL DEFAULT 0,
+      payment_method TEXT,
+      notes TEXT,
       created_at TEXT NOT NULL
     );
   `);
@@ -219,7 +253,7 @@ function seedInitialData(database: Database) {
       printer_id, filament_id, filament_weight_g, print_time_minutes,
       energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
       labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
-      markup_percent, suggested_price, sale_price, created_at
+      markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, created_at
     )
     VALUES (
       'prod-1',
@@ -243,6 +277,8 @@ function seedInitialData(database: Database) {
       150,
       10.35,
       12.00,
+      20,
+      5,
       '${new Date().toISOString()}'
     ),
     (
@@ -267,8 +303,60 @@ function seedInitialData(database: Database) {
       120,
       20.97,
       25.00,
+      8,
+      3,
       '${new Date().toISOString()}'
     )
+  `);
+
+  // Sample Product Sales (Plataforma Shopee e Venda B2B CNPJ)
+  database.run(`
+    INSERT OR IGNORE INTO product_sales (
+      id, product_id, product_name, quantity, unit_price, total_revenue,
+      unit_cost, total_cost, profit, channel_type, channel_name, customer_document,
+      customer_name, platform_fee_percent, platform_fee_amount, payment_method, notes, created_at
+    )
+    VALUES
+      (
+        'sale-1',
+        'prod-1',
+        'Chaveiro Spotify com Código Interativo',
+        5,
+        12.00,
+        60.00,
+        4.14,
+        20.70,
+        30.90,
+        'platform',
+        'Shopee',
+        NULL,
+        'Lucas Silva (Pedido #SHP-9812)',
+        14.0,
+        8.40,
+        'Shopee Pay / Boleto',
+        'Envio via Correios com código de rastreio',
+        '${new Date(Date.now() - 43200000).toISOString()}'
+      ),
+      (
+        'sale-2',
+        'prod-1',
+        'Chaveiro Spotify com Código Interativo',
+        10,
+        11.50,
+        115.00,
+        4.14,
+        41.40,
+        73.60,
+        'cnpj',
+        'Studio Wave Música LTDA',
+        '45.123.890/0001-32',
+        'Studio Wave (Brindes de Fim de Ano)',
+        0,
+        0,
+        'PIX CNPJ',
+        'NF 0012 emitida para o cliente corporativo',
+        '${new Date(Date.now() - 172800000).toISOString()}'
+      )
   `);
 
   // Sample Print Job History

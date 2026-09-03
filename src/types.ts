@@ -61,6 +61,31 @@ export interface Product {
   markup_percent: number;
   suggested_price: number;
   sale_price: number;
+  ready_stock_qty?: number;
+  min_stock_alert?: number;
+  created_at: string;
+}
+
+export type SaleChannelType = 'platform' | 'cnpj' | 'pf';
+
+export interface ProductSale {
+  id: string;
+  product_id?: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_revenue: number;
+  unit_cost: number;
+  total_cost: number;
+  profit: number;
+  channel_type: SaleChannelType;
+  channel_name: string;
+  customer_document?: string;
+  customer_name?: string;
+  platform_fee_percent?: number;
+  platform_fee_amount?: number;
+  payment_method?: string;
+  notes?: string;
   created_at: string;
 }
 
@@ -108,4 +133,53 @@ export interface CostCalculationResult {
   profitMarginPercent: number;
 }
 
-export type AppTheme = 'standard' | 'high-contrast-light' | 'high-contrast-dark';
+export type AppTheme = 'standard' | 'high-contrast-light' | 'high-contrast-dark' | 'sage-bento';
+
+export interface SlicingProfileSpec {
+  layerHeight: string;
+  wallLoops: number;
+  infillPercent: number;
+  infillPattern: string;
+  topLayers: number;
+  bottomLayers: number;
+  printSpeed: string;
+  nozzleTemp: string;
+  bedTemp: string;
+  fanSpeed: string;
+}
+
+export interface SlicingProfile {
+  id: 'eco' | 'balanced' | 'strength';
+  name: string;
+  tier: number;
+  badge: string;
+  badgeColor: 'emerald' | 'sky' | 'amber' | 'purple';
+  description: string;
+  summary: string;
+  specs: SlicingProfileSpec;
+  estimatedWeightGrams: number;
+  estimatedTimeMinutes: number;
+  actionableTips: string[];
+  metrics: {
+    strengthScore: number;
+    speedScore: number;
+    economyScore: number;
+    finishScore: number;
+  };
+}
+
+export interface AiOptimizationResult {
+  diagnostic: {
+    pieceType: string;
+    structuralAnalysis: string;
+    idealBedOrientation: string;
+    supportNeeded: string;
+    layerAdhesionTips: string;
+  };
+  profiles: SlicingProfile[];
+  slicerSnippets?: {
+    recommendedSlicer: string;
+    quickCopyNotes: string;
+  };
+  tips?: string[];
+}
