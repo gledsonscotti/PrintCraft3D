@@ -16,22 +16,25 @@ import {
   Moon,
   Eye,
   ShoppingBag,
-  Leaf
+  Leaf,
+  Globe,
+  Factory
 } from 'lucide-react';
-import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply } from './types';
+import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder } from './types';
 import { CostCalculatorView } from './components/CostCalculatorView';
 import { StockManagementView } from './components/StockManagementView';
 import { PrintersView } from './components/PrintersView';
 import { ProductsView } from './components/ProductsView';
 import { PrintHistoryView } from './components/PrintHistoryView';
 import { SalesManagementView } from './components/SalesManagementView';
+import { ProductionControlView } from './components/ProductionControlView';
+import { SettingsView } from './components/SettingsView';
 import { RegisterSaleModal } from './components/RegisterSaleModal';
-import { SettingsModal } from './components/SettingsModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'calculator' | 'stock' | 'printers' | 'products' | 'sales' | 'history'>('calculator');
-  const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<'calculator' | 'stock' | 'printers' | 'products' | 'production' | 'sales' | 'history' | 'settings'>('calculator');
+  const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'integrations'>('costs');
   const [loading, setLoading] = useState(true);
 
   // Ready Product Sales Modal State
@@ -107,6 +110,16 @@ export default function App() {
     }
   });
 
+  const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_production_orders');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [preselectedSaleForOP, setPreselectedSaleForOP] = useState<ProductSale | null>(null);
+
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const cached = localStorage.getItem('printcraft_settings');
@@ -130,13 +143,14 @@ export default function App() {
   // Load all data from SQLite and synchronize with localStorage
   const fetchData = async () => {
     try {
-      const [printersRes, filamentsRes, suppliesRes, productsRes, jobsRes, salesRes, settingsRes] = await Promise.all([
+      const [printersRes, filamentsRes, suppliesRes, productsRes, jobsRes, salesRes, ordersRes, settingsRes] = await Promise.all([
         safeFetchJson<Printer[]>('/api/printers', undefined, []),
         safeFetchJson<Filament[]>('/api/filaments', undefined, []),
         safeFetchJson<Supply[]>('/api/supplies', undefined, []),
         safeFetchJson<Product[]>('/api/products', undefined, []),
         safeFetchJson<PrintJob[]>('/api/print-jobs', undefined, []),
         safeFetchJson<ProductSale[]>('/api/sales', undefined, []),
+        safeFetchJson<ProductionOrder[]>('/api/production-orders', undefined, []),
         safeFetchJson<any>('/api/settings', undefined, {}),
       ]);
 
@@ -146,6 +160,7 @@ export default function App() {
       const serverProducts: Product[] = Array.isArray(productsRes) ? productsRes : [];
       const serverJobs: PrintJob[] = Array.isArray(jobsRes) ? jobsRes : [];
       const serverSales: ProductSale[] = Array.isArray(salesRes) ? salesRes : [];
+      const serverOrders: ProductionOrder[] = Array.isArray(ordersRes) ? ordersRes : [];
 
       // Always trust the SQLite server as the single source of truth
       if (Array.isArray(serverPrinters)) {
@@ -171,6 +186,10 @@ export default function App() {
       if (Array.isArray(serverSales)) {
         setSales(serverSales);
         try { localStorage.setItem('printcraft_sales', JSON.stringify(serverSales)); } catch {}
+      }
+      if (Array.isArray(serverOrders)) {
+        setProductionOrders(serverOrders);
+        try { localStorage.setItem('printcraft_production_orders', JSON.stringify(serverOrders)); } catch {}
       }
       if (settingsRes && !settingsRes.error) {
         setSettings(settingsRes);
@@ -291,6 +310,31 @@ export default function App() {
 
               <button
                 type="button"
+                onClick={() => setActiveTab('production')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === 'production'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/25 border border-emerald-400/40 font-bold'
+                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Factory className="w-3.5 h-3.5" />
+                <span>Produção</span>
+                {productionOrders.filter((o) => o.status === 'in_progress').length > 0 && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'production' ? 'bg-white' : 'bg-sky-400'} animate-pulse`} />
+                )}
+                {productionOrders.filter((o) => o.status === 'pending').length > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono leading-none border transition-colors ${
+                    activeTab === 'production'
+                      ? 'bg-black/20 text-white border-white/20 font-bold'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}>
+                    {productionOrders.filter((o) => o.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('sales')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'sales'
@@ -317,11 +361,10 @@ export default function App() {
                 <History className="w-3.5 h-3.5" />
                 <span>Histórico</span>
               </button>
-            </nav>
 
-            {/* Quick Actions (Theme Toggle, Refresh & Settings) */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Workshop Contrast Quick Theme Toggle */}
+              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+
+              {/* Workshop Theme Toggle - Icon Only */}
               <button
                 type="button"
                 id="btn-workshop-contrast"
@@ -333,63 +376,70 @@ export default function App() {
                     return 'standard';
                   });
                 }}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm border cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`p-2 rounded-xl text-xs transition-all duration-150 flex items-center justify-center shrink-0 cursor-pointer ${
                   theme === 'sage-bento'
-                    ? 'bg-emerald-900/30 text-emerald-300 border-emerald-400/60 ring-2 ring-emerald-400/30 font-bold'
+                    ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-400/60 ring-1 ring-emerald-400/30 font-bold'
                     : theme === 'high-contrast-light'
-                    ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-amber-500/20 font-bold ring-2 ring-amber-400/40'
+                    ? 'bg-amber-400 text-slate-950 border border-amber-500 font-bold'
                     : theme === 'high-contrast-dark'
-                    ? 'bg-white text-black border-white ring-2 ring-white/40 font-bold'
-                    : 'bg-[#131316] text-slate-300 border-white/[0.08] hover:border-emerald-400/40 hover:text-emerald-300'
+                    ? 'bg-white text-black border border-white font-bold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
                 }`}
-                title="Alternar tema (Dark Studio, Equilíbrio Sage Bento, Oficina Clara, Preto Puro)"
-              >
-                {theme === 'sage-bento' ? (
-                  <Leaf className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                ) : theme === 'high-contrast-light' ? (
-                  <Sun className="w-3.5 h-3.5 shrink-0 text-slate-950 animate-pulse" />
-                ) : theme === 'high-contrast-dark' ? (
-                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                )}
-                <span className="hidden xl:inline whitespace-nowrap">
-                  {theme === 'sage-bento'
+                title={`Tema atual: ${
+                  theme === 'sage-bento'
                     ? 'Sage Bento'
                     : theme === 'high-contrast-light'
                     ? 'Oficina Clara'
                     : theme === 'high-contrast-dark'
                     ? 'Preto Puro'
-                    : 'Dark'}
-                </span>
+                    : 'Dark Studio'
+                } (Clique para alternar)`}
+              >
+                {theme === 'sage-bento' ? (
+                  <Leaf className="w-4 h-4 text-emerald-400" />
+                ) : theme === 'high-contrast-light' ? (
+                  <Sun className="w-4 h-4 text-slate-950" />
+                ) : theme === 'high-contrast-dark' ? (
+                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-400" />
+                )}
               </button>
 
+              {/* Sync SQLite Button - Icon Only */}
               <button
                 type="button"
                 id="btn-refresh-sqlite"
                 onClick={fetchData}
-                className="p-2 rounded-xl bg-[#131316] text-slate-400 hover:text-slate-200 hover:bg-[#1C1C22] transition border border-white/[0.08] hover:border-white/[0.15] shrink-0 cursor-pointer"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-all duration-150 shrink-0 cursor-pointer"
                 title="Sincronizar dados do SQLite"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-4 h-4" />
               </button>
 
+              {/* Ajustes do Sistema - Somente Ícone de Catraca (Engrenagem) */}
               <button
                 type="button"
                 id="btn-open-settings"
-                onClick={() => setShowSettings(true)}
-                className="flex items-center gap-1.5 bg-[#131316] hover:bg-[#1C1C22] text-slate-200 border border-white/[0.08] hover:border-white/[0.15] px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
-                title="Configurações do Sistema"
+                onClick={() => {
+                  setSettingsSubTab('costs');
+                  setActiveTab('settings');
+                }}
+                className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer ${
+                  activeTab === 'settings'
+                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
+                    : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.04]'
+                }`}
+                title="Ajustes do Sistema (Configurações e Integrações)"
               >
-                <SettingsIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span className="hidden xl:inline whitespace-nowrap">Ajustes</span>
+                <SettingsIcon className="w-4 h-4" />
               </button>
-            </div>
+            </nav>
           </div>
 
-          {/* Mobile Navigation Row - Clean Horizontal Single Line */}
+          {/* Mobile Navigation Row - Clean Single Space with Icon-Only Controls */}
           <div className="md:hidden flex items-center gap-1.5 overflow-x-auto py-2 border-t border-white/[0.08] no-scrollbar">
-            {/* Quick Toggle for Mobile Workshop Operator */}
+            {/* Quick Toggle Theme - Icon Only */}
             <button
               type="button"
               onClick={() => {
@@ -400,7 +450,7 @@ export default function App() {
                   return 'standard';
                 });
               }}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1 shrink-0 ${
+              className={`p-2 rounded-xl text-xs font-bold shrink-0 flex items-center justify-center ${
                 theme === 'sage-bento'
                   ? 'bg-emerald-800/40 text-emerald-200 border border-emerald-400'
                   : theme === 'high-contrast-light'
@@ -412,24 +462,26 @@ export default function App() {
               title="Alternar tema"
             >
               {theme === 'sage-bento' ? (
-                <Leaf className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                <Leaf className="w-3.5 h-3.5 text-emerald-400" />
               ) : theme === 'high-contrast-light' ? (
-                <Sun className="w-3.5 h-3.5 shrink-0 text-slate-950" />
+                <Sun className="w-3.5 h-3.5 text-slate-950" />
               ) : theme === 'high-contrast-dark' ? (
-                <Sparkles className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               ) : (
-                <Moon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                <Moon className="w-3.5 h-3.5 text-slate-400" />
               )}
-              <span>
-                {theme === 'sage-bento'
-                  ? 'Sage'
-                  : theme === 'high-contrast-light'
-                  ? 'Claro'
-                  : theme === 'high-contrast-dark'
-                  ? 'Preto'
-                  : 'Dark'}
-              </span>
             </button>
+
+            {/* Refresh SQLite Mobile - Icon Only */}
+            <button
+              type="button"
+              onClick={fetchData}
+              className="p-2 rounded-xl text-slate-300 bg-[#131316] border border-white/[0.1] shrink-0"
+              title="Sincronizar"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('calculator')}
@@ -477,6 +529,16 @@ export default function App() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('production')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                activeTab === 'production' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 bg-[#131316]'
+              }`}
+            >
+              <Factory className="w-3.5 h-3.5 shrink-0" />
+              Produção
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('sales')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'sales' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 bg-[#131316]'
@@ -494,6 +556,19 @@ export default function App() {
             >
               <History className="w-3.5 h-3.5 shrink-0" />
               Histórico
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsSubTab('costs');
+                setActiveTab('settings');
+              }}
+              className={`p-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center justify-center ${
+                activeTab === 'settings' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
+              }`}
+              title="Ajustes"
+            >
+              <SettingsIcon className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
         </div>
@@ -549,6 +624,21 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'production' && (
+              <ProductionControlView
+                orders={productionOrders}
+                products={products}
+                printers={printers}
+                filaments={filaments}
+                supplies={supplies}
+                sales={sales}
+                onRefreshData={fetchData}
+                preselectedSaleForOP={preselectedSaleForOP}
+                onClearPreselectedSale={() => setPreselectedSaleForOP(null)}
+                theme={theme}
+              />
+            )}
+
             {activeTab === 'sales' && (
               <SalesManagementView
                 sales={sales}
@@ -559,11 +649,29 @@ export default function App() {
                 }}
                 onDeleteSale={handleDeleteSale}
                 onRefreshData={fetchData}
+                onGenerateOP={(sale) => {
+                  setPreselectedSaleForOP(sale);
+                  setActiveTab('production');
+                }}
               />
             )}
 
             {activeTab === 'history' && (
               <PrintHistoryView jobs={printJobs} />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsView
+                settings={settings}
+                onSaveSettings={(newSet) => setSettings(newSet)}
+                currentTheme={theme}
+                onChangeTheme={(newTheme) => setTheme(newTheme)}
+                onRefreshData={fetchData}
+                products={products}
+                sales={sales}
+                onNavigateToSales={() => setActiveTab('sales')}
+                initialSubTab={settingsSubTab}
+              />
             )}
           </>
         )}
@@ -594,17 +702,6 @@ export default function App() {
         onSaleSuccess={() => {
           fetchData();
         }}
-      />
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettings}
-        settings={settings}
-        onClose={() => setShowSettings(false)}
-        onSaveSettings={(newSet) => setSettings(newSet)}
-        currentTheme={theme}
-        onChangeTheme={(newTheme) => setTheme(newTheme)}
-        onRefreshData={fetchData}
       />
     </div>
   );

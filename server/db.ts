@@ -182,6 +182,202 @@ function initTables(database: Database) {
     );
   `);
 
+  // 8. Integrations table (Mercado Livre, Shopee, Amazon, Shein, Elo7, Bling)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS integrations (
+      id TEXT PRIMARY KEY,
+      platform_id TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      environment TEXT NOT NULL DEFAULT 'production',
+      app_id TEXT NOT NULL DEFAULT '',
+      client_id TEXT NOT NULL DEFAULT '',
+      client_secret TEXT NOT NULL DEFAULT '',
+      access_token TEXT NOT NULL DEFAULT '',
+      refresh_token TEXT NOT NULL DEFAULT '',
+      seller_id TEXT NOT NULL DEFAULT '',
+      partner_id TEXT NOT NULL DEFAULT '',
+      partner_key TEXT NOT NULL DEFAULT '',
+      shop_id TEXT NOT NULL DEFAULT '',
+      aws_region TEXT NOT NULL DEFAULT 'us-east-1',
+      default_commission_percent REAL NOT NULL DEFAULT 16.0,
+      fixed_fee_per_sale REAL NOT NULL DEFAULT 6.0,
+      auto_stock_sync INTEGER NOT NULL DEFAULT 1,
+      auto_order_import INTEGER NOT NULL DEFAULT 1,
+      webhook_url TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'disconnected',
+      last_sync_at TEXT,
+      last_error TEXT,
+      sku_mappings_json TEXT NOT NULL DEFAULT '[]'
+    );
+  `);
+
+  // 9. Integration logs table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS integration_logs (
+      id TEXT PRIMARY KEY,
+      platform_id TEXT NOT NULL,
+      platform_name TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      message TEXT NOT NULL,
+      payload_summary TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // 10. Production Orders table (PCP - Controle e Fila de Produção da Oficina 3D)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS production_orders (
+      id TEXT PRIMARY KEY,
+      op_number TEXT NOT NULL,
+      product_id TEXT,
+      product_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      printer_id TEXT,
+      printer_name TEXT,
+      filament_id TEXT,
+      filament_name TEXT,
+      filament_weight_g REAL NOT NULL DEFAULT 0,
+      print_time_minutes REAL NOT NULL DEFAULT 0,
+      priority TEXT NOT NULL DEFAULT 'normal',
+      status TEXT NOT NULL DEFAULT 'pending',
+      progress_percent INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT,
+      completed_at TEXT,
+      sale_id TEXT,
+      customer_name TEXT,
+      destination TEXT NOT NULL DEFAULT 'stock',
+      notes TEXT,
+      supplies_json TEXT NOT NULL DEFAULT '[]',
+      fail_reason TEXT,
+      wasted_filament_g REAL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Seed default production orders if table is empty
+  try {
+    const opCountRes = database.exec("SELECT COUNT(*) FROM production_orders");
+    const opCount = opCountRes.length > 0 && opCountRes[0].values.length > 0 ? Number(opCountRes[0].values[0][0]) : 0;
+    if (opCount === 0) {
+      database.run(`
+        INSERT INTO production_orders (
+          id, op_number, product_id, product_name, quantity, printer_id, printer_name,
+          filament_id, filament_name, filament_weight_g, print_time_minutes, priority,
+          status, progress_percent, started_at, completed_at, sale_id, customer_name,
+          destination, notes, supplies_json, created_at
+        )
+        VALUES
+          (
+            'op-101', 'OP #101', 'prod-2', 'Suporte Universal Articulado de Celular', 2,
+            'p-2', 'Bambu Lab P1S Combo', 'fil-3', 'PETG Azul Royal', 84.0, 190,
+            'high', 'in_progress', 65, '${new Date(Date.now() - 7200000).toISOString()}', NULL,
+            'sale-2', 'Studio Wave (Brindes)', 'sale',
+            'Preenchimento Gyroid 25% para alta resistência mecânica.', '[]',
+            '${new Date(Date.now() - 14400000).toISOString()}'
+          ),
+          (
+            'op-102', 'OP #102', 'prod-1', 'Chaveiro Spotify com Código Interativo', 15,
+            'p-1', 'Creality Ender 3 S1 Pro', 'fil-1', 'PLA Preto Fosco', 217.5, 570,
+            'normal', 'pending', 0, NULL, NULL,
+            NULL, 'Estoque da Oficina', 'stock',
+            'Lote de reposição para pronta-entrega nos marketplaces.', '[{"supply_id":"sup-1","name":"Argola de Chaveiro com Corrente Italiana 25mm","qty":15,"unit_cost":0.35}]',
+            '${new Date(Date.now() - 3600000).toISOString()}'
+          ),
+          (
+            'op-103', 'OP #103', 'prod-1', 'Chaveiro Spotify com Código Interativo', 5,
+            'p-3', 'Artillery Genius Pro', 'fil-1', 'PLA Preto Fosco', 72.5, 190,
+            'urgent', 'post_processing', 90, '${new Date(Date.now() - 10800000).toISOString()}', NULL,
+            'sale-1', 'Lucas Silva (#SHP-9812)', 'sale',
+            'Remover brim e montar as argolas com fecho zip e tag kraft.', '[{"supply_id":"sup-1","name":"Argola de Chaveiro com Corrente Italiana 25mm","qty":5,"unit_cost":0.35},{"supply_id":"sup-5","name":"Saco Kraft c/ Visor e Fecho Zip 10x15cm","qty":5,"unit_cost":0.45}]',
+            '${new Date(Date.now() - 18000000).toISOString()}'
+          )
+      `);
+
+      // Set Bambu printer status to printing
+      database.run("UPDATE printers SET status = 'printing' WHERE id = 'p-2'");
+    }
+  } catch (err) {
+    console.warn('Could not seed production orders:', err);
+  }
+
+  // Seed default integrations if empty
+  try {
+    const intCountRes = database.exec("SELECT COUNT(*) FROM integrations");
+    const intCount = intCountRes.length > 0 && intCountRes[0].values.length > 0 ? Number(intCountRes[0].values[0][0]) : 0;
+    if (intCount === 0) {
+      database.run(`
+        INSERT OR IGNORE INTO integrations (
+          id, platform_id, name, enabled, environment, app_id, client_id, client_secret,
+          access_token, refresh_token, seller_id, partner_id, partner_key, shop_id,
+          aws_region, default_commission_percent, fixed_fee_per_sale, auto_stock_sync,
+          auto_order_import, webhook_url, status, last_sync_at, last_error, sku_mappings_json
+        )
+        VALUES
+          (
+            'int-meli', 'mercadolivre', 'Mercado Livre', 1, 'production',
+            '8294719201948', 'APP_USR-8294719201948', '••••••••••••••••••••••••••••••••',
+            'APP_USR-7281928-0904-a9e4-live-token-meli', '', 'MLB_SELLER_482910', '', '', '',
+            '', 16.5, 6.50, 1, 1,
+            'https://api.printcraft3d.local/webhooks/mercadolivre', 'connected', '${new Date().toISOString()}', '',
+            '[{"internal_product_id":"prod-1","internal_product_name":"Chaveiro Spotify com Código Interativo","marketplace_sku":"MLB-CHV-SPOT-01","marketplace_listing_id":"MLB391820491","marketplace_price":14.90,"sync_active":true,"last_synced_stock":15}]'
+          ),
+          (
+            'int-shopee', 'shopee', 'Shopee Brasil', 1, 'production',
+            '', '', '',
+            'shopee_live_auth_token_99182', '', '', '2004819', '••••••••••••••••••••••••••••••••', '49182048',
+            '', 14.0, 4.00, 1, 1,
+            'https://api.printcraft3d.local/webhooks/shopee', 'connected', '${new Date(Date.now() - 3600000).toISOString()}', '',
+            '[{"internal_product_id":"prod-1","internal_product_name":"Chaveiro Spotify com Código Interativo","marketplace_sku":"SHP-CHV-001","marketplace_listing_id":"9182048102","marketplace_price":12.90,"sync_active":true,"last_synced_stock":15}]'
+          ),
+          (
+            'int-amazon', 'amazon', 'Amazon Brasil (SP-API)', 0, 'production',
+            '', 'amzn1.application-oa2-client.8291048', '••••••••••••••••••••••••••••••••',
+            '', 'Atzr|IwEBIE79124810...', 'A2Q3Y263D00KWC', '', '', '',
+            'A2Q3Y263D00KWC', 15.0, 0.00, 1, 1,
+            'https://api.printcraft3d.local/webhooks/amazon', 'disconnected', NULL, '',
+            '[]'
+          ),
+          (
+            'int-shein', 'shein', 'Shein Marketplace', 0, 'production',
+            '', '', '',
+            '', '', '', '', '', '',
+            '', 16.0, 0.00, 1, 0,
+            'https://api.printcraft3d.local/webhooks/shein', 'disconnected', NULL, '',
+            '[]'
+          ),
+          (
+            'int-elo7', 'elo7', 'Elo7 (Artesanato & Peças 3D)', 0, 'production',
+            '', '', '',
+            '', '', '', '', '', '',
+            '', 18.0, 0.00, 1, 1,
+            'https://api.printcraft3d.local/webhooks/elo7', 'disconnected', NULL, '',
+            '[]'
+          ),
+          (
+            'int-bling', 'bling', 'Bling ERP / Tiny ERP', 0, 'production',
+            '', '', '',
+            '', '', '', '', '', '',
+            '', 0.0, 0.00, 1, 1,
+            'https://api.printcraft3d.local/webhooks/bling', 'disconnected', NULL, '',
+            '[]'
+          )
+      `);
+
+      // Seed sample logs
+      database.run(`
+        INSERT OR IGNORE INTO integration_logs (id, platform_id, platform_name, event_type, status, message, payload_summary, created_at)
+        VALUES
+          ('log-1', 'mercadolivre', 'Mercado Livre', 'stock.updated', 'success', 'Estoque sincronizado para 1 anúncio ativo (MLB-CHV-SPOT-01 -> Qtd 15)', '{"sku":"MLB-CHV-SPOT-01","stock":15,"status":"active"}', '${new Date(Date.now() - 1800000).toISOString()}'),
+          ('log-2', 'shopee', 'Shopee Brasil', 'order.created', 'success', 'Pedido importado automaticamente #SHP-9812 (5x Chaveiro Spotify)', '{"order_sn":"240904SHP9812","total":60.00,"items":5}', '${new Date(Date.now() - 43200000).toISOString()}'),
+          ('log-3', 'mercadolivre', 'Mercado Livre', 'ping', 'success', 'Conexão validada via OAuth 2.0 API Meli (Latência 68ms)', '{"http_code":200,"user_id":482910,"nickname":"PRINTCRAFT_3D"}', '${new Date(Date.now() - 7200000).toISOString()}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Could not seed integrations:', err);
+  }
+
   // Check if seeded previously
   const metaRes = database.exec("SELECT value FROM system_meta WHERE key = 'initialized'");
   const isInitialized = metaRes.length > 0 && metaRes[0].values.length > 0;

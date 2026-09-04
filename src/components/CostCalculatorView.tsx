@@ -609,11 +609,18 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
             )}
           </div>
 
-          {/* File Upload Zone */}
+          {/* File Upload Zone with Slicing Parameters & Smart Slicing Optimizer directly below */}
           <FileUploadZone
             onModelLoaded={handleModelLoaded}
             selectedFilament={activeFilament}
             activeModelName={parsedModel.fileName}
+            onRequestAiOptimization={handleRequestAiOptimization}
+            loadingAi={loadingAi}
+            aiOptimizationResult={aiOptimizationResult}
+            onOpenAdvisorModal={() => setIsAdvisorModalOpen(true)}
+            activeProfileAppliedId={activeProfileAppliedId}
+            onApplyProfile={handleApplyProfile}
+            aiTips={aiTips}
           />
         </div>
 
@@ -1098,106 +1105,12 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                   type="button"
                   onClick={handleExecutePrintJob}
                   disabled={isPrinting}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-500/20"
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   {isPrinting ? 'Processando baixa...' : 'Imprimir & Baixar Estoque'}
                 </button>
               </div>
-            </div>
-
-            {/* AI Optimization Accordion */}
-            <div className="pt-2 border-t border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  Otimizador Inteligente de Fatiamento
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (aiOptimizationResult) {
-                      setIsAdvisorModalOpen(true);
-                    } else {
-                      handleRequestAiOptimization();
-                    }
-                  }}
-                  disabled={loadingAi}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition disabled:opacity-50"
-                >
-                  {loadingAi ? 'Analisando modelo com IA...' : aiOptimizationResult ? 'Abrir Estúdio Completo →' : 'Obter Recomendações →'}
-                </button>
-              </div>
-
-              {/* Quick Profile Cards if AI result available */}
-              {aiOptimizationResult && (
-                <div className="space-y-2.5 animate-fadeIn">
-                  <div className="grid grid-cols-3 gap-2">
-                    {aiOptimizationResult.profiles.map((p) => {
-                      const isApplied = activeProfileAppliedId === p.id;
-                      const isEco = p.id === 'eco';
-                      const isStrength = p.id === 'strength';
-                      return (
-                        <div
-                          key={p.id}
-                          className={`p-2.5 rounded-xl border transition flex flex-col justify-between ${
-                            isApplied
-                              ? 'border-emerald-500 bg-emerald-950/25 ring-1 ring-emerald-500/40'
-                              : 'border-white/[0.08] bg-[#0A0A0E] hover:border-white/[0.18]'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono ${
-                                isEco ? 'bg-emerald-500/20 text-emerald-300' : isStrength ? 'bg-purple-500/20 text-purple-300' : 'bg-sky-500/20 text-sky-300'
-                              }`}>
-                                {p.badge}
-                              </span>
-                              {isApplied && <span className="text-[10px] text-emerald-400 font-bold">✓ Ativo</span>}
-                            </div>
-                            <span className="text-[11px] font-bold text-slate-200 block leading-tight line-clamp-1">
-                              {p.name.split('(')[0]}
-                            </span>
-                          </div>
-
-                          <div className="mt-2 pt-1.5 border-t border-white/[0.06] flex items-center justify-between text-[10px]">
-                            <span className="text-slate-400 font-mono">
-                              {p.estimatedWeightGrams}g / {p.estimatedTimeMinutes}m
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleApplyProfile(p)}
-                              className="text-amber-400 hover:text-amber-300 font-bold transition"
-                            >
-                              Aplicar
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsAdvisorModalOpen(true)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-sky-500/10 hover:from-amber-500/20 hover:to-sky-500/20 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-center gap-2 transition font-bold"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Ver Parecer com Imagem & Dicas Detalhadas do Fatiador →
-                  </button>
-                </div>
-              )}
-
-              {aiTips.length > 0 && !aiOptimizationResult && (
-                <div className="bg-[#0A0A0B]/80 border border-amber-500/30 rounded-2xl p-3.5 space-y-2 animate-fadeIn">
-                  {aiTips.map((tip, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-slate-300">
-                      <span className="text-amber-400 font-bold mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>

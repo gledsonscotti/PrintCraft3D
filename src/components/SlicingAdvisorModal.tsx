@@ -532,12 +532,12 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                   {activeProfile.actionableTips.map((tip, idx) => (
                     <div
                       key={idx}
-                      className="bg-[#14141A]/80 border border-white/[0.06] p-3 rounded-xl flex items-start gap-2.5 text-xs"
+                      className="slicing-actionable-tip bg-[#14141A] border border-white/[0.08] p-3 rounded-xl flex items-start gap-3 text-xs transition"
                     >
-                      <span className="w-5 h-5 rounded-lg bg-sky-500/15 text-sky-400 border border-sky-500/30 flex items-center justify-center font-bold font-mono shrink-0 mt-0.5">
+                      <span className="slicing-actionable-number w-5 h-5 rounded-lg bg-sky-500/15 text-sky-400 border border-sky-500/30 flex items-center justify-center font-bold font-mono shrink-0 mt-0.5 text-xs">
                         {idx + 1}
                       </span>
-                      <p className="text-slate-300 leading-relaxed">
+                      <p className="slicing-actionable-text text-slate-200 leading-relaxed font-medium">
                         {tip}
                       </p>
                     </div>
@@ -557,7 +557,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                         <span>🛡️ Resistência</span>
                         <span className="font-bold text-white">{activeProfile.metrics.strengthScore}/10</span>
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-white/[0.06] slicing-metric-track rounded-full overflow-hidden">
                         <div
                           className="h-full bg-purple-400 rounded-full"
                           style={{ width: `${activeProfile.metrics.strengthScore * 10}%` }}
@@ -570,7 +570,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                         <span>⚡ Velocidade</span>
                         <span className="font-bold text-white">{activeProfile.metrics.speedScore}/10</span>
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-white/[0.06] slicing-metric-track rounded-full overflow-hidden">
                         <div
                           className="h-full bg-amber-400 rounded-full"
                           style={{ width: `${activeProfile.metrics.speedScore * 10}%` }}
@@ -583,7 +583,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                         <span>💰 Economia</span>
                         <span className="font-bold text-white">{activeProfile.metrics.economyScore}/10</span>
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-white/[0.06] slicing-metric-track rounded-full overflow-hidden">
                         <div
                           className="h-full bg-emerald-400 rounded-full"
                           style={{ width: `${activeProfile.metrics.economyScore * 10}%` }}
@@ -596,7 +596,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                         <span>✨ Acabamento</span>
                         <span className="font-bold text-white">{activeProfile.metrics.finishScore}/10</span>
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-white/[0.06] slicing-metric-track rounded-full overflow-hidden">
                         <div
                           className="h-full bg-sky-400 rounded-full"
                           style={{ width: `${activeProfile.metrics.finishScore * 10}%` }}

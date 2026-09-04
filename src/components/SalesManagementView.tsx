@@ -14,7 +14,8 @@ import {
   ArrowUpRight,
   Receipt,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Factory
 } from 'lucide-react';
 import { ProductSale, Product, SaleChannelType } from '../types';
 
@@ -24,6 +25,7 @@ interface SalesManagementViewProps {
   onOpenNewSaleModal: () => void;
   onDeleteSale: (saleId: string) => void;
   onRefreshData: () => void;
+  onGenerateOP?: (sale: ProductSale) => void;
 }
 
 export function SalesManagementView({
@@ -32,6 +34,7 @@ export function SalesManagementView({
   onOpenNewSaleModal,
   onDeleteSale,
   onRefreshData,
+  onGenerateOP,
 }: SalesManagementViewProps) {
   const [filterChannel, setFilterChannel] = useState<'all' | SaleChannelType>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -479,14 +482,27 @@ export function SalesManagementView({
                       </td>
 
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => onDeleteSale(sale.id)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-white/[0.06] transition"
-                          title="Cancelar/Estornar venda e devolver ao estoque"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {onGenerateOP && (
+                            <button
+                              type="button"
+                              onClick={() => onGenerateOP(sale)}
+                              className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title="Criar Ordem de Produção (OP) na oficina para este pedido"
+                            >
+                              <Factory className="w-3 h-3" />
+                              <span className="hidden sm:inline">Gerar OP</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => onDeleteSale(sale.id)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-white/[0.06] transition cursor-pointer"
+                            title="Cancelar/Estornar venda e devolver ao estoque"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

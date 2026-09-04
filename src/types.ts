@@ -89,6 +89,37 @@ export interface ProductSale {
   created_at: string;
 }
 
+export type ProductionPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type ProductionStatus = 'pending' | 'in_progress' | 'post_processing' | 'completed' | 'failed';
+export type ProductionDestination = 'stock' | 'sale';
+
+export interface ProductionOrder {
+  id: string;
+  op_number: string;
+  product_id?: string;
+  product_name: string;
+  quantity: number;
+  printer_id?: string;
+  printer_name?: string;
+  filament_id?: string;
+  filament_name?: string;
+  filament_weight_g: number;
+  print_time_minutes: number;
+  priority: ProductionPriority;
+  status: ProductionStatus;
+  progress_percent: number;
+  started_at?: string;
+  completed_at?: string;
+  sale_id?: string;
+  customer_name?: string;
+  destination: ProductionDestination;
+  notes?: string;
+  supplies_json?: string;
+  fail_reason?: string;
+  wasted_filament_g?: number;
+  created_at: string;
+}
+
 export interface PrintJob {
   id: string;
   product_id?: string;
@@ -183,3 +214,54 @@ export interface AiOptimizationResult {
   };
   tips?: string[];
 }
+
+export type MarketplacePlatformId = 'mercadolivre' | 'shopee' | 'amazon' | 'shein' | 'elo7' | 'bling';
+
+export interface SkuMapping {
+  internal_product_id: string;
+  internal_product_name: string;
+  marketplace_sku: string;
+  marketplace_listing_id?: string;
+  marketplace_price?: number;
+  sync_active: boolean;
+  last_synced_stock?: number;
+}
+
+export interface MarketplaceIntegration {
+  id: string;
+  platform_id: MarketplacePlatformId;
+  name: string;
+  enabled: boolean;
+  environment: 'production' | 'sandbox';
+  app_id?: string;
+  client_id?: string;
+  client_secret?: string;
+  access_token?: string;
+  refresh_token?: string;
+  seller_id?: string;
+  partner_id?: string;
+  partner_key?: string;
+  shop_id?: string;
+  aws_region?: string;
+  default_commission_percent: number;
+  fixed_fee_per_sale: number;
+  auto_stock_sync: boolean;
+  auto_order_import: boolean;
+  webhook_url?: string;
+  status: 'connected' | 'disconnected' | 'testing' | 'error';
+  last_sync_at?: string;
+  last_error?: string;
+  sku_mappings: SkuMapping[];
+}
+
+export interface IntegrationLog {
+  id: string;
+  platform_id: string;
+  platform_name: string;
+  event_type: 'order.created' | 'stock.updated' | 'ping' | 'webhook.received' | 'auth.refreshed' | 'price.updated';
+  status: 'success' | 'warning' | 'error';
+  message: string;
+  payload_summary?: string;
+  created_at: string;
+}
+

@@ -433,19 +433,31 @@ html[data-theme="sage-bento"] .bg-\[\#141416\],
 html[data-theme="sage-bento"] .bg-\[\#141417\],
 html[data-theme="sage-bento"] .bg-\[\#141418\],
 html[data-theme="sage-bento"] .bg-\[\#14141A\],
+html[data-theme="sage-bento"] .bg-\[\#14141A\]\/80,
+html[data-theme="sage-bento"] .bg-\[\#14141A\]\/90,
+html[data-theme="sage-bento"] .bg-\[\#151a22\],
+html[data-theme="sage-bento"] .bg-\[\#151A22\],
 html[data-theme="sage-bento"] .bg-\[\#16161A\],
 html[data-theme="sage-bento"] .bg-\[\#16161C\],
 html[data-theme="sage-bento"] .bg-\[\#16161E\],
+html[data-theme="sage-bento"] .bg-\[\#17171b\],
+html[data-theme="sage-bento"] .bg-\[\#17171B\],
 html[data-theme="sage-bento"] .bg-\[\#18181b\],
 html[data-theme="sage-bento"] .bg-\[\#18181B\],
+html[data-theme="sage-bento"] .bg-\[\#18181c\],
+html[data-theme="sage-bento"] .bg-\[\#18181C\],
 html[data-theme="sage-bento"] .bg-\[\#18181E\],
 html[data-theme="sage-bento"] .bg-\[\#181820\],
 html[data-theme="sage-bento"] .bg-\[\#1A1A1E\],
+html[data-theme="sage-bento"] .bg-\[\#1a1a1f\],
+html[data-theme="sage-bento"] .bg-\[\#1A1A1F\],
 html[data-theme="sage-bento"] .bg-\[\#1c1c20\],
 html[data-theme="sage-bento"] .bg-\[\#1C1C20\],
 html[data-theme="sage-bento"] .bg-\[\#1c1c22\],
 html[data-theme="sage-bento"] .bg-\[\#1C1C22\],
 html[data-theme="sage-bento"] .bg-\[\#1F1F24\],
+html[data-theme="sage-bento"] .bg-\[\#1f1515\],
+html[data-theme="sage-bento"] .bg-\[\#222228\],
 html[data-theme="sage-bento"] .bg-\[\#22222A\],
 html[data-theme="sage-bento"] .bg-\[\#22222C\] {
   background-color: #FFFFFF !important;
@@ -460,6 +472,8 @@ html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/85,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/40,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\],
+html[data-theme="sage-bento"] .bg-\[\#0f141a\],
+html[data-theme="sage-bento"] .bg-\[\#0F141A\],
 html[data-theme="sage-bento"] .bg-\[\#101012\],
 html[data-theme="sage-bento"] .bg-\[\#0D0D11\],
 html[data-theme="sage-bento"] .bg-\[\#0A0A0E\],
@@ -967,6 +981,846 @@ html[data-theme="sage-bento"] .v3d-format-pill {
   border: 1.5px solid #CADFEA !important;
   color: #245373 !important;
   font-weight: 700 !important;
+}
+
+/* Altura de Camada Preset Buttons - Crisp, Anti-Blur & Theme-Aware */
+.layer-preset-btn {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.75rem !important;
+  letter-spacing: -0.01em !important;
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: geometricPrecision !important;
+  border-radius: 0.625rem !important;
+  box-shadow: none !important;
+  line-height: 1.2 !important;
+}
+
+html[data-theme="sage-bento"] .layer-preset-btn {
+  background-color: #FFFFFF !important;
+  border: 1px solid #D8D1C4 !important;
+  color: #465B51 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 0.625rem !important;
+}
+
+html[data-theme="sage-bento"] .layer-preset-btn:hover {
+  background-color: #F8F6F1 !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .layer-preset-btn.layer-preset-active {
+  background-color: #E2ECE5 !important;
+  border: 1.5px solid #567D6B !important;
+  color: #1F3F30 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.15) !important;
+}
+
+html[data-theme="high-contrast-light"] .layer-preset-btn {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  border-radius: 0.625rem !important;
+}
+
+html[data-theme="high-contrast-light"] .layer-preset-btn.layer-preset-active {
+  background-color: #E0F2FE !important;
+  border: 2px solid #0284C7 !important;
+  color: #0369A1 !important;
+  font-weight: 800 !important;
+}
+
+/* Instruções Práticas da Oficina (Slicing Advisor Modal) */
+.slicing-actionable-tip {
+  transition: all 0.15s ease-in-out;
+}
+
+html[data-theme="sage-bento"] .slicing-actionable-tip {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 1px 3px rgba(78, 120, 100, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] .slicing-actionable-tip:hover {
+  border-color: #567D6B !important;
+  background-color: #FAF8F5 !important;
+}
+
+html[data-theme="sage-bento"] .slicing-actionable-number {
+  background-color: #E8F1F7 !important;
+  border: 1px solid #C4DCEE !important;
+  color: #1E4E6B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="sage-bento"] .slicing-actionable-text {
+  color: #192C23 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .slicing-metric-track {
+  background-color: #E6E0D5 !important;
+}
+
+html[data-theme="high-contrast-light"] .slicing-actionable-tip {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  border-radius: 0.875rem !important;
+}
+
+html[data-theme="high-contrast-light"] .slicing-actionable-tip:hover {
+  border-color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .slicing-actionable-number {
+  background-color: #E0F2FE !important;
+  border: 1.5px solid #0284C7 !important;
+  color: #0369A1 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .slicing-actionable-text {
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] .slicing-metric-track {
+  background-color: #E2E8F0 !important;
+}
+
+html[data-theme="sage-bento"] .ring-emerald-500\/30 {
+  background-color: #EDF7F1 !important;
+  border-color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .ring-purple-500\/30 {
+  background-color: #F8F1FC !important;
+  border-color: #9333EA !important;
+}
+
+html[data-theme="sage-bento"] .ring-sky-500\/30 {
+  background-color: #F0F8FF !important;
+  border-color: #0284C7 !important;
+}
+
+/* =========================================================================
+   MÓDULO DE INTEGRAÇÕES & MARKETPLACES - SAGE BENTO DESIGN
+   Harmonização completa para a paleta Sálvia, Linho e curvas Bento Grid
+   ========================================================================= */
+
+/* Botões Secundários de Ação (Sincronizar, Copiar, Ping, Refresh) */
+html[data-theme="sage-bento"] .integration-btn-secondary,
+html[data-theme="sage-bento"] button.integration-btn-secondary {
+  background-color: #EDE8DE !important;
+  border: 1.5px solid #BAC8BF !important;
+  color: #192C23 !important;
+  font-weight: 700 !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.08) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-secondary:hover,
+html[data-theme="sage-bento"] button.integration-btn-secondary:hover {
+  background-color: #DFD8CB !important;
+  border-color: #567D6B !important;
+  color: #11221A !important;
+  box-shadow: 0 4px 12px -2px rgba(86, 125, 107, 0.2) !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-secondary svg {
+  color: #446C58 !important;
+}
+
+/* Botão Primário de Ação (Vincular Novo Anúncio, Salvar Configurações) */
+html[data-theme="sage-bento"] .integration-btn-primary,
+html[data-theme="sage-bento"] button.integration-btn-primary {
+  background-color: #567D6B !important;
+  border: 1px solid #446857 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.3) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-primary:hover,
+html[data-theme="sage-bento"] button.integration-btn-primary:hover {
+  background-color: #446857 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px -2px rgba(86, 125, 107, 0.35) !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-primary svg {
+  color: #FFFFFF !important;
+}
+
+/* Botão "Simular Pedido de Teste" */
+html[data-theme="sage-bento"] .integration-btn-simulate,
+html[data-theme="sage-bento"] button.integration-btn-simulate {
+  background-color: #D48B38 !important;
+  background-image: none !important;
+  border: 1px solid #B57125 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 4px 14px -2px rgba(212, 139, 56, 0.28) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-simulate:hover,
+html[data-theme="sage-bento"] button.integration-btn-simulate:hover {
+  background-color: #BE772A !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px -2px rgba(212, 139, 56, 0.38) !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-simulate svg {
+  color: #FFFFFF !important;
+}
+
+/* Cards de Métricas do Topo */
+html[data-theme="sage-bento"] .integration-metric-card {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] .integration-metric-card span.font-medium {
+  color: #465B51 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .integration-metric-card .text-white {
+  color: #192C23 !important;
+  font-weight: 800 !important;
+}
+
+/* Card Informativo "Como funciona o Sync 3D?" */
+html[data-theme="sage-bento"] .integration-info-card {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #DFD9CB !important;
+  border-radius: 1rem !important;
+  color: #3C5046 !important;
+}
+
+html[data-theme="sage-bento"] .integration-info-card p {
+  color: #465B51 !important;
+}
+
+/* Cards de Seleção de Player na Barra Lateral */
+html[data-theme="sage-bento"] .integration-player-card-active {
+  background-color: #FFFFFF !important;
+  border: 2px solid #567D6B !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.18) !important;
+}
+
+html[data-theme="sage-bento"] .integration-player-card-inactive {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1rem !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .integration-player-card-inactive:hover {
+  background-color: #FFFFFF !important;
+  border-color: #BAC8BF !important;
+}
+
+/* Cards de Automação (Checkboxes com toggle) */
+html[data-theme="sage-bento"] .integration-toggle-card {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1rem !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+html[data-theme="sage-bento"] .integration-toggle-card:hover {
+  background-color: #FFFFFF !important;
+  border-color: #567D6B !important;
+}
+
+/* Cards do Simulador de Taxas por Canal */
+html[data-theme="sage-bento"] .integration-sim-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 4px 16px -2px rgba(86, 125, 107, 0.08) !important;
+}
+
+html[data-theme="sage-bento"] .integration-sim-card-ml {
+  border-color: #E2B96B !important;
+  border-top-width: 3px !important;
+}
+
+html[data-theme="sage-bento"] .integration-sim-card-shopee {
+  border-color: #E2946B !important;
+  border-top-width: 3px !important;
+}
+
+html[data-theme="sage-bento"] .integration-sim-card-amazon {
+  border-color: #7AA2BE !important;
+  border-top-width: 3px !important;
+}
+
+html[data-theme="sage-bento"] .integration-sim-card-direct {
+  border-color: #567D6B !important;
+  border-top-width: 3px !important;
+}
+
+/* Linhas da Tabela de Logs & Webhooks */
+html[data-theme="sage-bento"] .integration-log-row {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] .integration-log-badge {
+  background-color: #E8F1F7 !important;
+  border: 1px solid #C4DCEE !important;
+  color: #1E4E6B !important;
+  font-weight: 700 !important;
+}
+
+/* Modais de Integração em Sage Bento */
+html[data-theme="sage-bento"] .integration-modal-wrapper {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .integration-modal-header {
+  background-color: #F8F6F1 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .integration-modal-footer {
+  background-color: #F8F6F1 !important;
+  border-top: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-cancel {
+  color: #465B51 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .integration-btn-cancel:hover {
+  color: #192C23 !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Modo Alto Contraste Claro - Suporte para as classes de integração */
+html[data-theme="high-contrast-light"] .integration-btn-secondary {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .integration-btn-primary {
+  background-color: #0284C7 !important;
+  border: 2px solid #075985 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .integration-btn-simulate {
+  background-color: #D97706 !important;
+  border: 2px solid #92400E !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .integration-metric-card,
+html[data-theme="high-contrast-light"] .integration-info-card,
+html[data-theme="high-contrast-light"] .integration-player-card-active,
+html[data-theme="high-contrast-light"] .integration-player-card-inactive,
+html[data-theme="high-contrast-light"] .integration-toggle-card,
+html[data-theme="high-contrast-light"] .integration-sim-card,
+html[data-theme="high-contrast-light"] .integration-log-row,
+html[data-theme="high-contrast-light"] .integration-modal-wrapper {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+/* =========================================================================
+   CONTROLE DE PRODUÇÃO & PCP - SAGE BENTO HARMONIOUS WELLNESS PALETTE
+   ========================================================================= */
+
+/* KPI Cards de Resumo */
+html[data-theme="sage-bento"] .production-kpi-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Barra de Filtros, Busca e Alternador de Visão */
+html[data-theme="sage-bento"] .production-search-filter-bar {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.25rem !important;
+}
+
+html[data-theme="sage-bento"] .production-search-input,
+html[data-theme="sage-bento"] .production-filter-select {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-view-mode-container {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .production-view-mode-btn {
+  color: #4A6054 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .production-view-mode-btn:hover {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-view-mode-btn-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+}
+
+/* Colunas do Quadro Kanban - Superfície Suave de Linho e Areia */
+html[data-theme="sage-bento"] .kanban-column {
+  background-color: #F2EDE4 !important;
+  border: 1.5px solid #DFD7CA !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 4px 16px -2px rgba(86, 125, 107, 0.05) !important;
+}
+
+html[data-theme="sage-bento"] .kanban-column h3 {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-column-counter {
+  background-color: #FFFFFF !important;
+  color: #3A5043 !important;
+  border: 1px solid #DCD5C8 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-empty-placeholder {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  border: 1.5px dashed #D8D0C2 !important;
+  color: #6C8176 !important;
+}
+
+/* Cartões de Ordens de Produção (Kanban Cards) - Superfície Branca Impecável */
+html[data-theme="sage-bento"] .kanban-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 6px 18px -3px rgba(78, 120, 100, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card:hover {
+  border-color: #B8CABE !important;
+  box-shadow: 0 12px 28px -4px rgba(78, 120, 100, 0.12) !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-progress {
+  border-color: #B5D2E7 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-postprocess {
+  border-color: #D7CCE4 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-completed {
+  border-color: #C8DDD0 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-failed {
+  background-color: #FAF0F1 !important;
+  border-color: #EAC4C8 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-product-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-op-number {
+  font-weight: 800 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-pending .kanban-op-number {
+  color: #8C6628 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-progress .kanban-op-number {
+  color: #245B82 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-postprocess .kanban-op-number {
+  color: #5A4579 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-card-completed .kanban-op-number {
+  color: #2D5642 !important;
+}
+
+/* Badges e Pílulas Dentro do Cartão */
+html[data-theme="sage-bento"] .kanban-qty-badge {
+  background-color: #F8F6F1 !important;
+  border: 1px solid #DFD9CB !important;
+  color: #3A5043 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-dest-stock {
+  background-color: #EAF2EC !important;
+  border: 1px solid #C8DDD0 !important;
+  color: #2D5642 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-dest-sale {
+  background-color: #F3EEF8 !important;
+  border: 1px solid #DED2EB !important;
+  color: #584478 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .badge-priority-urgent {
+  background-color: #F8ECEE !important;
+  border: 1px solid #EAC4C8 !important;
+  color: #8F343A !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .badge-priority-high {
+  background-color: #F8F2E7 !important;
+  border: 1px solid #E9DDCE !important;
+  color: #8C6628 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .badge-priority-normal {
+  background-color: #EAF2EC !important;
+  border: 1px solid #C8DDD0 !important;
+  color: #2D5642 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .badge-priority-low {
+  background-color: #F0EFEA !important;
+  border: 1px solid #DDD8CD !important;
+  color: #5C6B63 !important;
+  font-weight: 600 !important;
+}
+
+/* Sub-células Internas nos Cartões */
+html[data-theme="sage-bento"] .kanban-specs-box {
+  border-top: 1px solid #EDE8DE !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-specs-box strong {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-specs-box span {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-specs-box svg {
+  color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .kanban-notes-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-progress-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-progress-box span {
+  color: #396382 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-progress-box strong {
+  color: #1E4E6B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-progress-box button {
+  background-color: #FFFFFF !important;
+  color: #465B51 !important;
+  border: 1px solid #D8D1C4 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-progress-box button:hover {
+  background-color: #E8F1F7 !important;
+  color: #1E4E6B !important;
+  border-color: #A3C9E2 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-tasks-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  color: #3A5043 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-tasks-box span {
+  color: #584478 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-tasks-box li {
+  color: #465B51 !important;
+}
+
+/* Botões do Kanban */
+html[data-theme="sage-bento"] .kanban-btn-start,
+html[data-theme="sage-bento"] .kanban-btn-finish,
+html[data-theme="sage-bento"] .production-btn-new-op,
+html[data-theme="sage-bento"] .production-table-btn-start,
+html[data-theme="sage-bento"] .production-table-btn-finish,
+html[data-theme="sage-bento"] .farm-btn-allocate {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 4px 12px -2px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-start:hover,
+html[data-theme="sage-bento"] .kanban-btn-finish:hover,
+html[data-theme="sage-bento"] .production-btn-new-op:hover,
+html[data-theme="sage-bento"] .production-table-btn-start:hover,
+html[data-theme="sage-bento"] .production-table-btn-finish:hover,
+html[data-theme="sage-bento"] .farm-btn-allocate:hover {
+  background-color: #446857 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-postprocess,
+html[data-theme="sage-bento"] .farm-btn-postprocess,
+html[data-theme="sage-bento"] .production-table-btn-postprocess {
+  background-color: #63527A !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4F4063 !important;
+  box-shadow: 0 4px 12px -2px rgba(99, 82, 122, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-postprocess:hover,
+html[data-theme="sage-bento"] .farm-btn-postprocess:hover,
+html[data-theme="sage-bento"] .production-table-btn-postprocess:hover {
+  background-color: #4F4063 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-direct-done {
+  background-color: #EAF2EC !important;
+  border: 1px solid #C8DDD0 !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-direct-done:hover {
+  background-color: #D6E8DB !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-fail {
+  background-color: #F8ECEE !important;
+  border: 1px solid #EAC4C8 !important;
+  color: #8F343A !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-fail:hover {
+  background-color: #F3DCDE !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-trash {
+  color: #6C8176 !important;
+}
+
+html[data-theme="sage-bento"] .kanban-btn-trash:hover {
+  background-color: #F8ECEE !important;
+  color: #8F343A !important;
+}
+
+/* Farm Monitor - Bento Máquinas da Fábrica */
+html[data-theme="sage-bento"] .farm-printer-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07) !important;
+}
+
+html[data-theme="sage-bento"] .farm-printer-printing {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #9DBFD6 !important;
+  box-shadow: 0 12px 28px -4px rgba(63, 108, 140, 0.12) !important;
+}
+
+html[data-theme="sage-bento"] .farm-printer-maintenance {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #EAC4C8 !important;
+}
+
+html[data-theme="sage-bento"] .farm-printer-available {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .farm-printer-card h4 {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .farm-job-box {
+  background-color: #F4F8FA !important;
+  border: 1.5px solid #CBE0ED !important;
+  border-radius: 1.25rem !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .farm-job-box h5 {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .farm-job-box span {
+  color: #335977 !important;
+}
+
+html[data-theme="sage-bento"] .farm-free-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px dashed #DFD9CB !important;
+  border-radius: 1.25rem !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .farm-free-box p {
+  color: #465B51 !important;
+}
+
+/* Tabela Detalhada de Produção */
+html[data-theme="sage-bento"] .production-table-wrapper {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.5rem !important;
+}
+
+html[data-theme="sage-bento"] .production-table-header {
+  background-color: #F8F6F1 !important;
+  border-bottom: 1.5px solid #E8E2D6 !important;
+  color: #465B51 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .production-table-wrapper tbody tr {
+  border-bottom: 1px solid #EDE8DE !important;
+}
+
+html[data-theme="sage-bento"] .production-table-wrapper tbody tr:hover {
+  background-color: #F9F7F3 !important;
+}
+
+html[data-theme="sage-bento"] .production-table-wrapper td {
+  color: #192C23 !important;
+}
+
+/* Modais de Produção em Sage Bento */
+html[data-theme="sage-bento"] .production-modal-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-header {
+  background-color: #F8F6F1 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-input,
+html[data-theme="sage-bento"] .production-modal-select {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-calc-banner {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  color: #192C23 !important;
+}
+
+/* =========================================================================
+   CONTROLE DE PRODUÇÃO & PCP - MODO ALTO CONTRASTE CLARO
+   ========================================================================= */
+html[data-theme="high-contrast-light"] .kanban-column {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .kanban-column h3 {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .kanban-card,
+html[data-theme="high-contrast-light"] .farm-printer-card,
+html[data-theme="high-contrast-light"] .production-table-wrapper,
+html[data-theme="high-contrast-light"] .production-kpi-card,
+html[data-theme="high-contrast-light"] .production-search-filter-bar,
+html[data-theme="high-contrast-light"] .production-modal-box {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .kanban-specs-box strong,
+html[data-theme="high-contrast-light"] .kanban-product-title,
+html[data-theme="high-contrast-light"] .farm-printer-card h4 {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .kanban-btn-start,
+html[data-theme="high-contrast-light"] .kanban-btn-finish,
+html[data-theme="high-contrast-light"] .production-btn-new-op,
+html[data-theme="high-contrast-light"] .production-table-btn-start,
+html[data-theme="high-contrast-light"] .production-table-btn-finish,
+html[data-theme="high-contrast-light"] .farm-btn-allocate {
+  background-color: #0284C7 !important;
+  border: 2px solid #075985 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .kanban-btn-postprocess,
+html[data-theme="high-contrast-light"] .farm-btn-postprocess,
+html[data-theme="high-contrast-light"] .production-table-btn-postprocess {
+  background-color: #7C3AED !important;
+  border: 2px solid #5B21B6 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
 }
 
 
