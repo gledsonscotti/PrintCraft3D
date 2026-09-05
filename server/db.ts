@@ -256,6 +256,36 @@ function initTables(database: Database) {
     );
   `);
 
+  // 11. Setup Templates table (Tempo de Setup: limpeza de mesa, calibração, preheating)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS setup_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      setup_time_minutes REAL NOT NULL DEFAULT 10,
+      category TEXT NOT NULL DEFAULT 'clean',
+      description TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Seed default setup templates if empty
+  try {
+    const setupCountRes = database.exec("SELECT COUNT(*) FROM setup_templates");
+    const setupCount = setupCountRes.length > 0 && setupCountRes[0].values.length > 0 ? Number(setupCountRes[0].values[0][0]) : 0;
+    if (setupCount === 0) {
+      database.run(`
+        INSERT INTO setup_templates (id, name, setup_time_minutes, category, description, created_at)
+        VALUES
+          ('setup-1', 'Limpeza de Mesa & Aplicação de Cola/Spray', 5, 'clean', 'Remoção de resíduos anteriores, limpeza com álcool isopropílico 99% e reaplicação de adesivo.', '${new Date().toISOString()}'),
+          ('setup-2', 'Calibração de Nível (Auto Bed Leveling)', 8, 'calibration', 'Execução de malha de nivelamento automático e ajuste de Z-Offset.', '${new Date().toISOString()}'),
+          ('setup-3', 'Preheating & Purga de Filamento', 7, 'preheat', 'Aquecimento de bico e mesa (PLA/PETG) e extrusão para limpeza de bico.', '${new Date().toISOString()}'),
+          ('setup-4', 'Setup Completo Troca de Material Multicolor', 15, 'other', 'Troca de carretéis no AMS, purga completa de cores anteriores e teste de fluxo.', '${new Date().toISOString()}')
+      `);
+    }
+  } catch (e) {
+    console.error('Error seeding setup templates:', e);
+  }
+
   // Seed default production orders if table is empty
   try {
     const opCountRes = database.exec("SELECT COUNT(*) FROM production_orders");

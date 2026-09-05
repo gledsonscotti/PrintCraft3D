@@ -381,9 +381,9 @@ export function ProductionControlView({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto pb-1 md:pb-0">
           {/* View switcher */}
-          <div className="production-view-mode-container flex items-center bg-[#131316] p-1 rounded-2xl border border-white/[0.08]">
+          <div className="production-view-mode-container flex items-center bg-[#131316] p-1 rounded-2xl border border-white/[0.08] shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('kanban')}
@@ -394,7 +394,7 @@ export function ProductionControlView({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Quadro Kanban</span>
+              <span>Kanban</span>
             </button>
             <button
               type="button"
@@ -406,7 +406,7 @@ export function ProductionControlView({
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Tabela Detalhada</span>
+              <span>Detalhe</span>
             </button>
             <button
               type="button"
@@ -418,17 +418,17 @@ export function ProductionControlView({
               }`}
             >
               <PrinterIcon className="w-3.5 h-3.5" />
-              <span>Farm Monitor</span>
+              <span>Farm</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => openNewOrderModal()}
-            className="production-btn-new-op flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-sm shadow-emerald-500/20 cursor-pointer"
+            className="production-btn-new-op flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-sm shadow-emerald-500/20 cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Nova Ordem de Produção (OP)</span>
+            <span>+Ordem de Produção (OP)</span>
           </button>
         </div>
       </div>

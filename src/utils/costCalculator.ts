@@ -1,5 +1,10 @@
 import { AppSettings, CostCalculationResult, ExtraSupplyItem, Filament, Printer } from '../types';
 
+export interface MultiColorItemInput {
+  filament_id: string;
+  weight_g: number;
+}
+
 export interface CostCalculatorParams {
   filamentWeightGrams: number;
   printTimeMinutes: number;
@@ -10,6 +15,9 @@ export interface CostCalculatorParams {
   customLossMargin?: number;
   prepTimeMinutes?: number;
   markupPercent?: number;
+  printMode?: 'monochrome' | 'multicolor';
+  multiColorItems?: MultiColorItemInput[];
+  allFilaments?: Filament[];
 }
 
 export function calculatePieceCost(params: CostCalculatorParams): CostCalculationResult {
@@ -30,11 +38,23 @@ export function calculatePieceCost(params: CostCalculatorParams): CostCalculatio
     : (printer?.failure_rate_default ?? settings.default_loss_margin ?? 10);
 
   // 1. Filament Cost
-  let costPerGram = 0.09; // fallback R$ 90/kg
-  if (filament && filament.total_weight_g > 0) {
-    costPerGram = filament.cost_per_spool / filament.total_weight_g;
+  let baseFilamentCost = 0;
+  if (params.printMode === 'multicolor' && params.multiColorItems && params.allFilaments) {
+    for (const item of params.multiColorItems) {
+      const fil = params.allFilaments.find(f => f.id === item.filament_id);
+      let cpg = 0.09;
+      if (fil && fil.total_weight_g > 0) {
+        cpg = fil.cost_per_spool / fil.total_weight_g;
+      }
+      baseFilamentCost += (item.weight_g || 0) * cpg;
+    }
+  } else {
+    let costPerGram = 0.09; // fallback R$ 90/kg
+    if (filament && filament.total_weight_g > 0) {
+      costPerGram = filament.cost_per_spool / filament.total_weight_g;
+    }
+    baseFilamentCost = filamentWeightGrams * costPerGram;
   }
-  const baseFilamentCost = filamentWeightGrams * costPerGram;
   const lossMarginCost = baseFilamentCost * (lossMargin / 100);
   const filamentCost = baseFilamentCost + lossMarginCost;
 

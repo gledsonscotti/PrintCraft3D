@@ -14,23 +14,32 @@ import {
   ArrowUpRight,
   TrendingDown,
   Info,
-  Scale
+  Scale,
+  Tag,
+  ShoppingBag,
+  Play,
+  Minus
 } from 'lucide-react';
-import { Filament, Supply } from '../types';
+import { Filament, Supply, Product } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 
 interface StockManagementViewProps {
   filaments: Filament[];
   supplies: Supply[];
+  products: Product[];
   onRefreshData: () => void | Promise<void>;
+  onOpenSaleModal?: (product: Product) => void;
 }
 
 export const StockManagementView: React.FC<StockManagementViewProps> = ({
   filaments,
   supplies,
+  products,
   onRefreshData,
+  onOpenSaleModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies'>('filaments');
+  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies' | 'products'>('filaments');
+  const [stockAdjustingId, setStockAdjustingId] = useState<string | null>(null);
 
   // Deletion Modal State
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -82,6 +91,35 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
   );
   const totalSuppliesUnits = supplies.reduce((acc, s) => acc + s.in_stock_qty, 0);
   const totalSuppliesValue = supplies.reduce((acc, s) => acc + (s.in_stock_qty * s.unit_cost), 0);
+  const totalFinishedUnits = products.reduce((acc, p) => acc + (p.ready_stock_qty || 0), 0);
+  const totalFinishedValue = products.reduce((acc, p) => acc + ((p.ready_stock_qty || 0) * p.total_cost), 0);
+  const totalFinishedPotentialRevenue = products.reduce((acc, p) => acc + ((p.ready_stock_qty || 0) * p.sale_price), 0);
+
+  const handleQuickStockAdjustProduct = async (product: Product, delta: number) => {
+    const current = product.ready_stock_qty || 0;
+    const nextStock = Math.max(0, current + delta);
+    setStockAdjustingId(product.id);
+    try {
+      const res = await fetch(`/api/products/${encodeURIComponent(product.id)}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_stock_qty: nextStock }),
+      });
+      if (!res.ok) throw new Error('Falha ao atualizar estoque');
+      await onRefreshData();
+      setNotification({
+        type: 'success',
+        message: `Estoque de "${product.name}" atualizado para ${nextStock} un.`,
+      });
+    } catch (e: any) {
+      setNotification({
+        type: 'error',
+        message: e.message || 'Erro ao ajustar estoque',
+      });
+    } finally {
+      setStockAdjustingId(null);
+    }
+  };
 
   // Open Filament Modal
   const handleOpenFilamentModal = (filament?: Filament) => {
@@ -328,7 +366,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
         </div>
       )}
       {/* Top Inventory Dashboard Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
           <div>
             <span className="text-xs font-semibold text-slate-400">Total Filamento em Estoque</span>
@@ -344,11 +382,11 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
 
         <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
           <div>
-            <span className="text-xs font-semibold text-slate-400">Valor Investido em Filamentos</span>
+            <span className="text-xs font-semibold text-slate-400">Valor em Filamentos</span>
             <span className="text-2xl font-bold font-mono text-emerald-400 block mt-1 tracking-tight">
               R$ {totalFilamentValue.toFixed(2)}
             </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Avaliado por grama em tempo real</span>
+            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Avaliado por grama</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
             <Scale className="w-5 h-5" />
@@ -370,14 +408,27 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
 
         <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
           <div>
-            <span className="text-xs font-semibold text-slate-400">Valor Investido em Insumos</span>
+            <span className="text-xs font-semibold text-slate-400">Valor em Insumos</span>
             <span className="text-2xl font-bold font-mono text-teal-400 block mt-1 tracking-tight">
               R$ {totalSuppliesValue.toFixed(2)}
             </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Argolas, mosquetões, embalagens</span>
+            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Argolas, embalagens</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center shadow-sm">
             <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40 sm:col-span-2 lg:col-span-1">
+          <div>
+            <span className="text-xs font-semibold text-slate-400">Produtos Acabados</span>
+            <span className="text-2xl font-bold font-mono text-emerald-300 block mt-1 tracking-tight">
+              {totalFinishedUnits} <span className="text-sm font-normal text-slate-400">un</span>
+            </span>
+            <span className="text-[11px] text-slate-400 mt-1 block font-mono">R$ {totalFinishedValue.toFixed(2)} em custo</span>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
+            <Tag className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -410,6 +461,19 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             <Package className="w-4 h-4" />
             Insumos & Acessórios ({supplies.length})
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('products')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+              activeTab === 'products'
+                ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Tag className="w-4 h-4" />
+            Produtos Acabados ({totalFinishedUnits} un.)
+          </button>
         </div>
 
         <div>
@@ -422,7 +486,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               <Plus className="w-4 h-4" />
               Adicionar Carretel de Filamento
             </button>
-          ) : (
+          ) : activeTab === 'supplies' ? (
             <button
               type="button"
               onClick={() => handleOpenSupplyModal()}
@@ -431,6 +495,10 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               <Plus className="w-4 h-4" />
               Cadastrar Novo Insumo
             </button>
+          ) : (
+            <div className="text-xs text-slate-400 font-mono">
+              Resultado da produção prontas para envio/venda
+            </div>
           )}
         </div>
       </div>
@@ -656,6 +724,103 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                       +50
                     </button>
                   </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Tab 3: Finished Products Stock Grid */}
+      {activeTab === 'products' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((prod) => {
+            const stockQty = prod.ready_stock_qty || 0;
+            const hasStock = stockQty > 0;
+            const totalValue = stockQty * prod.total_cost;
+            const potentialRevenue = stockQty * prod.sale_price;
+
+            return (
+              <div
+                key={prod.id}
+                className="bg-[#121215] border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-5 space-y-4 shadow-sm shadow-black/40 flex flex-col justify-between transition"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-xl uppercase tracking-wider">
+                        {prod.category}
+                      </span>
+                      <h4 className="text-sm font-bold text-white mt-1.5">{prod.name}</h4>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {/* Quick stock adjustment */}
+                      <div className="flex items-center bg-[#0A0A0B] border border-white/[0.08] rounded-xl p-0.5 text-xs text-slate-400 font-mono">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockAdjustProduct(prod, -1)}
+                          disabled={stockAdjustingId === prod.id || stockQty <= 0}
+                          className="p-1 hover:text-white rounded-lg hover:bg-white/[0.08] disabled:opacity-30 transition"
+                          title="Diminuir 1 un."
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="px-2 font-bold text-white text-xs">
+                          {stockQty} un.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStockAdjustProduct(prod, 1)}
+                          disabled={stockAdjustingId === prod.id}
+                          className="p-1 hover:text-white rounded-lg hover:bg-white/[0.08] disabled:opacity-30 transition"
+                          title="Adicionar 1 un."
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {prod.description && (
+                    <p className="text-xs text-slate-400 line-clamp-2">{prod.description}</p>
+                  )}
+
+                  {/* Stock Valuation Details */}
+                  <div className="bg-[#0A0A0B]/80 p-3.5 rounded-2xl border border-white/[0.06] space-y-2 text-xs font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-sans">Custo de Produção:</span>
+                      <span className="text-white">R$ {prod.total_cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-sans">Preço de Venda:</span>
+                      <span className="text-emerald-400 font-bold">R$ {prod.sale_price.toFixed(2)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-white/[0.06] flex justify-between">
+                      <span className="text-slate-400 font-sans">Valor em Estoque (Custo):</span>
+                      <span className="text-sky-300 font-bold">R$ {totalValue.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-sans">Receita Potencial:</span>
+                      <span className="text-emerald-300 font-bold">R$ {potentialRevenue.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs">
+                  <span className={`text-[11px] font-medium ${hasStock ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {hasStock ? `${stockQty} unidades prontas` : 'Sem estoque'}
+                  </span>
+                  {onOpenSaleModal && hasStock && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenSaleModal(prod)}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer text-xs"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      Vender
+                    </button>
+                  )}
                 </div>
               </div>
             );

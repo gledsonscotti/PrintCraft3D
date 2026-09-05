@@ -265,3 +265,12 @@ export interface IntegrationLog {
   created_at: string;
 }
 
+export interface SetupTemplate {
+  id: string;
+  name: string;
+  setup_time_minutes: number;
+  category: 'clean' | 'calibration' | 'preheat' | 'other';
+  description?: string;
+  created_at: string;
+}
+

@@ -18,9 +18,11 @@ import {
   ShoppingBag,
   Leaf,
   Globe,
-  Factory
+  Factory,
+  Box
 } from 'lucide-react';
 import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder } from './types';
+import { ModelAnalyzerView } from './components/ModelAnalyzerView';
 import { CostCalculatorView } from './components/CostCalculatorView';
 import { StockManagementView } from './components/StockManagementView';
 import { PrintersView } from './components/PrintersView';
@@ -33,8 +35,9 @@ import { RegisterSaleModal } from './components/RegisterSaleModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'calculator' | 'stock' | 'printers' | 'products' | 'production' | 'sales' | 'history' | 'settings'>('calculator');
-  const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'integrations'>('costs');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'history' | 'settings'>('analyzer');
+  const [calculatorInitialParams, setCalculatorInitialParams] = useState<any>(null);
+  const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'integrations'>('costs');
   const [loading, setLoading] = useState(true);
 
   // Ready Product Sales Modal State
@@ -250,6 +253,19 @@ export default function App() {
             <nav className="hidden md:flex items-center gap-1 bg-[#131316] p-1 rounded-2xl border border-white/[0.08] shadow-inner overflow-x-auto no-scrollbar shrink-0">
               <button
                 type="button"
+                onClick={() => setActiveTab('analyzer')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === 'analyzer'
+                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5" />
+                <span>Analisador 3D</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('calculator')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'calculator'
@@ -279,18 +295,7 @@ export default function App() {
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('printers')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'printers'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <PrinterIcon className="w-3.5 h-3.5" />
-                <span>Impressoras</span>
-              </button>
+
 
               <button
                 type="button"
@@ -484,6 +489,16 @@ export default function App() {
 
             <button
               type="button"
+              onClick={() => setActiveTab('analyzer')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                activeTab === 'analyzer' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
+              }`}
+            >
+              <Box className="w-3.5 h-3.5 shrink-0" />
+              Analisador 3D
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('calculator')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'calculator' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
@@ -507,16 +522,7 @@ export default function App() {
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('printers')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'printers' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <PrinterIcon className="w-3.5 h-3.5 shrink-0" />
-              Impressoras
-            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('products')}
@@ -583,6 +589,19 @@ export default function App() {
           </div>
         ) : (
           <>
+            {activeTab === 'analyzer' && (
+              <ModelAnalyzerView
+                printers={printers}
+                filaments={filaments}
+                settings={settings}
+                theme={theme}
+                onNavigateToCalculator={(params) => {
+                  setCalculatorInitialParams(params);
+                  setActiveTab('calculator');
+                }}
+              />
+            )}
+
             {activeTab === 'calculator' && (
               <CostCalculatorView
                 printers={printers}
@@ -592,6 +611,7 @@ export default function App() {
                 onRefreshData={fetchData}
                 onNavigateToStock={() => setActiveTab('stock')}
                 theme={theme}
+                initialParams={calculatorInitialParams}
               />
             )}
 
@@ -599,7 +619,12 @@ export default function App() {
               <StockManagementView
                 filaments={filaments}
                 supplies={supplies}
+                products={products}
                 onRefreshData={fetchData}
+                onOpenSaleModal={(product) => {
+                  setSelectedProductForSale(product);
+                  setIsSaleModalOpen(true);
+                }}
               />
             )}
 
@@ -671,6 +696,7 @@ export default function App() {
                 sales={sales}
                 onNavigateToSales={() => setActiveTab('sales')}
                 initialSubTab={settingsSubTab}
+                printers={printers}
               />
             )}
           </>

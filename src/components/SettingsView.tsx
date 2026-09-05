@@ -228,6 +228,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <button
               type="button"
+              id="tab-btn-printers"
+              onClick={() => setActiveSubTab('printers')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === 'printers'
+                  ? 'bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <PrinterIcon className="w-3.5 h-3.5" />
+              <span>Impressoras</span>
+              {printers.length > 0 && (
+                <span className="text-[10px] opacity-75 font-mono">({printers.length})</span>
+              )}
+            </button>
+
+            <button
+              type="button"
               id="tab-btn-integrations"
               onClick={() => setActiveSubTab('integrations')}
               className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
@@ -546,7 +563,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* SUB-TAB 2: Integrações */}
+      {/* SUB-TAB 2: Impressoras */}
+      {activeSubTab === 'printers' && (
+        <div className="space-y-4">
+          <PrintersView
+            printers={printers}
+            onRefreshData={onRefreshData}
+          />
+        </div>
+      )}
+
+      {/* SUB-TAB 3: Integrações */}
       {activeSubTab === 'integrations' && (
         <div className="space-y-4">
           <IntegrationsView

@@ -24,7 +24,7 @@ import {
   Shield,
   Sliders
 } from 'lucide-react';
-import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SlicingProfile, Supply } from '../types';
+import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
@@ -40,6 +40,13 @@ interface CostCalculatorViewProps {
   onRefreshData: () => void | Promise<void>;
   onNavigateToStock: () => void;
   theme?: AppTheme;
+  initialParams?: {
+    weightG?: number;
+    printTimeMinutes?: number;
+    infill?: number;
+    layerHeight?: number;
+    modelName?: string;
+  } | null;
 }
 
 export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
@@ -50,6 +57,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   onRefreshData,
   onNavigateToStock,
   theme = 'standard',
+  initialParams,
 }) => {
   // Current active 3D Model state
   const [modelBuffer, setModelBuffer] = useState<ArrayBuffer | null>(null);
@@ -84,6 +92,15 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(5);
   const [markupPercent, setMarkupPercent] = useState<number>(120);
 
+  // Apply initialParams when coming from ModelAnalyzerView
+  useEffect(() => {
+    if (initialParams) {
+      if (initialParams.weightG !== undefined) setCustomWeightGrams(initialParams.weightG);
+      if (initialParams.printTimeMinutes !== undefined) setCustomTimeMinutes(initialParams.printTimeMinutes);
+      if (initialParams.modelName) setProductName(initialParams.modelName);
+    }
+  }, [initialParams]);
+
   // Bill of Materials (Insumos extras para chaveiro: argolas, embalagens, mosquetão, etc.)
   const [productSupplies, setProductSupplies] = useState<ExtraSupplyItem[]>([
     { supply_id: 'sup-1', name: 'Argola de Chaveiro com Corrente Italiana 25mm', qty: 1, unit_cost: 0.35 },
@@ -94,10 +111,36 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [supplyToAddId, setSupplyToAddId] = useState<string>('');
   const [supplyToAddQty, setSupplyToAddQty] = useState<number>(1);
 
-  // Batch Print modal / state
+  // Batch Print modal / state & Multi-color state
   const [printQuantity, setPrintQuantity] = useState<number>(1);
-  const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isSubmittingQueue, setIsSubmittingQueue] = useState<boolean>(false);
   const [printSuccessMessage, setPrintSuccessMessage] = useState<string | null>(null);
+
+  const [printMode, setPrintMode] = useState<'monochrome' | 'multicolor'>('monochrome');
+  const [multiColorItems, setMultiColorItems] = useState<{ id: string; filament_id: string; weight_g: number }[]>([
+    { id: 'mc-1', filament_id: filaments[0]?.id || '', weight_g: 10 },
+    { id: 'mc-2', filament_id: filaments[1]?.id || filaments[0]?.id || '', weight_g: 4.5 },
+  ]);
+
+  const addMultiColorItem = () => {
+    setMultiColorItems([
+      ...multiColorItems,
+      { id: 'mc-' + Date.now(), filament_id: filaments[0]?.id || '', weight_g: 5 }
+    ]);
+  };
+
+  const removeMultiColorItem = (id: string) => {
+    if (multiColorItems.length <= 1) return;
+    setMultiColorItems(multiColorItems.filter(item => item.id !== id));
+  };
+
+  const updateMultiColorItem = (id: string, field: 'filament_id' | 'weight_g', value: any) => {
+    setMultiColorItems(multiColorItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const effectiveWeightGrams = printMode === 'multicolor'
+    ? multiColorItems.reduce((acc, item) => acc + (Number(item.weight_g) || 0), 0)
+    : customWeightGrams;
 
   // AI tips & Slicing Advisor
   const [aiTips, setAiTips] = useState<string[]>([]);
@@ -117,6 +160,83 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     if (!selectedPrinterId && printers.length > 0) setSelectedPrinterId(printers[0].id);
     if (!selectedFilamentId && filaments.length > 0) setSelectedFilamentId(filaments[0].id);
   }, [printers, filaments]);
+
+  const [calcTab, setCalcTab] = useState<'parameters' | 'setup_templates'>('parameters');
+  const [setupTemplates, setSetupTemplates] = useState<SetupTemplate[]>([]);
+  const [selectedSetupIds, setSelectedSetupIds] = useState<string[]>([]);
+  const [newSetupName, setNewSetupName] = useState('');
+  const [newSetupTime, setNewSetupTime] = useState<number>(10);
+  const [newSetupCategory, setNewSetupCategory] = useState<'clean' | 'calibration' | 'preheat' | 'other'>('clean');
+  const [newSetupDesc, setNewSetupDesc] = useState('');
+
+  useEffect(() => {
+    fetch('/api/setup-templates')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSetupTemplates(data);
+          if (data.length > 0 && selectedSetupIds.length === 0) {
+            setSelectedSetupIds([data[0].id]);
+          }
+        }
+      })
+      .catch(err => console.error('Error loading setup templates:', err));
+  }, []);
+
+  const toggleSetupTemplate = (id: string) => {
+    if (selectedSetupIds.includes(id)) {
+      setSelectedSetupIds(selectedSetupIds.filter(sId => sId !== id));
+    } else {
+      setSelectedSetupIds([...selectedSetupIds, id]);
+    }
+  };
+
+  const handleCreateSetupTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSetupName.trim()) return;
+    try {
+      const res = await fetch('/api/setup-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newSetupName,
+          setup_time_minutes: newSetupTime,
+          category: newSetupCategory,
+          description: newSetupDesc
+        })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setSetupTemplates([...setupTemplates, created]);
+        setSelectedSetupIds([...selectedSetupIds, created.id]);
+        setNewSetupName('');
+        setNewSetupTime(10);
+        setNewSetupDesc('');
+      }
+    } catch (err: any) {
+      alert('Erro ao criar modelo de setup: ' + err.message);
+    }
+  };
+
+  const handleDeleteSetupTemplate = async (id: string) => {
+    if (!confirm('Deseja excluir este modelo de setup?')) return;
+    try {
+      const res = await fetch(`/api/setup-templates/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSetupTemplates(setupTemplates.filter(s => s.id !== id));
+        setSelectedSetupIds(selectedSetupIds.filter(sId => sId !== id));
+      }
+    } catch (err: any) {
+      alert('Erro ao excluir: ' + err.message);
+    }
+  };
+
+  const setupTemplatesTotalMinutes = selectedSetupIds.reduce((acc, id) => {
+    const t = setupTemplates.find(s => s.id === id);
+    return acc + (t ? Number(t.setup_time_minutes) || 0 : 0);
+  }, 0);
+
+  const effectivePrepTime = prepTimeMinutes + setupTemplatesTotalMinutes;
 
   const activePrinter = printers.find((p) => p.id === selectedPrinterId) || printers[0];
   const activeFilament = filaments.find((f) => f.id === selectedFilamentId) || filaments[0];
@@ -169,15 +289,18 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
   // Perform Cost Calculation
   const costResult = calculatePieceCost({
-    filamentWeightGrams: customWeightGrams,
+    filamentWeightGrams: effectiveWeightGrams,
     printTimeMinutes: customTimeMinutes,
     filament: activeFilament,
     printer: activePrinter,
     supplies: productSupplies,
     settings,
     customLossMargin: lossMarginPercent,
-    prepTimeMinutes,
+    prepTimeMinutes: effectivePrepTime,
     markupPercent,
+    printMode,
+    multiColorItems,
+    allFilaments: filaments,
   });
 
   // Supplies handlers
@@ -262,46 +385,53 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     }
   };
 
-  // Execute Print Job & Deduct Real-Time Stock
-  const handleExecutePrintJob = async () => {
-    setIsPrinting(true);
+  // Send to Production Queue (Enviar para Fila de Produção)
+  const handleSendToProductionQueue = async () => {
+    setIsSubmittingQueue(true);
     setPrintSuccessMessage(null);
 
     try {
+      const notesDesc = printMode === 'multicolor'
+        ? `Impressão Multicolorida: ${multiColorItems.map(m => {
+            const fil = filaments.find(f => f.id === m.filament_id);
+            return `${fil?.name || 'Filamento'} (${m.weight_g}g)`;
+          }).join(', ')}`
+        : `Monocromática: ${activeFilament?.name || 'Filamento'} (${effectiveWeightGrams}g)`;
+
       const payload = {
         product_name: productName,
-        printer_id: activePrinter?.id || '',
-        filament_id: activeFilament?.id || '',
+        printer_id: activePrinter?.id || null,
+        filament_id: printMode === 'monochrome' ? activeFilament?.id || null : (multiColorItems[0]?.filament_id || null),
+        filament_weight_g: effectiveWeightGrams,
+        print_time_minutes: customTimeMinutes,
         quantity: printQuantity,
-        filament_used_g: customWeightGrams,
-        total_time_minutes: customTimeMinutes,
-        total_cost: costResult.totalProductionCost,
-        supplies_used: productSupplies.map((s) => ({
-          supply_id: s.supply_id,
-          name: s.name,
-          qty: s.qty,
-        })),
-        status: 'completed',
+        priority: 'normal',
+        status: 'pending',
+        destination: 'stock',
+        notes: notesDesc,
+        supplies_json: JSON.stringify(productSupplies),
       };
 
-      const res = await fetch('/api/print-jobs', {
+      const res = await fetch('/api/production-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        const totalGrams = (customWeightGrams * printQuantity).toFixed(1);
         setPrintSuccessMessage(
-          `Impressão de ${printQuantity}x "${productName}" confirmada! Baixa automática realizada: ${totalGrams}g de filamento e ${productSupplies.length} insumos debitados do SQLite em tempo real.`
+          `Ordem de produção de ${printQuantity}x "${productName}" emitida com sucesso e enviada para a fila de produção (PCP)!`
         );
         await onRefreshData();
         setTimeout(() => setPrintSuccessMessage(null), 6000);
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao emitir ordem de produção');
       }
     } catch (err: any) {
-      alert('Erro ao registrar impressão: ' + err.message);
+      alert('Erro ao enviar para fila de produção: ' + err.message);
     } finally {
-      setIsPrinting(false);
+      setIsSubmittingQueue(false);
     }
   };
 
@@ -489,143 +619,157 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         </div>
       )}
 
-      {/* Main Grid: Left = 3D Viewer & Upload, Right = Cost Calculation & Insumos */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (5 cols): 3D Canvas, File Upload, Dimensions */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm shadow-black/40 space-y-4">
-            {/* Header: Title in full single row, actions in the row below */}
-            <div className="space-y-2.5">
-              {/* Line 1: Title full width in one clean line */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
-                  <Layers className="w-4 h-4 text-sky-400" />
-                </div>
-                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                  Visualizador 3D Universal
-                </h3>
-              </div>
+      {/* Sub-tabs: Parâmetros vs Tempo de Setup */}
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
+        <button
+          type="button"
+          onClick={() => setCalcTab('parameters')}
+          className={`px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 ${
+            calcTab === 'parameters'
+              ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20'
+              : 'bg-[#121215] text-slate-400 hover:text-white border border-white/[0.08]'
+          }`}
+        >
+          <Cpu className="w-4 h-4" /> Parâmetros & Custos
+        </button>
+        <button
+          type="button"
+          onClick={() => setCalcTab('setup_templates')}
+          className={`px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 ${
+            calcTab === 'setup_templates'
+              ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20'
+              : 'bg-[#121215] text-slate-400 hover:text-white border border-white/[0.08]'
+          }`}
+        >
+          <Clock className="w-4 h-4" /> Tempo de Setup ({selectedSetupIds.length} ativos • +{setupTemplatesTotalMinutes} min)
+        </button>
+      </div>
 
-              {/* Line 2: Actions & Format in one clean horizontal row */}
-              <div className="flex items-center justify-between gap-2.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (aiOptimizationResult) {
-                      setIsAdvisorModalOpen(true);
-                    } else {
-                      handleRequestAiOptimization();
-                    }
-                  }}
-                  disabled={loadingAi}
-                  className="v3d-optimize-btn text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 whitespace-nowrap shadow-sm cursor-pointer shrink-0"
-                  title="Analisar geometria e obter 3 perfis de fatiamento recomendados"
-                >
-                  <Sparkles className={`w-3.5 h-3.5 text-amber-400 ${loadingAi ? 'animate-spin' : ''}`} />
-                  <span>{loadingAi ? 'Analisando...' : 'Otimizar com IA'}</span>
-                </button>
-
-                <div className="v3d-format-pill flex items-center gap-1.5 text-xs font-mono font-semibold bg-white/[0.06] text-sky-300 px-3 py-1.5 rounded-xl border border-sky-400/25 whitespace-nowrap shadow-sm shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                  <span>{parsedModel.formatLabel || parsedModel.fileType.toUpperCase()}</span>
-                </div>
-              </div>
+      {calcTab === 'setup_templates' ? (
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-6 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-amber-400" /> Modelos de Tempo de Setup (Limpeza, Calibração & Preheating)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Selecione os modelos de preparação que se aplicam a esta ordem de produção. O tempo e custo de mão de obra correspondentes são somados automaticamente ao cálculo final.
+              </p>
             </div>
-
-            {/* 3D Viewport with Three.js Multi-Format Support */}
-            <ModelViewer3D
-              modelObject={modelObject}
-              modelBuffer={modelBuffer}
-              sampleType={sampleType}
-              filamentColor={activeFilament?.color_hex || '#2563eb'}
-              dimensions={parsedModel.dimensions}
-              fileType={parsedModel.fileType}
-              formatLabel={parsedModel.formatLabel}
-              trianglesCount={parsedModel.trianglesCount}
-              layerCount={parsedModel.layerCount}
-              theme={theme}
-              onSnapshotReady={(getter) => {
-                canvasSnapshotGetterRef.current = getter;
-              }}
-            />
-
-            {/* Geometry Stats Cards - Bento Micro Cells */}
-            <div className="grid grid-cols-3 gap-2.5 text-center pt-1">
-              <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-2.5 hover:border-white/[0.12] transition-colors">
-                <span className="block text-[11px] text-slate-400 font-medium">Dimensões</span>
-                <span className="text-xs font-bold text-white font-mono">
-                  {parsedModel.dimensions.x}×{parsedModel.dimensions.y}×{parsedModel.dimensions.z} <span className="text-[10px] text-slate-500 font-normal">mm</span>
-                </span>
-              </div>
-              <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-2.5 hover:border-white/[0.12] transition-colors">
-                <span className="block text-[11px] text-slate-400 font-medium">Volume</span>
-                <span className="text-xs font-bold text-white font-mono">
-                  {parsedModel.volumeCm3} <span className="text-[10px] text-slate-500 font-normal">cm³</span>
-                </span>
-              </div>
-              <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-2.5 hover:border-white/[0.12] transition-colors">
-                <span className="block text-[11px] text-slate-400 font-medium">
-                  {parsedModel.category === 'cad' ? 'Faces / Malha' : 'Camadas'}
-                </span>
-                <span className="text-xs font-bold text-white font-mono">
-                  {parsedModel.category === 'cad'
-                    ? parsedModel.trianglesCount?.toLocaleString() || 'B-Rep'
-                    : parsedModel.layerCount || Math.round(parsedModel.dimensions.z / 0.2)}
-                </span>
-              </div>
+            <div className="bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 rounded-2xl text-xs font-mono font-semibold text-amber-300">
+              Total de Setup Ativo: +{setupTemplatesTotalMinutes} minutos (R$ {(setupTemplatesTotalMinutes / 60 * (settings.hourly_labor_rate || 20)).toFixed(2)})
             </div>
-
-            {/* Extra Format Details (CAD / G-Code / 3MF) */}
-            {parsedModel.cadDetails?.cadSystem && (
-              <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-2xl text-emerald-300 font-mono">
-                <span className="flex items-center gap-1.5 font-sans font-semibold">
-                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                  Sistema CAD Detectado:
-                </span>
-                <span className="font-bold">{parsedModel.cadDetails.cadSystem}</span>
-              </div>
-            )}
-
-            {parsedModel.rawGcodeDetails?.slicer && (
-              <div className="flex items-center justify-between text-xs bg-indigo-500/10 border border-indigo-500/20 px-3.5 py-2 rounded-2xl text-indigo-300 font-mono">
-                <span className="flex items-center gap-1.5 font-sans font-semibold">
-                  <Zap className="w-3.5 h-3.5 text-indigo-400" />
-                  Fatiador ({parsedModel.rawGcodeDetails.slicer}):
-                </span>
-                <span className="font-bold">
-                  Bico {parsedModel.rawGcodeDetails.nozzleTemp}°C • Mesa {parsedModel.rawGcodeDetails.bedTemp}°C
-                </span>
-              </div>
-            )}
-
-            {parsedModel.partsCount && parsedModel.partsCount > 1 && (
-              <div className="flex items-center justify-between text-xs bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 rounded-2xl text-amber-300 font-mono">
-                <span className="flex items-center gap-1.5 font-sans font-semibold">
-                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
-                  Montagem Multi-Peça (3MF / CAD):
-                </span>
-                <span className="font-bold">{parsedModel.partsCount} componentes</span>
-              </div>
-            )}
           </div>
 
-          {/* File Upload Zone with Slicing Parameters & Smart Slicing Optimizer directly below */}
-          <FileUploadZone
-            onModelLoaded={handleModelLoaded}
-            selectedFilament={activeFilament}
-            activeModelName={parsedModel.fileName}
-            onRequestAiOptimization={handleRequestAiOptimization}
-            loadingAi={loadingAi}
-            aiOptimizationResult={aiOptimizationResult}
-            onOpenAdvisorModal={() => setIsAdvisorModalOpen(true)}
-            activeProfileAppliedId={activeProfileAppliedId}
-            onApplyProfile={handleApplyProfile}
-            aiTips={aiTips}
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {setupTemplates.map((t) => {
+              const isSelected = selectedSetupIds.includes(t.id);
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => toggleSetupTemplate(t.id)}
+                  className={`cursor-pointer rounded-2xl p-4 border transition flex items-start justify-between gap-3 ${
+                    isSelected
+                      ? 'bg-amber-500/10 border-amber-500/40 shadow-md shadow-amber-500/10'
+                      : 'bg-[#0A0A0B] border-white/[0.08] hover:border-white/[0.16]'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded border-white/20 bg-black text-amber-500 focus:ring-amber-500 w-4 h-4"
+                      />
+                      <h4 className="text-sm font-bold text-white">{t.name}</h4>
+                    </div>
+                    {t.description && <p className="text-xs text-slate-400 pl-6">{t.description}</p>}
+                    <div className="pl-6 pt-1 flex items-center gap-3 text-[11px] font-mono">
+                      <span className="text-amber-400 font-semibold">{t.setup_time_minutes} min</span>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-slate-400 uppercase text-[10px] bg-white/[0.06] px-2 py-0.5 rounded">
+                        {t.category === 'clean' ? 'Limpeza de Mesa' : t.category === 'calibration' ? 'Calibração' : t.category === 'preheat' ? 'Preheating' : 'Outros'}
+                      </span>
+                    </div>
+                  </div>
 
-        {/* Right Column (7 cols): Configuration, Supplies BOM, Detailed Costs */}
-        <div className="lg:col-span-7 space-y-5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSetupTemplate(t.id);
+                    }}
+                    className="text-slate-500 hover:text-rose-400 p-1.5 transition"
+                    title="Excluir modelo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add New Setup Template Form */}
+          <div className="bg-[#0A0A0B] border border-white/[0.08] rounded-2xl p-5 space-y-4">
+            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-sky-400" /> Cadastrar Novo Modelo de Setup
+            </h4>
+            <form onSubmit={handleCreateSetupTemplate} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-2">
+                <input
+                  type="text"
+                  placeholder="Ex: Troca de bico 0.6mm + Z-Offset"
+                  value={newSetupName}
+                  onChange={(e) => setNewSetupName(e.target.value)}
+                  className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-400"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Tempo (min)"
+                  value={newSetupTime}
+                  onChange={(e) => setNewSetupTime(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white font-mono"
+                />
+              </div>
+              <div>
+                <select
+                  value={newSetupCategory}
+                  onChange={(e: any) => setNewSetupCategory(e.target.value)}
+                  className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                >
+                  <option value="clean">Limpeza de Mesa</option>
+                  <option value="calibration">Calibração</option>
+                  <option value="preheat">Preheating</option>
+                  <option value="other">Outros</option>
+                </select>
+              </div>
+              <div className="sm:col-span-3">
+                <input
+                  type="text"
+                  placeholder="Descrição opcional (ex: Limpeza com álcool e calibração de malha 5x5)"
+                  value={newSetupDesc}
+                  onChange={(e) => setNewSetupDesc(e.target.value)}
+                  className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none"
+                />
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className="w-full bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow-sm cursor-pointer"
+                >
+                  Salvar Modelo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
           {/* Header Card: Product Info */}
           <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm shadow-black/40 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -694,48 +838,132 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 )}
               </div>
 
-              {/* Filament Selection */}
-              <div className="bg-[#0A0A0B]/80 border border-white/[0.06] hover:border-white/[0.12] transition-colors rounded-2xl p-4 space-y-2.5">
+              {/* Filament & Color Selection */}
+              <div className="bg-[#0A0A0B]/80 border border-white/[0.06] hover:border-white/[0.12] transition-colors rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                     <Flame className="w-3.5 h-3.5 text-amber-400" />
-                    Filamento & Carretel
+                    Filamento & Cores
                   </label>
-                  {activeFilament && (
-                    <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
-                        style={{ backgroundColor: activeFilament.color_hex }}
-                      />
-                      {activeFilament.remaining_weight_g}g
-                    </span>
-                  )}
-                </div>
-
-                <select
-                  value={selectedFilamentId}
-                  onChange={(e) => setSelectedFilamentId(e.target.value)}
-                  className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-400 transition"
-                >
-                  {filaments.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} ({f.material}) - R$ {f.cost_per_spool.toFixed(2)}
-                    </option>
-                  ))}
-                </select>
-
-                {activeFilament && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
-                    <span>
-                      Custo/g: <strong className="text-slate-200 font-mono">R$ {(activeFilament.cost_per_spool / activeFilament.total_weight_g).toFixed(4)}</strong>
-                    </span>
+                  <div className="flex items-center bg-[#141418] p-0.5 rounded-xl border border-white/[0.08]">
                     <button
                       type="button"
-                      onClick={onNavigateToStock}
-                      className="text-sky-400 hover:text-sky-300 font-medium transition"
+                      onClick={() => setPrintMode('monochrome')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                        printMode === 'monochrome' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
                     >
-                      Gerenciar carretéis →
+                      1 Cor
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('multicolor')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                        printMode === 'multicolor' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Multicolor
+                    </button>
+                  </div>
+                </div>
+
+                {printMode === 'monochrome' ? (
+                  <>
+                    <select
+                      value={selectedFilamentId}
+                      onChange={(e) => setSelectedFilamentId(e.target.value)}
+                      className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-400 transition"
+                    >
+                      {filaments.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name} ({f.material}) - R$ {f.cost_per_spool.toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+
+                    {activeFilament && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
+                            style={{ backgroundColor: activeFilament.color_hex }}
+                          />
+                          Restante: <strong className="text-slate-200 font-mono">{activeFilament.remaining_weight_g}g</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={onNavigateToStock}
+                          className="text-sky-400 hover:text-sky-300 font-medium transition"
+                        >
+                          Gerenciar →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Cores / Filamentos ({multiColorItems.length}):</span>
+                      <button
+                        type="button"
+                        onClick={addMultiColorItem}
+                        className="text-amber-400 hover:text-amber-300 font-semibold transition flex items-center gap-1"
+                      >
+                        + Adicionar Cor
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {multiColorItems.map((item) => {
+                        const filObj = filaments.find((f) => f.id === item.filament_id);
+                        return (
+                          <div key={item.id} className="flex items-center gap-2 bg-[#141418] p-2 rounded-xl border border-white/[0.08]">
+                            <span
+                              className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm"
+                              style={{ backgroundColor: filObj?.color_hex || '#cbd5e1' }}
+                            />
+                            <select
+                              value={item.filament_id}
+                              onChange={(e) => updateMultiColorItem(item.id, 'filament_id', e.target.value)}
+                              className="flex-1 bg-[#0A0A0B] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none"
+                            >
+                              {filaments.map((f) => (
+                                <option key={f.id} value={f.id}>
+                                  {f.name} ({f.material})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <input
+                                type="number"
+                                min="0.5"
+                                step="0.5"
+                                value={item.weight_g}
+                                onChange={(e) => updateMultiColorItem(item.id, 'weight_g', Math.max(0.1, Number(e.target.value)))}
+                                className="w-16 bg-[#0A0A0B] border border-white/[0.1] rounded-lg px-2 py-1 text-center text-[11px] text-white font-mono"
+                              />
+                              <span className="text-[10px] text-slate-400">g</span>
+                            </div>
+                            {multiColorItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeMultiColorItem(item.id)}
+                                className="text-rose-400 hover:text-rose-300 p-1 text-xs transition"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
+                      <span>Total de Filamento:</span>
+                      <strong className="text-amber-400 font-mono">
+                        {effectiveWeightGrams.toFixed(1)}g
+                      </strong>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1103,36 +1331,18 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={handleExecutePrintJob}
-                  disabled={isPrinting}
+                  onClick={handleSendToProductionQueue}
+                  disabled={isSubmittingQueue}
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
-                  {isPrinting ? 'Processando baixa...' : 'Imprimir & Baixar Estoque'}
+                  {isSubmittingQueue ? 'Enviando...' : 'Enviar para Fila de Produção'}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Intelligent Slicing Advisor Studio Modal */}
-      <SlicingAdvisorModal
-        isOpen={isAdvisorModalOpen}
-        onClose={() => setIsAdvisorModalOpen(false)}
-        modelName={productName}
-        category={productCategory}
-        dimensions={parsedModel.dimensions}
-        currentWeightGrams={customWeightGrams}
-        currentTimeMinutes={customTimeMinutes}
-        material={activeFilament?.material || 'PLA'}
-        printerName={activePrinter?.name || 'Impressora 3D'}
-        snapshotDataUrl={snapshotDataUrl}
-        optimizationResult={aiOptimizationResult}
-        isLoading={loadingAi}
-        onReanalyze={handleRequestAiOptimization}
-        onApplyProfile={handleApplyProfile}
-      />
+      )}
     </div>
   );
 };

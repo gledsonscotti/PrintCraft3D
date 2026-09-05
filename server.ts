@@ -337,6 +337,60 @@ async function startServer() {
   });
 
   // Filaments (Real-Time Stock)
+  // Setup Templates API
+  app.get('/api/setup-templates', (req: Request, res: Response) => {
+    try {
+      const templates = queryAll(db, 'SELECT * FROM setup_templates ORDER BY name ASC');
+      res.json(templates);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/setup-templates', (req: Request, res: Response) => {
+    try {
+      const { name, setup_time_minutes = 10, category = 'clean', description = '' } = req.body;
+      const id = 'setup-' + Date.now();
+      db.run(`
+        INSERT INTO setup_templates (id, name, setup_time_minutes, category, description, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [id, name, Number(setup_time_minutes) || 10, category, description, new Date().toISOString()]);
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM setup_templates WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/setup-templates/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, setup_time_minutes, category, description } = req.body;
+      db.run(`
+        UPDATE setup_templates
+        SET name = ?, setup_time_minutes = ?, category = ?, description = ?
+        WHERE id = ?
+      `, [name, Number(setup_time_minutes) || 10, category, description, id]);
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM setup_templates WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/setup-templates/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM setup_templates WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get('/api/filaments', (req: Request, res: Response) => {
     try {
       const filaments = queryAll(db, 'SELECT * FROM filaments ORDER BY material ASC, name ASC');
