@@ -11,9 +11,14 @@ import {
   CheckCircle2,
   Store,
   FileText,
-  CreditCard
+  CreditCard,
+  Plus,
+  Trash2,
+  Users,
+  Truck
 } from 'lucide-react';
-import { Product, ProductSale, SaleChannelType } from '../types';
+import { Product, ProductSale, SaleChannelType, Client, ShippingCarrier } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface RegisterSaleModalProps {
   isOpen: boolean;
@@ -21,6 +26,17 @@ interface RegisterSaleModalProps {
   products: Product[];
   preselectedProduct?: Product | null;
   onSaleSuccess: (sale: ProductSale, updatedProduct?: Product) => void;
+  onRefreshData?: () => void;
+  defaultSaleMode?: 'direct' | 'indirect' | 'consignment' | 'presale';
+}
+
+interface CartItem {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  ready_stock_qty: number;
 }
 
 export function RegisterSaleModal({
@@ -29,133 +45,285 @@ export function RegisterSaleModal({
   products,
   preselectedProduct,
   onSaleSuccess,
+  onRefreshData,
+  defaultSaleMode = 'direct',
 }: RegisterSaleModalProps) {
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [saleMode, setSaleMode] = useState<'direct' | 'indirect' | 'consignment' | 'presale'>(defaultSaleMode);
+  const [channelType, setChannelType] = useState<SaleChannelType>(defaultSaleMode === 'consignment' ? 'consignment' : 'pf');
 
-  // Canal de venda: 'platform' | 'cnpj' | 'pf'
-  const [channelType, setChannelType] = useState<SaleChannelType>('platform');
+  // Clients
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [isCreatingClient, setIsCreatingClient] = useState<boolean>(false);
+  const [newClientName, setNewClientName] = useState<string>('');
+  const [newClientType, setNewClientType] = useState<'pf' | 'cnpj' | 'store'>(defaultSaleMode === 'consignment' ? 'store' : 'pf');
+  const [newClientDoc, setNewClientDoc] = useState<string>('');
+  const [newClientPhone, setNewClientPhone] = useState<string>('');
+  const [newClientAddress, setNewClientAddress] = useState<string>('');
+
+  // Cart / Items (supports single or multiple products)
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [currentProductId, setCurrentProductId] = useState<string>('');
+  const [currentQty, setCurrentQty] = useState<number>(1);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+
+  // Platform & Payment
   const [platformName, setPlatformName] = useState<string>('Mercado Livre');
   const [customPlatform, setCustomPlatform] = useState<string>('');
   const [platformFeePercent, setPlatformFeePercent] = useState<number>(14);
-
-  // Dados CNPJ
-  const [companyName, setCompanyName] = useState<string>('');
-  const [companyCnpj, setCompanyCnpj] = useState<string>('');
-  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
-
-  // Dados PF
-  const [customerName, setCustomerName] = useState<string>('');
-  const [customerCpf, setCustomerCpf] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('PIX');
-
+  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+
+  // Carriers & Shipping cost
+  const [carriers, setCarriers] = useState<ShippingCarrier[]>([]);
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>('none');
+  const [shippingCost, setShippingCost] = useState<number>(0);
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Quando abre ou muda o preselectedProduct
+  // Load clients and carriers
+  useEffect(() => {
+    if (isOpen) {
+      setSaleMode(defaultSaleMode);
+      setChannelType(defaultSaleMode === 'consignment' ? 'consignment' : 'pf');
+      setNewClientType(defaultSaleMode === 'consignment' ? 'store' : 'pf');
+      setSelectedCarrierId('none');
+      setShippingCost(0);
+      fetchClients();
+      fetchCarriers();
+    }
+  }, [isOpen, defaultSaleMode]);
+
+  const fetchClients = async () => {
+    try {
+      const data = await safeFetchJson<Client[]>('/api/clients', undefined, []);
+      if (Array.isArray(data)) {
+        setClients(data);
+        if (data.length > 0 && !selectedClientId) {
+          setSelectedClientId(data[0].id);
+        }
+      }
+    } catch {}
+  };
+
+  const fetchCarriers = async () => {
+    try {
+      const data = await safeFetchJson<ShippingCarrier[]>('/api/carriers', undefined, []);
+      if (Array.isArray(data)) {
+        setCarriers(data);
+      }
+    } catch {}
+  };
+
+  // Initialize product selection when modal opens
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
-      if (preselectedProduct) {
-        setSelectedProductId(preselectedProduct.id);
-        setUnitPrice(preselectedProduct.sale_price || preselectedProduct.suggested_price || 0);
-        setQuantity(1);
-      } else if (products.length > 0) {
-        setSelectedProductId(products[0].id);
-        setUnitPrice(products[0].sale_price || products[0].suggested_price || 0);
-        setQuantity(1);
+      setIsCreatingClient(false);
+      if (products.length > 0) {
+        const prod = preselectedProduct || products[0];
+        setCurrentProductId(prod.id);
+        setCurrentPrice(prod.sale_price || prod.suggested_price || 0);
+        setCurrentQty(1);
+        setCartItems([
+          {
+            product_id: prod.id,
+            product_name: prod.name,
+            quantity: 1,
+            unit_price: prod.sale_price || prod.suggested_price || 0,
+            unit_cost: prod.total_cost || 0,
+            ready_stock_qty: prod.ready_stock_qty || 0,
+          },
+        ]);
       }
     }
   }, [isOpen, preselectedProduct, products]);
 
-  // Atualiza preço unitário se usuário trocar de produto
-  const handleProductChange = (prodId: string) => {
-    setSelectedProductId(prodId);
+  // Handle product dropdown change
+  const handleProductSelect = (prodId: string) => {
+    setCurrentProductId(prodId);
     const found = products.find((p) => p.id === prodId);
     if (found) {
-      setUnitPrice(found.sale_price || found.suggested_price || 0);
+      setCurrentPrice(found.sale_price || found.suggested_price || 0);
     }
   };
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const currentStock = selectedProduct?.ready_stock_qty ?? 0;
-  const isOutOfStock = currentStock <= 0;
-  const isStockInsufficient = quantity > currentStock;
+  const handleAddCartItem = () => {
+    const prod = products.find((p) => p.id === currentProductId);
+    if (!prod) return;
 
-  // Cálculos financeiros
-  const totalRevenue = quantity * unitPrice;
-  const unitCost = selectedProduct?.total_cost || 0;
-  const totalCost = unitCost * quantity;
-  const feeAmount = channelType === 'platform' ? totalRevenue * (platformFeePercent / 100) : 0;
-  const netProfit = totalRevenue - totalCost - feeAmount;
+    const existingIndex = cartItems.findIndex((item) => item.product_id === prod.id);
+    if (existingIndex >= 0) {
+      const updated = [...cartItems];
+      updated[existingIndex].quantity += currentQty;
+      setCartItems(updated);
+    } else {
+      setCartItems([
+        ...cartItems,
+        {
+          product_id: prod.id,
+          product_name: prod.name,
+          quantity: currentQty,
+          unit_price: currentPrice,
+          unit_cost: prod.total_cost || 0,
+          ready_stock_qty: prod.ready_stock_qty || 0,
+        },
+      ]);
+    }
+  };
+
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems(cartItems.filter((_, i) => i !== index));
+  };
+
+  const handleCreateNewClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName.trim()) {
+      setErrorMsg('Informe o nome do cliente.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newClientName,
+          type: newClientType,
+          document: newClientDoc,
+          phone: newClientPhone,
+          address: newClientAddress,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar cliente');
+      
+      setClients([...clients, data]);
+      setSelectedClientId(data.id);
+      setIsCreatingClient(false);
+      setNewClientName('');
+      setNewClientDoc('');
+      setNewClientPhone('');
+      setNewClientAddress('');
+      setErrorMsg(null);
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
+
+  // Financial totals
+  const subtotalRevenue = cartItems.reduce((acc, item) => acc + item.quantity * item.unit_price, 0);
+  const totalRevenue = subtotalRevenue + (Number(shippingCost) || 0);
+  const totalCost = cartItems.reduce((acc, item) => acc + item.quantity * item.unit_cost, 0);
+  const feeAmount = channelType === 'platform' ? subtotalRevenue * (platformFeePercent / 100) : 0;
+  const netProfit = totalRevenue - totalCost - feeAmount - (Number(shippingCost) || 0);
   const profitMarginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProduct) {
-      setErrorMsg('Selecione um produto para realizar a venda.');
+    if (cartItems.length === 0) {
+      setErrorMsg('Adicione pelo menos 1 produto à lista.');
       return;
     }
-    if (quantity <= 0) {
-      setErrorMsg('A quantidade vendida deve ser de pelo menos 1 unidade.');
-      return;
-    }
+    const clientName = selectedClient ? selectedClient.name : 'Cliente Balcão';
 
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    let finalChannelName = '';
-    let doc = '';
-    let clientName = '';
-
-    if (channelType === 'platform') {
-      finalChannelName = platformName === 'Outro' ? (customPlatform || 'Outra Plataforma') : platformName;
-      clientName = customerName ? `${customerName} (${finalChannelName})` : finalChannelName;
-    } else if (channelType === 'cnpj') {
-      finalChannelName = `CNPJ: ${companyName || 'Cliente Corporativo'}`;
-      doc = companyCnpj;
-      clientName = companyName;
-    } else {
-      finalChannelName = `Pessoa Física: ${customerName || 'Balcão / Direto'}`;
-      doc = customerCpf;
-      clientName = customerName;
-    }
-
-    const payload = {
-      product_id: selectedProduct.id,
-      product_name: selectedProduct.name,
-      quantity,
-      unit_price: unitPrice,
-      channel_type: channelType,
-      channel_name: finalChannelName,
-      customer_document: doc || null,
-      customer_name: clientName || null,
-      platform_fee_percent: channelType === 'platform' ? platformFeePercent : 0,
-      payment_method: channelType === 'platform' ? `Marketplace (${finalChannelName})` : paymentMethod,
-      notes: [
-        invoiceNumber ? `NF: ${invoiceNumber}` : '',
-        notes ? notes : ''
-      ].filter(Boolean).join(' | ') || null,
-    };
-
     try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      if (saleMode === 'consignment') {
+        if (!selectedClientId) {
+          setErrorMsg('Selecione ou cadastre a loja parceira (cliente) para registrar a consignação.');
+          setIsSubmitting(false);
+          return;
+        }
+        const payload = {
+          client_id: selectedClientId || null,
+          client_name: clientName,
+          notes,
+          items: cartItems.map((item) => ({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity_consigned: item.quantity,
+            unit_price: item.unit_price,
+          })),
+        };
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao registrar venda');
+        const res = await fetch('/api/consignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro ao registrar consignação');
+
+        if (onRefreshData) onRefreshData();
+        onClose();
+      } else {
+        let lastCreatedSale: ProductSale | null = null;
+        let lastUpdatedProd: Product | null = null;
+
+        for (const item of cartItems) {
+          let finalChannelName = '';
+          if (channelType === 'platform') {
+            finalChannelName = platformName === 'Outro' ? (customPlatform || 'Marketplace') : platformName;
+          } else if (channelType === 'cnpj') {
+            finalChannelName = `CNPJ: ${clientName}`;
+          } else if (channelType === 'presale') {
+            finalChannelName = `Pré-venda: ${clientName}`;
+          } else if (channelType === 'indirect') {
+            finalChannelName = `Venda Indireta: ${clientName}`;
+          } else {
+            finalChannelName = `Venda Direta: ${clientName}`;
+          }
+
+          const selectedCarrier = carriers.find(c => c.id === selectedCarrierId);
+          const carrierLabel = selectedCarrier ? `${selectedCarrier.name} (R$ ${(Number(shippingCost) || 0).toFixed(2)})` : (shippingCost > 0 ? `Frete Personalizado (R$ ${(Number(shippingCost) || 0).toFixed(2)})` : 'Sem Frete');
+
+          const payload = {
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            channel_type: channelType,
+            channel_name: finalChannelName,
+            customer_document: selectedClient?.document || null,
+            customer_name: clientName,
+            platform_fee_percent: channelType === 'platform' ? platformFeePercent : 0,
+            payment_method: channelType === 'platform' ? `Marketplace (${finalChannelName})` : paymentMethod,
+            shipping_cost: Number(shippingCost) || 0,
+            carrier_name: selectedCarrier?.name || (shippingCost > 0 ? 'Outro' : null),
+            notes: [
+              invoiceNumber ? `NF: ${invoiceNumber}` : '',
+              carrierLabel ? `Envio: ${carrierLabel}` : '',
+              saleMode === 'presale' ? '[Pré-venda Reservada]' : '',
+              notes ? notes : ''
+            ].filter(Boolean).join(' | ') || null,
+          };
+
+          const res = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Erro ao registrar venda');
+          lastCreatedSale = data.sale;
+          lastUpdatedProd = data.updatedProduct;
+        }
+
+        if (lastCreatedSale) {
+          onSaleSuccess(lastCreatedSale, lastUpdatedProd);
+        }
+        if (onRefreshData) onRefreshData();
+        onClose();
       }
-
-      onSaleSuccess(data.sale, data.updatedProduct);
-      onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao comunicar com o servidor');
+      setErrorMsg(err.message || 'Falha ao processar operação');
     } finally {
       setIsSubmitting(false);
     }
@@ -174,13 +342,13 @@ export function RegisterSaleModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                Registrar Venda & Baixa de Estoque
+                Registrar Venda, Pré-venda ou Consignação
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Pronto para Entrega
+                  Fluxo Guiado
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Especifique o canal de venda (Plataforma, CNPJ ou PF) e debite o estoque automaticamente.
+                Siga a ordem: Tipo de Venda, Tipo de Cliente, Seleção do Cliente e Produtos.
               </p>
             </div>
           </div>
@@ -193,7 +361,7 @@ export function RegisterSaleModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {errorMsg && (
             <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -201,447 +369,464 @@ export function RegisterSaleModal({
             </div>
           )}
 
-          {/* 1. Seleção do Produto & Estoque */}
-          <div className="space-y-3 bg-[#121214] p-4 rounded-2xl border border-white/[0.06]">
-            <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Package className="w-4 h-4 text-sky-400" />
-                Produto para Venda
-              </span>
-              {selectedProduct && (
-                <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 border ${
-                    currentStock > 0
-                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                  }`}
-                >
-                  {currentStock > 0 ? (
-                    <>
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      {currentStock} un. prontas em estoque
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="w-3 h-3 text-rose-400" />
-                      Estoque Zerado
-                    </>
-                  )}
-                </span>
-              )}
+          {/* 1. TIPO DE VENDA */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-300 block">
+              1. Tipo de Venda <span className="text-rose-400">*</span>
             </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSaleMode('direct');
+                  setChannelType('pf');
+                }}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  saleMode === 'direct'
+                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md'
+                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <User className="w-5 h-5 mb-1 text-emerald-400" />
+                <span className="text-xs font-bold">Venda Direta</span>
+                <span className="text-[10px] text-slate-400">Consumidor Final</span>
+              </button>
 
-            <select
-              value={selectedProductId}
-              onChange={(e) => handleProductChange(e.target.value)}
-              className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none"
-            >
-              {products.length === 0 && <option value="">Nenhum produto cadastrado</option>}
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — Estoque: {p.ready_stock_qty || 0} un. (Preço: R$ {(p.sale_price || p.suggested_price || 0).toFixed(2)})
-                </option>
-              ))}
-            </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaleMode('indirect');
+                  setChannelType('platform');
+                }}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  saleMode === 'indirect'
+                    ? 'bg-teal-500/15 border-teal-500/50 text-teal-300 shadow-md'
+                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Store className="w-5 h-5 mb-1 text-teal-400" />
+                <span className="text-xs font-bold">Venda Indireta</span>
+                <span className="text-[10px] text-slate-400">Marketplace / Revenda</span>
+              </button>
 
-            {/* Aviso se estoque for zero ou insuficiente */}
-            {isOutOfStock && (
-              <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>
-                  Atenção: Este item está zerado no estoque pronto. A venda será registrada e o saldo ficará em alerta até nova impressão.
-                </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaleMode('consignment');
+                  setChannelType('consignment');
+                }}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  saleMode === 'consignment'
+                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 shadow-md'
+                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Building2 className="w-5 h-5 mb-1 text-amber-400" />
+                <span className="text-xs font-bold">Consignada</span>
+                <span className="text-[10px] text-slate-400">Expositor / Loja</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSaleMode('presale');
+                  setChannelType('presale');
+                }}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  saleMode === 'presale'
+                    ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-300 shadow-md'
+                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ShoppingBag className="w-5 h-5 mb-1 text-indigo-400" />
+                <span className="text-xs font-bold">Pré-venda</span>
+                <span className="text-[10px] text-slate-400">Reserva de Itens</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. TIPO DO CLIENTE */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-300 block">
+              2. Tipo do Cliente / Canal <span className="text-rose-400">*</span>
+            </label>
+            {saleMode === 'direct' && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChannelType('pf')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold ${channelType === 'pf' ? 'bg-sky-500/20 text-sky-300 border-sky-500' : 'bg-[#1c1c20] text-slate-400 border-white/[0.08]'}`}
+                >
+                  Pessoa Física (PF)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChannelType('cnpj')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold ${channelType === 'cnpj' ? 'bg-purple-500/20 text-purple-300 border-purple-500' : 'bg-[#1c1c20] text-slate-400 border-white/[0.08]'}`}
+                >
+                  Empresa (CNPJ / B2B)
+                </button>
+              </div>
+            )}
+            {saleMode === 'indirect' && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChannelType('platform')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold ${channelType === 'platform' ? 'bg-amber-500/20 text-amber-300 border-amber-500' : 'bg-[#1c1c20] text-slate-400 border-white/[0.08]'}`}
+                >
+                  Marketplace (Mercado Livre, Shopee...)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChannelType('cnpj')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold ${channelType === 'cnpj' ? 'bg-purple-500/20 text-purple-300 border-purple-500' : 'bg-[#1c1c20] text-slate-400 border-white/[0.08]'}`}
+                >
+                  Loja Revendedora (CNPJ)
+                </button>
+              </div>
+            )}
+            {saleMode === 'consignment' && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-center gap-2">
+                <Store className="w-4 h-4" />
+                <span>Consignação em Loja Parceira ou Expositor</span>
+              </div>
+            )}
+            {saleMode === 'presale' && (
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4" />
+                <span>Pré-venda / Encomenda com Reserva de Estoque</span>
               </div>
             )}
           </div>
 
-          {/* 2. Quantidade e Preço Unitário */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Quantidade Vendida
+          {/* 3. SELEÇÃO DO CLIENTE & OPÇÃO PARA ADICIONAR NOVO */}
+          <div className="space-y-2 bg-[#121214] p-4 rounded-2xl border border-white/[0.06]">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-sky-400" />
+                3. Seleção do Cliente
               </label>
-              <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCreatingClient(!isCreatingClient)}
+                className="text-xs text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {isCreatingClient ? 'Cancelar Novo Cliente' : 'Adicionar Novo Cliente'}
+              </button>
+            </div>
+
+            {isCreatingClient ? (
+              <div className="space-y-3 pt-2 animate-fadeIn bg-[#18181b] p-3.5 rounded-xl border border-sky-500/30">
+                <div className="text-xs font-bold text-sky-300">Cadastrar Novo Cliente</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nome do Cliente / Loja *"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    className="bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+                  />
+                  <select
+                    value={newClientType}
+                    onChange={(e: any) => setNewClientType(e.target.value)}
+                    className="bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    <option value="pf">Pessoa Física</option>
+                    <option value="cnpj">CNPJ / Empresa</option>
+                    <option value="store">Loja Parceira (Consignação)</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="CPF ou CNPJ"
+                    value={newClientDoc}
+                    onChange={(e) => setNewClientDoc(e.target.value)}
+                    className="bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Telefone / WhatsApp"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    className="bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCreateNewClient}
+                  className="w-full py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-xs transition"
+                >
+                  Salvar Cliente e Selecionar
+                </button>
+              </div>
+            ) : (
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none"
+              >
+                {clients.length === 0 && <option value="">Nenhum cliente cadastrado (Clique em Adicionar)</option>}
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.type.toUpperCase()}) {c.document ? `- ${c.document}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Platform specific settings if marketplace */}
+          {channelType === 'platform' && (
+            <div className="p-4 rounded-2xl bg-[#141417] border border-amber-500/20 space-y-3 animate-fadeIn">
+              <div className="text-xs font-semibold text-amber-300">Plataforma Marketplace</div>
+              <div className="flex flex-wrap gap-1.5">
+                {['Mercado Livre', 'Shopee', 'Amazon', 'Elo7', 'Outro'].map((plat) => (
+                  <button
+                    key={plat}
+                    type="button"
+                    onClick={() => {
+                      setPlatformName(plat);
+                      setPlatformFeePercent(plat === 'Amazon' ? 15 : plat === 'Elo7' ? 12 : 14);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                      platformName === plat ? 'bg-amber-400 text-slate-950 border-amber-400' : 'bg-[#1c1c20] text-slate-300 border-white/[0.08]'
+                    }`}
+                  >
+                    {plat}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Comissão (%)</label>
+                  <input
+                    type="number"
+                    value={platformFeePercent}
+                    onChange={(e) => setPlatformFeePercent(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">ID do Pedido</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: #MLB-9382"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. PRODUTO OU OS PRODUTOS VENDIDOS OU CONSIGNADOS */}
+          <div className="space-y-3 bg-[#121214] p-4 rounded-2xl border border-white/[0.06]">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Package className="w-4 h-4 text-emerald-400" />
+              4. Seleção de Produtos ({saleMode === 'consignment' ? 'Consignados' : 'Vendidos'})
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+              <div className="sm:col-span-6">
+                <label className="text-[11px] text-slate-400 block mb-1">Produto Pronto</label>
+                <select
+                  value={currentProductId}
+                  onChange={(e) => handleProductSelect(e.target.value)}
+                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (Estoque: {p.ready_stock_qty || 0} un) - R$ {(p.sale_price || p.suggested_price || 0).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-[11px] text-slate-400 block mb-1">Qtd</label>
                 <input
                   type="number"
                   min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-sm text-white font-bold focus:border-sky-500 focus:outline-none"
+                  value={currentQty}
+                  onChange={(e) => setCurrentQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white font-bold"
                 />
-                {currentStock > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(currentStock)}
-                    className="px-2.5 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 whitespace-nowrap border border-white/[0.08]"
-                    title="Preencher com todo o estoque disponível"
-                  >
-                    Tudo ({currentStock})
-                  </button>
-                )}
               </div>
-              {isStockInsufficient && currentStock > 0 && (
-                <p className="text-[11px] text-amber-400 mt-1">
-                  Quantidade maior do que o estoque pronto atual ({currentStock} un).
-                </p>
-              )}
-            </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Preço Unitário de Venda (R$)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">R$</span>
+              <div className="sm:col-span-3">
+                <label className="text-[11px] text-slate-400 block mb-1">Preço Un. (R$)</label>
                 <input
                   type="number"
                   step="0.01"
-                  min={0}
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl pl-9 pr-3 py-2 text-sm text-white font-bold focus:border-sky-500 focus:outline-none"
+                  value={currentPrice}
+                  onChange={(e) => setCurrentPrice(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white font-bold"
                 />
               </div>
-              {selectedProduct && (
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Custo base de fabricação: R$ {(selectedProduct.total_cost || 0).toFixed(2)} / un.
-                </p>
-              )}
-            </div>
-          </div>
 
-          {/* 3. Especificação do Canal de Venda (Requisito Central) */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Canal de Venda / Tipo de Cliente <span className="text-rose-400">*</span>
-            </label>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setChannelType('platform')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-                  channelType === 'platform'
-                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 shadow-md shadow-amber-500/10'
-                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <Store className="w-5 h-5 mb-1 text-amber-400" />
-                <span className="text-xs font-bold">Plataforma</span>
-                <span className="text-[10px] text-slate-400">Mercado Livre, Shopee...</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChannelType('cnpj')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-                  channelType === 'cnpj'
-                    ? 'bg-purple-500/15 border-purple-500/50 text-purple-300 shadow-md shadow-purple-500/10'
-                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <Building2 className="w-5 h-5 mb-1 text-purple-400" />
-                <span className="text-xs font-bold">Empresa (CNPJ)</span>
-                <span className="text-[10px] text-slate-400">Brindes B2B, Nota Fiscal</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChannelType('pf')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-                  channelType === 'pf'
-                    ? 'bg-sky-500/15 border-sky-500/50 text-sky-300 shadow-md shadow-sky-500/10'
-                    : 'bg-[#1c1c20] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <User className="w-5 h-5 mb-1 text-sky-400" />
-                <span className="text-xs font-bold">Pessoa Física</span>
-                <span className="text-[10px] text-slate-400">Balcão, WhatsApp, PIX</span>
-              </button>
+              <div className="sm:col-span-1">
+                <button
+                  type="button"
+                  onClick={handleAddCartItem}
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold flex items-center justify-center transition"
+                  title="Adicionar item"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Campos Específicos: Plataforma */}
-            {channelType === 'platform' && (
-              <div className="p-4 rounded-2xl bg-[#141417] border border-amber-500/20 space-y-3 animate-fadeIn">
-                <div className="text-xs font-semibold text-amber-300 flex items-center justify-between">
-                  <span>Selecione a Plataforma de Venda</span>
-                  <span className="text-[11px] text-slate-400">Deduz comissão do lucro líquido</span>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { name: 'Mercado Livre', fee: 14 },
-                    { name: 'Shopee', fee: 14 },
-                    { name: 'Amazon', fee: 15 },
-                    { name: 'Elo7', fee: 12 },
-                    { name: 'Site Próprio', fee: 4 },
-                    { name: 'Outro', fee: 0 }
-                  ].map((plat) => (
-                    <button
-                      key={plat.name}
-                      type="button"
-                      onClick={() => {
-                        setPlatformName(plat.name);
-                        setPlatformFeePercent(plat.fee);
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
-                        platformName === plat.name
-                          ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-sm'
-                          : 'bg-[#1c1c20] text-slate-300 border-white/[0.08] hover:bg-white/[0.06]'
-                      }`}
-                    >
-                      {plat.name} ({plat.fee}%)
-                    </button>
-                  ))}
-                </div>
-
-                {platformName === 'Outro' && (
-                  <input
-                    type="text"
-                    placeholder="Nome da plataforma ou marketplace..."
-                    value={customPlatform}
-                    onChange={(e) => setCustomPlatform(e.target.value)}
-                    className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
-                  />
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Taxa / Comissão da Plataforma (%)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min={0}
-                        max={100}
-                        value={platformFeePercent}
-                        onChange={(e) => setPlatformFeePercent(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white font-semibold focus:border-amber-500 focus:outline-none"
-                      />
-                      <span className="absolute right-3 top-2 text-xs text-slate-400">%</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      ID do Pedido / Comprador (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: #MLB-3918239 ou Nome"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Campos Específicos: CNPJ */}
-            {channelType === 'cnpj' && (
-              <div className="p-4 rounded-2xl bg-[#141417] border border-purple-500/20 space-y-3 animate-fadeIn">
-                <div className="text-xs font-semibold text-purple-300">
-                  Dados da Empresa Compradora (Venda Corporativa / B2B)
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Razão Social / Nome Fantasia <span className="text-purple-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Studio Wave Música LTDA"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="00.000.000/0001-00"
-                      value={companyCnpj}
-                      onChange={(e) => setCompanyCnpj(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Número da Nota Fiscal (NF-e)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: NF 00124"
-                      value={invoiceNumber}
-                      onChange={(e) => setInvoiceNumber(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Condição de Pagamento
-                    </label>
-                    <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-                    >
-                      <option value="PIX CNPJ">PIX CNPJ (À Vista)</option>
-                      <option value="Boleto Bancário Faturado">Boleto Faturado 15/30 Dias</option>
-                      <option value="Transferência / TED">Transferência / TED</option>
-                      <option value="Cartão Corporativo">Cartão de Crédito</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Campos Específicos: Pessoa Física */}
-            {channelType === 'pf' && (
-              <div className="p-4 rounded-2xl bg-[#141417] border border-sky-500/20 space-y-3 animate-fadeIn">
-                <div className="text-xs font-semibold text-sky-300">
-                  Dados do Cliente Pessoa Física (Venda Direta / Balcão)
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Nome do Cliente
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Carlos Eduardo (WhatsApp)"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      CPF (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="000.000.000-00"
-                      value={customerCpf}
-                      onChange={(e) => setCustomerCpf(e.target.value)}
-                      className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="text-[11px] text-slate-400 block mb-1">
-                      Forma de Pagamento
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['PIX', 'Dinheiro', 'Cartão de Débito', 'Cartão de Crédito'].map((method) => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => setPaymentMethod(method)}
-                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
-                            paymentMethod === method
-                              ? 'bg-sky-500 text-white border-sky-400'
-                              : 'bg-[#1c1c20] text-slate-300 border-white/[0.08] hover:bg-white/[0.06]'
-                          }`}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+            {/* Cart Items Table */}
+            {cartItems.length > 0 && (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-xs text-left text-slate-300">
+                  <thead className="bg-[#1c1c20] text-slate-400 uppercase text-[10px]">
+                    <tr>
+                      <th className="px-3 py-2">Produto</th>
+                      <th className="px-3 py-2 text-center">Qtd</th>
+                      <th className="px-3 py-2 text-right">Preço Un.</th>
+                      <th className="px-3 py-2 text-right">Subtotal</th>
+                      <th className="px-3 py-2 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {cartItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-white/[0.02]">
+                        <td className="px-3 py-2 font-medium text-white">{item.product_name}</td>
+                        <td className="px-3 py-2 text-center font-bold text-sky-400">{item.quantity}</td>
+                        <td className="px-3 py-2 text-right">R$ {item.unit_price.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-bold text-emerald-400">R$ {(item.quantity * item.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCartItem(idx)}
+                            className="p-1 text-rose-400 hover:bg-rose-500/20 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
 
-          {/* 4. Resumo Financeiro & Impacto no Estoque */}
-          <div className="p-4 rounded-2xl bg-[#111113] border border-white/[0.08] space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-300 border-b border-white/[0.06] pb-2">
-              <span className="flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                Resumo da Venda & Lucratividade
-              </span>
-              <span className="text-[11px] font-normal text-slate-400">
-                Baixa de {quantity} un. no estoque
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-2.5 rounded-xl bg-[#18181b] border border-white/[0.04]">
-                <span className="text-[10px] text-slate-400 block">Faturamento Bruto</span>
-                <span className="text-sm font-bold text-white">
-                  R$ {totalRevenue.toFixed(2)}
+          {/* 5. TRANSPORTADORA / GASTOS COM ENVIO */}
+          {saleMode !== 'consignment' && (
+            <div className="space-y-2 bg-[#121215] border border-white/[0.08] p-4 rounded-2xl">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-sky-400" />
+                  5. Transportadora / Gastos com Envio
                 </span>
-              </div>
+                <span className="text-[10px] text-slate-400 font-normal">Opcional (ex: Venda Direta PF)</span>
+              </label>
 
-              <div className="p-2.5 rounded-xl bg-[#18181b] border border-white/[0.04]">
-                <span className="text-[10px] text-slate-400 block">Custo de Produção</span>
-                <span className="text-sm font-bold text-slate-300">
-                  - R$ {totalCost.toFixed(2)}
-                </span>
-              </div>
-
-              {channelType === 'platform' && (
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-white/[0.04]">
-                  <span className="text-[10px] text-slate-400 block">Taxa Plataforma ({platformFeePercent}%)</span>
-                  <span className="text-sm font-bold text-amber-400">
-                    - R$ {feeAmount.toFixed(2)}
-                  </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <select
+                    value={selectedCarrierId}
+                    onChange={(e) => {
+                      const cid = e.target.value;
+                      setSelectedCarrierId(cid);
+                      if (cid === 'none' || cid === 'custom') {
+                        if (cid === 'none') setShippingCost(0);
+                      } else {
+                        const found = carriers.find(c => c.id === cid);
+                        if (found) setShippingCost(found.default_cost);
+                      }
+                    }}
+                    className="w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                  >
+                    <option value="none">Sem Custos com Envio (Retirada / PF Direta)</option>
+                    {carriers.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.service_type}) - R$ {c.default_cost.toFixed(2)}
+                      </option>
+                    ))}
+                    <option value="custom">Outro / Valor Personalizado</option>
+                  </select>
                 </div>
-              )}
 
-              <div className={`p-2.5 rounded-xl border ${channelType !== 'platform' ? 'col-span-2' : ''} ${
-                netProfit >= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-rose-500/10 border-rose-500/30'
-              }`}>
-                <span className="text-[10px] text-slate-400 block">Lucro Líquido Real</span>
-                <span className={`text-sm font-extrabold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  R$ {netProfit.toFixed(2)} ({profitMarginPercent.toFixed(0)}%)
-                </span>
+                <div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">R$</span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0"
+                      value={shippingCost}
+                      onChange={(e) => setShippingCost(Math.max(0, Number(e.target.value)))}
+                      placeholder="0.00"
+                      className="w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl pl-8 pr-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-sky-400"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Saldo de estoque restante */}
-            <div className="flex items-center justify-between text-xs pt-1 px-1 text-slate-400">
-              <span>Saldo em estoque após esta venda:</span>
-              <span className={`font-bold ${currentStock - quantity >= 0 ? 'text-white' : 'text-rose-400'}`}>
-                {Math.max(0, currentStock - quantity)} unidades
-              </span>
+          {/* 6. FORMA DE PAGAMENTO (SE VENDA) OU OBSERVAÇÕES */}
+          {saleMode !== 'consignment' && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-300 block">
+                6. Forma de Pagamento <span className="text-rose-400">*</span>
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {['PIX', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'].map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
+                      paymentMethod === method ? 'bg-sky-500 text-white border-sky-400' : 'bg-[#1c1c20] text-slate-300 border-white/[0.08]'
+                    }`}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Resumo Financeiro */}
+          <div className="p-3.5 rounded-2xl bg-[#111113] border border-white/[0.08] flex items-center justify-between text-xs">
+            <div>
+              <span className="text-slate-400 block">Total Geral da Operação</span>
+              <span className="text-base font-extrabold text-emerald-400">R$ {totalRevenue.toFixed(2)}</span>
+            </div>
+            {saleMode !== 'consignment' && (
+              <div className="text-right">
+                <span className="text-slate-400 block">Lucro Líquido Estimado</span>
+                <span className="text-sm font-bold text-sky-400">R$ {netProfit.toFixed(2)} ({profitMarginPercent.toFixed(0)}%)</span>
+              </div>
+            )}
           </div>
 
-          {/* Footer Ações */}
+          {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedProduct}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              disabled={isSubmitting || cartItems.length === 0}
+              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
-                <>Gravando venda...</>
+                <>Processando...</>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Confirmar Venda & Baixar do Estoque
+                  {saleMode === 'consignment' ? 'Registrar Consignação em Expositor' : 'Confirmar Venda & Baixar Estoque'}
                 </>
               )}
             </button>

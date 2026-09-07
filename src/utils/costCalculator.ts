@@ -18,6 +18,7 @@ export interface CostCalculatorParams {
   printMode?: 'monochrome' | 'multicolor';
   multiColorItems?: MultiColorItemInput[];
   allFilaments?: Filament[];
+  transportCost?: number;
 }
 
 export function calculatePieceCost(params: CostCalculatorParams): CostCalculationResult {
@@ -31,6 +32,7 @@ export function calculatePieceCost(params: CostCalculatorParams): CostCalculatio
     customLossMargin,
     prepTimeMinutes = 5,
     markupPercent = 120,
+    transportCost = 0,
   } = params;
 
   const lossMargin = customLossMargin !== undefined 
@@ -76,7 +78,7 @@ export function calculatePieceCost(params: CostCalculatorParams): CostCalculatio
   const laborCost = prepTimeHours * (settings.hourly_labor_rate || 20.00);
 
   // 6. Total Production Cost
-  const totalProductionCost = filamentCost + energyCost + depreciationCost + suppliesCost + laborCost;
+  const totalProductionCost = filamentCost + energyCost + depreciationCost + suppliesCost + laborCost + transportCost;
 
   // 7. Markup & Selling Price
   const targetMarkup = Math.max(0, markupPercent);
@@ -94,6 +96,7 @@ export function calculatePieceCost(params: CostCalculatorParams): CostCalculatio
     lossMarginCost: Number(lossMarginCost.toFixed(2)),
     suppliesCost: Number(suppliesCost.toFixed(2)),
     laborCost: Number(laborCost.toFixed(2)),
+    transportCost: Number(transportCost.toFixed(2)),
     totalProductionCost: Number(totalProductionCost.toFixed(2)),
     markupPercent: Math.round(targetMarkup),
     suggestedSalePrice: Number(suggestedSalePrice.toFixed(2)),

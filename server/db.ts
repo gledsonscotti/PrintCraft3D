@@ -109,6 +109,7 @@ function initTables(database: Database) {
       sale_price REAL NOT NULL,
       ready_stock_qty INTEGER NOT NULL DEFAULT 0,
       min_stock_alert INTEGER NOT NULL DEFAULT 5,
+      image_url TEXT,
       created_at TEXT NOT NULL
     );
   `);
@@ -119,6 +120,9 @@ function initTables(database: Database) {
   } catch {}
   try {
     database.run('ALTER TABLE products ADD COLUMN min_stock_alert INTEGER NOT NULL DEFAULT 5;');
+  } catch {}
+  try {
+    database.run('ALTER TABLE products ADD COLUMN image_url TEXT;');
   } catch {}
 
   // 5. Product Sales table (vendas por plataforma, CNPJ ou Pessoa Física)
@@ -133,14 +137,52 @@ function initTables(database: Database) {
       unit_cost REAL NOT NULL DEFAULT 0,
       total_cost REAL NOT NULL DEFAULT 0,
       profit REAL NOT NULL DEFAULT 0,
-      channel_type TEXT NOT NULL, -- 'platform' | 'cnpj' | 'pf'
-      channel_name TEXT NOT NULL, -- 'Mercado Livre', 'Shopee', 'Amazon', 'Elo7', 'CNPJ: ...', 'PF: ...'
-      customer_document TEXT, -- CPF / CNPJ
+      channel_type TEXT NOT NULL,
+      channel_name TEXT NOT NULL,
+      customer_document TEXT,
       customer_name TEXT,
       platform_fee_percent REAL NOT NULL DEFAULT 0,
       platform_fee_amount REAL NOT NULL DEFAULT 0,
       payment_method TEXT,
       notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  database.run(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'pf',
+      document TEXT,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  database.run(`
+    CREATE TABLE IF NOT EXISTS consignments (
+      id TEXT PRIMARY KEY,
+      client_id TEXT,
+      client_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  database.run(`
+    CREATE TABLE IF NOT EXISTS consignment_items (
+      id TEXT PRIMARY KEY,
+      consignment_id TEXT NOT NULL,
+      product_id TEXT,
+      product_name TEXT NOT NULL,
+      quantity_consigned INTEGER NOT NULL,
+      quantity_sold INTEGER NOT NULL DEFAULT 0,
+      unit_price REAL NOT NULL,
+      unit_cost REAL NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
   `);
@@ -267,6 +309,36 @@ function initTables(database: Database) {
       created_at TEXT NOT NULL
     );
   `);
+
+  // 12. Carriers table (Transportadoras e opções de envio)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS carriers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      service_type TEXT NOT NULL DEFAULT 'PAC / SEDEX',
+      default_cost REAL NOT NULL DEFAULT 15.00,
+      delivery_days TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  try {
+    const cCountRes = database.exec("SELECT COUNT(*) FROM carriers");
+    const cCount = cCountRes.length > 0 && cCountRes[0].values.length > 0 ? Number(cCountRes[0].values[0][0]) : 0;
+    if (cCount === 0) {
+      database.run(`
+        INSERT INTO carriers (id, name, service_type, default_cost, delivery_days, notes, created_at)
+        VALUES
+          ('car-1', 'Correios SEDEX', 'Expresso Nacional', 25.00, '1 a 3 dias úteis', 'Entrega domiciliar prioritária em todo o Brasil.', '${new Date().toISOString()}'),
+          ('car-2', 'Correios PAC', 'Econômico', 16.50, '5 a 10 dias úteis', 'Opção econômica para pacotes de pequeno e médio porte.', '${new Date().toISOString()}'),
+          ('car-3', 'Jadlog / Package', 'Rodoviário', 22.00, '3 a 6 dias úteis', 'Transportadora com ampla cobertura nacional.', '${new Date().toISOString()}'),
+          ('car-4', 'Motoboy / Entrega Local', 'Entrega Rápida', 12.00, 'Mesmo dia', 'Para entregas locais na região metropolitana.', '${new Date().toISOString()}')
+      `);
+    }
+  } catch (e) {
+    console.error('Error seeding carriers:', e);
+  }
 
   // Seed default setup templates if empty
   try {

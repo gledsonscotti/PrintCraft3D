@@ -391,6 +391,264 @@ async function startServer() {
     }
   });
 
+  // --- CLIENTS API ---
+  app.get('/api/clients', (req: Request, res: Response) => {
+    try {
+      const clients = queryAll(db, 'SELECT * FROM clients ORDER BY name ASC');
+      res.json(clients);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/clients', (req: Request, res: Response) => {
+    try {
+      const { name, type = 'pf', document, phone, email, address } = req.body;
+      if (!name) {
+        return res.status(400).json({ error: 'Nome do cliente é obrigatório' });
+      }
+      const id = 'client-' + Date.now();
+      const created_at = new Date().toISOString();
+      db.run(`
+        INSERT INTO clients (id, name, type, document, phone, email, address, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, name, type, document || '', phone || '', email || '', address || '', created_at]);
+      saveDb();
+      const client = queryOne(db, 'SELECT * FROM clients WHERE id = ?', [id]);
+      res.status(201).json(client);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/clients/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM clients WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // --- CONSIGNMENTS API ---
+  app.get('/api/consignments', (req: Request, res: Response) => {
+    try {
+      const consignments = queryAll<any>(db, 'SELECT * FROM consignments ORDER BY created_at DESC');
+      const result = consignments.map((c: any) => {
+        const items = queryAll<any>(db, 'SELECT * FROM consignment_items WHERE consignment_id = ?', [c.id]);
+        return { ...c, items };
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/consignments', (req: Request, res: Response) => {
+    try {
+      const { client_id, client_name, notes, items } = req.body;
+      if (!client_name || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Cliente e itens consignados são obrigatórios' });
+      }
+      const consignment_id = 'consignment-' + Date.now();
+      const created_at = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO consignments (id, client_id, client_name, status, notes, created_at)
+        VALUES (?, ?, ?, 'active', ?, ?)
+      `, [consignment_id, client_id || '', client_name, notes || '', created_at]);
+
+      for (const item of items) {
+        const itemId = 'citem-' + Math.random().toString(36).substring(2, 9);
+        const prod = queryOne<any>(db, 'SELECT * FROM products WHERE id = ?', [item.product_id]);
+        const unit_cost = prod ? Number(prod.total_cost) : 0;
+        const qty = Number(item.quantity_consigned) || 1;
+
+        db.run(`
+          INSERT INTO consignment_items (id, consignment_id, product_id, product_name, quantity_consigned, quantity_sold, unit_price, unit_cost, created_at)
+          VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+        `, [
+          itemId,
+          consignment_id,
+          item.product_id || '',
+          item.product_name || (prod ? prod.name : 'Produto'),
+          qty,
+          Number(item.unit_price) || 0,
+          unit_cost,
+          created_at
+        ]);
+
+        if (item.product_id && prod) {
+          const newStock = Math.max(0, (Number(prod.ready_stock_qty) || 0) - qty);
+          db.run('UPDATE products SET ready_stock_qty = ? WHERE id = ?', [newStock, item.product_id]);
+        }
+      }
+
+      saveDb();
+      const created = queryOne<any>(db, 'SELECT * FROM consignments WHERE id = ?', [consignment_id]);
+      const createdItems = queryAll<any>(db, 'SELECT * FROM consignment_items WHERE consignment_id = ?', [consignment_id]);
+      res.status(201).json({ ...(created || {}), items: createdItems });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/consignments/:id/sell-items', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { soldItems, payment_method } = req.body;
+
+      const consignment = queryOne<any>(db, 'SELECT * FROM consignments WHERE id = ?', [id]);
+      if (!consignment) {
+        return res.status(404).json({ error: 'Consignação não encontrada' });
+      }
+
+      const createdSales = [];
+      const created_at = new Date().toISOString();
+
+      for (const s of soldItems) {
+        const item = queryOne<any>(db, 'SELECT * FROM consignment_items WHERE id = ? AND consignment_id = ?', [s.item_id, id]);
+        if (!item) continue;
+
+        const qtySoldNow = Math.min(Number(s.quantity_sold_now) || 0, Number(item.quantity_consigned) - Number(item.quantity_sold));
+        if (qtySoldNow <= 0) continue;
+
+        const newQtySold = Number(item.quantity_sold) + qtySoldNow;
+        db.run('UPDATE consignment_items SET quantity_sold = ? WHERE id = ?', [newQtySold, item.id]);
+
+        const saleId = 'sale-c-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5);
+        const totalRev = qtySoldNow * Number(item.unit_price);
+        const totalCost = qtySoldNow * Number(item.unit_cost);
+        const profit = totalRev - totalCost;
+
+        db.run(`
+          INSERT INTO product_sales (
+            id, product_id, product_name, quantity, unit_price, total_revenue,
+            unit_cost, total_cost, profit, channel_type, channel_name,
+            customer_document, customer_name, platform_fee_percent, platform_fee_amount,
+            payment_method, notes, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'consignment', ?, ?, ?, 0, 0, ?, ?, ?)
+        `, [
+          saleId,
+          item.product_id,
+          item.product_name,
+          qtySoldNow,
+          item.unit_price,
+          totalRev,
+          item.unit_cost,
+          totalCost,
+          profit,
+          `Consignação: ${consignment.client_name}`,
+          null,
+          consignment.client_name,
+          payment_method || 'Acerto Consignação',
+          `Venda de item consignado`,
+          created_at
+        ]);
+
+        const saleRecord = queryOne<any>(db, 'SELECT * FROM product_sales WHERE id = ?', [saleId]);
+        createdSales.push(saleRecord);
+      }
+
+      const allItems = queryAll<any>(db, 'SELECT * FROM consignment_items WHERE consignment_id = ?', [id]);
+      const allSold = allItems.every((i: any) => i.quantity_sold >= i.quantity_consigned);
+      if (allSold) {
+        db.run("UPDATE consignments SET status = 'settled' WHERE id = ?", [id]);
+      }
+
+      saveDb();
+      const updatedConsignment = queryOne<any>(db, 'SELECT * FROM consignments WHERE id = ?', [id]);
+      res.json({ success: true, consignment: { ...(updatedConsignment || {}), items: allItems }, createdSales });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/consignments/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const items = queryAll<any>(db, 'SELECT * FROM consignment_items WHERE consignment_id = ?', [id]);
+      for (const item of items) {
+        const unsold = Number(item.quantity_consigned) - Number(item.quantity_sold);
+        if (unsold > 0 && item.product_id) {
+          const prod = queryOne<any>(db, 'SELECT * FROM products WHERE id = ?', [item.product_id]);
+          if (prod) {
+            const restoredStock = (Number(prod.ready_stock_qty) || 0) + unsold;
+            db.run('UPDATE products SET ready_stock_qty = ? WHERE id = ?', [restoredStock, item.product_id]);
+          }
+        }
+      }
+      db.run('DELETE FROM consignment_items WHERE consignment_id = ?', [id]);
+      db.run('DELETE FROM consignments WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Carriers CRUD Endpoints
+  app.get('/api/carriers', (req: Request, res: Response) => {
+    try {
+      const carriers = queryAll(db, 'SELECT * FROM carriers ORDER BY name ASC');
+      res.json(carriers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/carriers', (req: Request, res: Response) => {
+    try {
+      const { name, service_type = 'PAC / SEDEX', default_cost = 15.00, delivery_days = '', notes = '' } = req.body;
+      const id = 'car-' + Date.now();
+      const created_at = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO carriers (id, name, service_type, default_cost, delivery_days, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [id, name, service_type, Number(default_cost) || 0, delivery_days, notes, created_at]);
+
+      saveDb();
+      const carrier = queryOne(db, 'SELECT * FROM carriers WHERE id = ?', [id]);
+      res.status(201).json(carrier);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/carriers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, service_type, default_cost, delivery_days, notes } = req.body;
+
+      db.run(`
+        UPDATE carriers
+        SET name = ?, service_type = ?, default_cost = ?, delivery_days = ?, notes = ?
+        WHERE id = ?
+      `, [name, service_type, Number(default_cost) || 0, delivery_days, notes, id]);
+
+      saveDb();
+      const carrier = queryOne(db, 'SELECT * FROM carriers WHERE id = ?', [id]);
+      res.json(carrier);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/carriers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM carriers WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get('/api/filaments', (req: Request, res: Response) => {
     try {
       const filaments = queryAll(db, 'SELECT * FROM filaments ORDER BY material ASC, name ASC');
@@ -630,7 +888,8 @@ async function startServer() {
         suggested_price,
         sale_price,
         ready_stock_qty = 0,
-        min_stock_alert = 5
+        min_stock_alert = 5,
+        image_url = ''
       } = req.body;
 
       const id = 'prod-' + Date.now();
@@ -642,21 +901,72 @@ async function startServer() {
           printer_id, filament_id, filament_weight_g, print_time_minutes,
           energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
           labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
-          markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, created_at
+          markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, image_url, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         id, name, category, description, stl_filename, gcode_filename,
         printer_id, filament_id, Number(filament_weight_g), Number(print_time_minutes),
         Number(energy_cost), Number(filament_cost), Number(loss_margin_percent), Number(depreciation_cost),
         Number(labor_cost), extra_supplies_json, Number(extra_supplies_cost), Number(total_cost),
         Number(markup_percent), Number(suggested_price), Number(sale_price || suggested_price),
-        Number(ready_stock_qty), Number(min_stock_alert), createdAt
+        Number(ready_stock_qty), Number(min_stock_alert), image_url, createdAt
       ]);
 
       saveDb();
       const created = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
       res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/products/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        category,
+        description,
+        printer_id,
+        filament_id,
+        filament_weight_g,
+        print_time_minutes,
+        energy_cost,
+        filament_cost,
+        loss_margin_percent,
+        depreciation_cost,
+        labor_cost,
+        extra_supplies_json,
+        extra_supplies_cost,
+        total_cost,
+        markup_percent,
+        suggested_price,
+        sale_price,
+        ready_stock_qty,
+        min_stock_alert,
+        image_url
+      } = req.body;
+
+      db.run(`
+        UPDATE products
+        SET name = ?, category = ?, description = ?, printer_id = ?, filament_id = ?,
+            filament_weight_g = ?, print_time_minutes = ?, energy_cost = ?, filament_cost = ?,
+            loss_margin_percent = ?, depreciation_cost = ?, labor_cost = ?, extra_supplies_json = ?,
+            extra_supplies_cost = ?, total_cost = ?, markup_percent = ?, suggested_price = ?,
+            sale_price = ?, ready_stock_qty = ?, min_stock_alert = ?, image_url = ?
+        WHERE id = ?
+      `, [
+        name, category, description, printer_id, filament_id,
+        Number(filament_weight_g), Number(print_time_minutes), Number(energy_cost), Number(filament_cost),
+        Number(loss_margin_percent), Number(depreciation_cost), Number(labor_cost), extra_supplies_json,
+        Number(extra_supplies_cost), Number(total_cost), Number(markup_percent), Number(suggested_price),
+        Number(sale_price), Number(ready_stock_qty), Number(min_stock_alert), image_url, id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
+      res.json(updated);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

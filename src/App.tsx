@@ -42,6 +42,7 @@ export default function App() {
 
   // Ready Product Sales Modal State
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [saleModalDefaultMode, setSaleModalDefaultMode] = useState<'direct' | 'indirect' | 'consignment' | 'presale'>('direct');
   const [selectedProductForSale, setSelectedProductForSale] = useState<Product | undefined>(undefined);
 
   // Workshop Contrast Theme State (persisted in localStorage)
@@ -602,7 +603,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'calculator' && (
+            <div className={activeTab === 'calculator' ? 'block' : 'hidden'}>
               <CostCalculatorView
                 printers={printers}
                 filaments={filaments}
@@ -613,7 +614,7 @@ export default function App() {
                 theme={theme}
                 initialParams={calculatorInitialParams}
               />
-            )}
+            </div>
 
             {activeTab === 'stock' && (
               <StockManagementView
@@ -668,8 +669,9 @@ export default function App() {
               <SalesManagementView
                 sales={sales}
                 products={products}
-                onOpenNewSaleModal={() => {
+                onOpenNewSaleModal={(defaultMode = 'direct') => {
                   setSelectedProductForSale(undefined);
+                  setSaleModalDefaultMode(defaultMode);
                   setIsSaleModalOpen(true);
                 }}
                 onDeleteSale={handleDeleteSale}
@@ -721,6 +723,7 @@ export default function App() {
         isOpen={isSaleModalOpen}
         products={products}
         preselectedProduct={selectedProductForSale}
+        defaultSaleMode={saleModalDefaultMode}
         onClose={() => {
           setIsSaleModalOpen(false);
           setSelectedProductForSale(undefined);
@@ -728,6 +731,7 @@ export default function App() {
         onSaleSuccess={() => {
           fetchData();
         }}
+        onRefreshData={fetchData}
       />
     </div>
   );

@@ -20,11 +20,13 @@ import {
   Store,
   ShieldCheck,
   RotateCcw,
-  Printer as PrinterIcon
+  Printer as PrinterIcon,
+  Truck
 } from 'lucide-react';
 import { AppSettings, AppTheme, Product, ProductSale, Printer } from '../types';
 import { IntegrationsView } from './IntegrationsView';
 import { PrintersView } from './PrintersView';
+import { CarriersView } from './CarriersView';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -35,7 +37,7 @@ interface SettingsViewProps {
   products: Product[];
   sales: ProductSale[];
   onNavigateToSales: () => void;
-  initialSubTab?: 'costs' | 'printers' | 'integrations';
+  initialSubTab?: 'costs' | 'printers' | 'carriers' | 'integrations';
   printers?: Printer[];
 }
 
@@ -51,7 +53,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   initialSubTab = 'costs',
   printers = [],
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'integrations'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'carriers' | 'integrations'>(initialSubTab);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -241,6 +243,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {printers.length > 0 && (
                 <span className="text-[10px] opacity-75 font-mono">({printers.length})</span>
               )}
+            </button>
+
+            <button
+              type="button"
+              id="tab-btn-carriers"
+              onClick={() => setActiveSubTab('carriers')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === 'carriers'
+                  ? 'bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>Transportadoras</span>
             </button>
 
             <button
@@ -573,7 +589,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* SUB-TAB 3: Integrações */}
+      {/* SUB-TAB 3: Transportadoras */}
+      {activeSubTab === 'carriers' && (
+        <div className="space-y-4">
+          <CarriersView
+            onRefreshData={onRefreshData}
+          />
+        </div>
+      )}
+
+      {/* SUB-TAB 4: Integrações */}
       {activeSubTab === 'integrations' && (
         <div className="space-y-4">
           <IntegrationsView

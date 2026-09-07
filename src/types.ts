@@ -63,10 +63,44 @@ export interface Product {
   sale_price: number;
   ready_stock_qty?: number;
   min_stock_alert?: number;
+  image_url?: string;
   created_at: string;
 }
 
-export type SaleChannelType = 'platform' | 'cnpj' | 'pf';
+export interface Client {
+  id: string;
+  name: string;
+  type: 'pf' | 'cnpj' | 'store';
+  document?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  created_at: string;
+}
+
+export interface ConsignmentItem {
+  id: string;
+  consignment_id: string;
+  product_id?: string;
+  product_name: string;
+  quantity_consigned: number;
+  quantity_sold: number;
+  unit_price: number;
+  unit_cost: number;
+  created_at: string;
+}
+
+export interface Consignment {
+  id: string;
+  client_id?: string;
+  client_name: string;
+  status: 'active' | 'settled';
+  notes?: string;
+  created_at: string;
+  items: ConsignmentItem[];
+}
+
+export type SaleChannelType = 'platform' | 'cnpj' | 'pf' | 'direct' | 'indirect' | 'consignment' | 'presale';
 
 export interface ProductSale {
   id: string;
@@ -157,6 +191,7 @@ export interface CostCalculationResult {
   lossMarginCost: number;
   suppliesCost: number;
   laborCost: number;
+  transportCost: number;
   totalProductionCost: number;
   markupPercent: number;
   suggestedSalePrice: number;
@@ -271,6 +306,16 @@ export interface SetupTemplate {
   setup_time_minutes: number;
   category: 'clean' | 'calibration' | 'preheat' | 'other';
   description?: string;
+  created_at: string;
+}
+
+export interface ShippingCarrier {
+  id: string;
+  name: string;
+  service_type: string;
+  default_cost: number;
+  delivery_days?: string;
+  notes?: string;
   created_at: string;
 }
 

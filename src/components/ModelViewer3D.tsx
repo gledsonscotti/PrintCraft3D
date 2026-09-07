@@ -52,6 +52,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   const [isWireframe, setIsWireframe] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [cameraView, setCameraView] = useState<'iso' | 'top' | 'front'>('iso');
+  const [webglFailed, setWebglFailed] = useState(false);
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
@@ -64,6 +65,15 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
     const width = containerRef.current.clientWidth || 400;
     const height = containerRef.current.clientHeight || 320;
+
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
+    } catch (e) {
+      console.warn('WebGL context creation failed or was blocked:', e);
+      setWebglFailed(true);
+      return;
+    }
 
     // Scene
     const scene = new THREE.Scene();
@@ -82,12 +92,17 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     cameraRef.current = camera;
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    rendererRef.current = renderer;
+    try {
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      rendererRef.current = renderer;
+    } catch (e) {
+      console.warn('WebGL setup error:', e);
+      setWebglFailed(true);
+      return;
+    }
 
     if (onSnapshotReady) {
       onSnapshotReady(() => {
@@ -384,19 +399,34 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
   return (
     <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-80 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
-      {/* 3D Canvas Mount */}
-      <div
-        ref={containerRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-      />
+      {webglFailed ? (
+        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#111115]">
+          <Box className="w-10 h-10 text-emerald-400 mb-2 animate-bounce" />
+          <h4 className="text-sm font-bold text-white mb-1">Visualização CAD 2D Ativa</h4>
+          <p className="text-xs text-slate-400 max-w-xs mb-3">
+            O hardware WebGL não pôde ser inicializado neste navegador. O modelo está pronto para fabricação e fatiamento.
+          </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+            <span>{formatLabel || fileType.toUpperCase()}</span>
+            <span>•</span>
+            <span>{trianglesCount ? `${trianglesCount.toLocaleString()} faces` : 'Pronto'}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full h-full relative">
+          {/* 3D Canvas Mount */}
+          <div
+            ref={containerRef}
+            className="w-full h-full cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
+          />
 
-      {/* Floating Header Overlay: Mesa 3D Status & Geometry Badges */}
-      <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1 pointer-events-none z-10">
+          {/* Floating Header Overlay: Mesa 3D Status & Geometry Badges */}
+          <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1 pointer-events-none z-10">
         {/* Mesa 3D Status Pill - Compact */}
         <div className="v3d-badge flex items-center gap-1.5 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
@@ -513,6 +543,8 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
         <span className="v3d-dim hidden sm:inline">Arraste para rotacionar • Scroll para zoom</span>
         <span className="v3d-dim sm:hidden">Girar • Zoom</span>
       </div>
+        </div>
+      )}
     </div>
   );
 };

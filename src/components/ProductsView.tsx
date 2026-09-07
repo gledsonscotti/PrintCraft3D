@@ -15,7 +15,11 @@ import {
   ShoppingBag,
   Plus,
   Minus,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Copy,
+  Image as ImageIcon,
+  Maximize2
 } from 'lucide-react';
 import { ExtraSupplyItem, Filament, Printer, Product } from '../types';
 import { ConfirmModal } from './ConfirmModal';
@@ -25,7 +29,7 @@ interface ProductsViewProps {
   printers: Printer[];
   filaments: Filament[];
   onRefreshData: () => void | Promise<void>;
-  onSelectProductForCalculator?: (product: Product) => void;
+  onSelectProductForCalculator?: (product: Product, mode: 'edit' | 'copy') => void;
   onOpenSaleModal?: (product: Product) => void;
 }
 
@@ -42,6 +46,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [stockAdjustingId, setStockAdjustingId] = useState<string | null>(null);
+
+  // Image zoom modal state
+  const [expandedImage, setExpandedImage] = useState<{ url: string; title: string } | null>(null);
 
   // Deletion Modal State
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
@@ -298,6 +305,27 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     </div>
                   </div>
 
+                  {/* Optional Product Image Preview */}
+                  {prod.image_url && (
+                    <div className="relative group rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B] h-32 flex items-center justify-center">
+                      <img
+                        src={prod.image_url}
+                        alt={prod.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        referrerPolicy="no-referrer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setExpandedImage({ url: prod.image_url!, title: prod.name })}
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white gap-1.5 transition text-xs font-medium backdrop-blur-xs cursor-pointer"
+                        title="Ampliar Imagem"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                        Ampliar Foto
+                      </button>
+                    </div>
+                  )}
+
                   {prod.description && (
                     <p className="text-xs text-slate-400 line-clamp-2">{prod.description}</p>
                   )}
@@ -368,34 +396,62 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Action buttons: Vender e Imprimir */}
-                <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-white/[0.06]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenSaleModal) {
-                        onOpenSaleModal(prod);
-                      }
-                    }}
-                    className="catalog-btn-sell bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2.5 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
-                    title="Registrar venda por Plataforma, CNPJ ou PF"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    Vender
-                  </button>
+                {/* Edit, Copy, Vender e Produzir actions */}
+                <div className="space-y-2 mt-3 pt-2 border-t border-white/[0.06]">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'edit');
+                      }}
+                      className="bg-[#1c1c22] hover:bg-white/[0.1] text-slate-300 border border-white/[0.1] py-2 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      title="Editar este produto na calculadora"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-sky-400" />
+                      Editar
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPrintModalProduct(prod);
-                      setQuantity(1);
-                    }}
-                    className="catalog-btn-produce bg-[#1c1c22] hover:bg-sky-500 hover:text-white text-slate-200 border border-white/[0.1] py-2.5 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
-                    title="Imprimir lote e alimentar estoque pronto"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Produzir (+Estoque)
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'copy');
+                      }}
+                      className="bg-[#1c1c22] hover:bg-white/[0.1] text-slate-300 border border-white/[0.1] py-2 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      title="Copiar / Duplicar este produto na calculadora"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-amber-400" />
+                      Copiar
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenSaleModal) {
+                          onOpenSaleModal(prod);
+                        }
+                      }}
+                      className="catalog-btn-sell bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2.5 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                      title="Registrar venda por Plataforma, CNPJ ou PF"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      Vender
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrintModalProduct(prod);
+                        setQuantity(1);
+                      }}
+                      className="catalog-btn-produce bg-[#1c1c22] hover:bg-sky-500 hover:text-white text-slate-200 border border-white/[0.1] py-2.5 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                      title="Imprimir lote e alimentar estoque pronto"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Produzir (+Estoque)
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -506,6 +562,42 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         onConfirm={handleConfirmDelete}
         onClose={() => !isDeleting && setDeleteTarget(null)}
       />
+
+      {/* Expanded Image Zoom Modal */}
+      {expandedImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={expandedImage.title}
+          className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-pointer animate-fadeIn"
+          onClick={() => setExpandedImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-[#121215] border border-white/[0.15] rounded-3xl p-3 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full px-3 py-2 border-b border-white/[0.08] mb-2">
+              <span className="text-xs font-bold text-white truncate max-w-md">{expandedImage.title}</span>
+              <button
+                type="button"
+                onClick={() => setExpandedImage(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.08] transition"
+                aria-label="Fechar visualização de imagem"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[75vh] w-full flex items-center justify-center">
+              <img
+                src={expandedImage.url}
+                alt={expandedImage.title}
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

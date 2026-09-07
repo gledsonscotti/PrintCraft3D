@@ -22,9 +22,10 @@ import {
   Cpu,
   Boxes,
   Shield,
-  Sliders
+  Sliders,
+  Truck
 } from 'lucide-react';
-import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply } from '../types';
+import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
@@ -90,6 +91,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [customTimeMinutes, setCustomTimeMinutes] = useState<number>(38);
   const [lossMarginPercent, setLossMarginPercent] = useState<number>(10);
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(5);
+  const [transportCost, setTransportCost] = useState<number>(0);
   const [markupPercent, setMarkupPercent] = useState<number>(120);
 
   // Apply initialParams when coming from ModelAnalyzerView
@@ -101,11 +103,8 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     }
   }, [initialParams]);
 
-  // Bill of Materials (Insumos extras para chaveiro: argolas, embalagens, mosquetão, etc.)
-  const [productSupplies, setProductSupplies] = useState<ExtraSupplyItem[]>([
-    { supply_id: 'sup-1', name: 'Argola de Chaveiro com Corrente Italiana 25mm', qty: 1, unit_cost: 0.35 },
-    { supply_id: 'sup-5', name: 'Saco Kraft c/ Visor e Fecho Zip 10x15cm', qty: 1, unit_cost: 0.45 },
-  ]);
+  // Bill of Materials (Insumos extras vazios por padrão)
+  const [productSupplies, setProductSupplies] = useState<ExtraSupplyItem[]>([]);
 
   // Selected supply to add
   const [supplyToAddId, setSupplyToAddId] = useState<string>('');
@@ -154,6 +153,16 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   // Save product state
   const [savingProduct, setSavingProduct] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+  // Carriers & Shipping cost selection
+  const [carriers, setCarriers] = useState<ShippingCarrier[]>([]);
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>('none');
+
+  useEffect(() => {
+    safeFetchJson<ShippingCarrier[]>('/api/carriers', undefined, []).then(data => {
+      if (Array.isArray(data)) setCarriers(data);
+    }).catch(() => {});
+  }, []);
 
   // Set default printer & filament when available
   useEffect(() => {
@@ -301,6 +310,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     printMode,
     multiColorItems,
     allFilaments: filaments,
+    transportCost,
   });
 
   // Supplies handlers
@@ -1022,8 +1032,8 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </div>
 
-            {/* Margem de Perda / Falha e Mão de Obra */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            {/* Margem de Perda / Falha, Mão de Obra e Custo de Transporte */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
               <div className="bg-[#0A0A0B]/50 border border-white/[0.05] rounded-2xl p-3.5">
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-slate-300 font-medium flex items-center gap-1.5">
@@ -1065,6 +1075,53 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
                   Fatiamento e pós-processamento (R$ {settings.hourly_labor_rate.toFixed(2)}/h).
+                </span>
+              </div>
+
+              <div className="bg-[#0A0A0B]/50 border border-white/[0.05] rounded-2xl p-3.5 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-sky-400" />
+                    Transportadora / Envio:
+                  </span>
+                  <span className="font-bold text-amber-400 font-mono">R$ {transportCost.toFixed(2)}</span>
+                </div>
+                <select
+                  value={selectedCarrierId}
+                  onChange={(e) => {
+                    const cid = e.target.value;
+                    setSelectedCarrierId(cid);
+                    if (cid === 'none') {
+                      setTransportCost(0);
+                    } else if (cid !== 'custom') {
+                      const found = carriers.find(c => c.id === cid);
+                      if (found) setTransportCost(found.default_cost);
+                    }
+                  }}
+                  className="w-full bg-[#16161C] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-400"
+                >
+                  <option value="none">Sem Frete (Retirada / Venda Direta)</option>
+                  {carriers.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.service_type}) - R$ {c.default_cost.toFixed(2)}
+                    </option>
+                  ))}
+                  <option value="custom">Outro / Valor Personalizado</option>
+                </select>
+                {selectedCarrierId === 'custom' && (
+                  <input
+                    type="number"
+                    min="0"
+                    max="200"
+                    step="0.50"
+                    value={transportCost}
+                    onChange={(e) => setTransportCost(Math.max(0, Number(e.target.value)))}
+                    placeholder="Valor do frete R$"
+                    className="w-full bg-[#16161C] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white font-bold font-mono focus:outline-none"
+                  />
+                )}
+                <span className="text-[10px] text-slate-500 block">
+                  Selecione a transportadora cadastrada ou defina o custo.
                 </span>
               </div>
             </div>
@@ -1237,6 +1294,14 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 <span className="text-sm font-bold text-teal-400 font-mono mt-0.5 block">R$ {costResult.laborCost.toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   {prepTimeMinutes} min
+                </span>
+              </div>
+
+              <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition col-span-2 sm:col-span-1">
+                <span className="text-[11px] text-slate-400 block truncate font-medium">Transporte / Frete</span>
+                <span className="text-sm font-bold text-amber-400 font-mono mt-0.5 block">R$ {costResult.transportCost.toFixed(2)}</span>
+                <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
+                  Logística
                 </span>
               </div>
             </div>

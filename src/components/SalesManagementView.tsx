@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   TrendingUp,
@@ -15,14 +15,16 @@ import {
   Receipt,
   Search,
   CheckCircle2,
-  Factory
+  Factory,
+  Check
 } from 'lucide-react';
-import { ProductSale, Product, SaleChannelType } from '../types';
+import { ProductSale, Product, SaleChannelType, Consignment } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface SalesManagementViewProps {
   sales: ProductSale[];
   products: Product[];
-  onOpenNewSaleModal: () => void;
+  onOpenNewSaleModal: (defaultMode?: 'direct' | 'indirect' | 'consignment' | 'presale') => void;
   onDeleteSale: (saleId: string) => void;
   onRefreshData: () => void;
   onGenerateOP?: (sale: ProductSale) => void;
@@ -36,28 +38,99 @@ export function SalesManagementView({
   onRefreshData,
   onGenerateOP,
 }: SalesManagementViewProps) {
+  const [activeSubTab, setActiveSubTab] = useState<'sales' | 'consignments'>('sales');
   const [filterChannel, setFilterChannel] = useState<'all' | SaleChannelType>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Agregações financeiras
+  // Consignments state
+  const [consignments, setConsignments] = useState<Consignment[]>([]);
+  const [selectedConsignment, setSelectedConsignment] = useState<Consignment | null>(null);
+  const [soldInputs, setSoldInputs] = useState<Record<string, number>>({});
+  const [paymentMethod, setPaymentMethod] = useState<string>('Acerto PIX');
+  const [settleMsg, setSettleMsg] = useState<string | null>(null);
+  const [isSettling, setIsSettling] = useState<boolean>(false);
+  const [consignmentToDelete, setConsignmentToDelete] = useState<Consignment | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<ProductSale | null>(null);
+
+  useEffect(() => {
+    fetchConsignments();
+  }, [sales]);
+
+  const fetchConsignments = async () => {
+    try {
+      const data = await safeFetchJson<Consignment[]>('/api/consignments', undefined, []);
+      if (Array.isArray(data)) {
+        setConsignments(data);
+      }
+    } catch {}
+  };
+
+  const handleOpenConsignment = (cons: Consignment) => {
+    setSelectedConsignment(cons);
+    const initial: Record<string, number> = {};
+    cons.items.forEach((item) => {
+      initial[item.id] = 0;
+    });
+    setSoldInputs(initial);
+    setSettleMsg(null);
+  };
+
+  const handleSettleConsignmentItems = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedConsignment) return;
+
+    const soldItems = Object.entries(soldInputs)
+      .filter(([_, qty]) => Number(qty) > 0)
+      .map(([item_id, quantity_sold_now]) => ({ item_id, quantity_sold_now: Number(quantity_sold_now) }));
+
+    if (soldItems.length === 0) {
+      setSettleMsg('Informe pelo menos 1 item vendido para registrar o acerto.');
+      return;
+    }
+
+    setIsSettling(true);
+    setSettleMsg(null);
+
+    try {
+      const res = await fetch(`/api/consignments/${selectedConsignment.id}/sell-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soldItems, payment_method: paymentMethod }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao registrar acerto');
+
+      fetchConsignments();
+      onRefreshData();
+      setSelectedConsignment(null);
+    } catch (err: any) {
+      setSettleMsg(err.message);
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  const handleDeleteConsignment = async (id: string) => {
+    if (!window.confirm('Deseja realmente excluir esta consignação? Os itens não vendidos voltarão para o estoque pronto.')) return;
+    try {
+      const res = await fetch(`/api/consignments/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao excluir consignação');
+      }
+      await fetchConsignments();
+      if (onRefreshData) onRefreshData();
+    } catch (e: any) {
+      alert('Erro ao excluir: ' + (e.message || 'Erro desconhecido'));
+    }
+  };
+
+  // Financial aggregates
   const totalRevenue = sales.reduce((acc, s) => acc + (s.total_revenue || 0), 0);
   const totalProfit = sales.reduce((acc, s) => acc + (s.profit || 0), 0);
   const totalQuantitySold = sales.reduce((acc, s) => acc + (s.quantity || 0), 0);
   const averageTicket = sales.length > 0 ? totalRevenue / sales.length : 0;
 
-  // Subtotais por canal
-  const platformSales = sales.filter((s) => s.channel_type === 'platform');
-  const cnpjSales = sales.filter((s) => s.channel_type === 'cnpj');
-  const pfSales = sales.filter((s) => s.channel_type === 'pf');
-
-  const platformRevenue = platformSales.reduce((acc, s) => acc + (s.total_revenue || 0), 0);
-  const cnpjRevenue = cnpjSales.reduce((acc, s) => acc + (s.total_revenue || 0), 0);
-  const pfRevenue = pfSales.reduce((acc, s) => acc + (s.total_revenue || 0), 0);
-
-  // Total de produtos prontos em estoque atualmente
-  const totalReadyStock = products.reduce((acc, p) => acc + (p.ready_stock_qty || 0), 0);
-
-  // Filtragem
   const filteredSales = sales.filter((sale) => {
     const matchesChannel = filterChannel === 'all' || sale.channel_type === filterChannel;
     const term = searchTerm.toLowerCase().trim();
@@ -65,13 +138,40 @@ export function SalesManagementView({
       !term ||
       sale.product_name.toLowerCase().includes(term) ||
       sale.channel_name.toLowerCase().includes(term) ||
-      (sale.customer_name && sale.customer_name.toLowerCase().includes(term)) ||
-      (sale.customer_document && sale.customer_document.toLowerCase().includes(term));
+      (sale.customer_name && sale.customer_name.toLowerCase().includes(term));
     return matchesChannel && matchesSearch;
   });
 
   const getChannelBadge = (sale: ProductSale) => {
     switch (sale.channel_type) {
+      case 'consignment':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <Store className="w-3.5 h-3.5 text-amber-400" />
+            {sale.channel_name}
+          </span>
+        );
+      case 'presale':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+            <ShoppingBag className="w-3.5 h-3.5 text-indigo-400" />
+            {sale.channel_name}
+          </span>
+        );
+      case 'direct':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            <User className="w-3.5 h-3.5 text-emerald-400" />
+            {sale.channel_name}
+          </span>
+        );
+      case 'indirect':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/30">
+            <Building2 className="w-3.5 h-3.5 text-teal-400" />
+            {sale.channel_name}
+          </span>
+        );
       case 'platform':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
@@ -109,409 +209,508 @@ export function SalesManagementView({
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
             <ShoppingBag className="w-6 h-6 text-emerald-400" />
-            Controle de Vendas & Estoque de Peças Prontas
+            Controle de Vendas, Consignados & Estoque
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Acompanhe o faturamento, lucro real e saídas por canal: Marketplaces (Mercado Livre/Shopee), CNPJ e Pessoa Física.
+            Gerencie vendas diretas, marketplaces, pré-vendas e consignações em lojas parceiras.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onOpenNewSaleModal}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            onClick={() => onOpenNewSaleModal('direct')}
+            className="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Registrar Nova Venda
+            Registrar Venda / Consignação
           </button>
         </div>
       </div>
 
-      {/* 4 Cards de Métricas Principais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Faturamento Total */}
-        <div className="bg-[#141417] p-4 rounded-3xl border border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Faturamento Total</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-white">
-            R$ {totalRevenue.toFixed(2)}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span className="text-emerald-400 font-semibold">{sales.length} vendas</span> registradas
-          </p>
-        </div>
-
-        {/* Lucro Líquido Real */}
-        <div className="bg-[#141417] p-4 rounded-3xl border border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Lucro Líquido Real</span>
-            <div className="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-400">
-            R$ {totalProfit.toFixed(2)}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}% de margem líquida média
-          </p>
-        </div>
-
-        {/* Peças Vendidas */}
-        <div className="bg-[#141417] p-4 rounded-3xl border border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Peças Prontas Vendidas</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
-              <Package className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-white">
-            {totalQuantitySold} un.
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Ticket Médio: R$ {averageTicket.toFixed(2)} / pedido
-          </p>
-        </div>
-
-        {/* Saldo de Peças em Estoque */}
-        <div className="bg-[#141417] p-4 rounded-3xl border border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Estoque Pronto Disponível</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-white">
-            {totalReadyStock} un.
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Distribuídas em {products.length} produtos cadastrados
-          </p>
-        </div>
-      </div>
-
-      {/* Cards de Comparação por Canal de Venda */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Canal 1: Plataformas / Marketplaces */}
-        <div
-          onClick={() => setFilterChannel(filterChannel === 'platform' ? 'all' : 'platform')}
-          className={`p-4 rounded-3xl border transition-all cursor-pointer ${
-            filterChannel === 'platform'
-              ? 'bg-amber-500/10 border-amber-500/50 shadow-md shadow-amber-500/10'
-              : 'bg-[#141417] border-white/[0.08] hover:border-amber-500/30'
+      {/* Sub-abas de Navegação */}
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('sales')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            activeSubTab === 'sales'
+              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
+              : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400">
-                <Store className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-white block">Plataformas / Marketplaces</span>
-                <span className="text-[10px] text-slate-400">Mercado Livre, Shopee, Amazon...</span>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
-              {platformSales.length} vendas
-            </span>
-          </div>
+          <Receipt className="w-4 h-4" />
+          Vendas Realizadas ({sales.length})
+        </button>
 
-          <div className="flex items-baseline justify-between pt-2 border-t border-white/[0.06]">
-            <div>
-              <span className="text-[10px] text-slate-400 block">Faturamento</span>
-              <span className="text-base font-extrabold text-white">R$ {platformRevenue.toFixed(2)}</span>
-            </div>
-            <span className="text-[11px] text-amber-400 font-semibold flex items-center">
-              {totalRevenue > 0 ? ((platformRevenue / totalRevenue) * 100).toFixed(0) : 0}% do total
-            </span>
-          </div>
-        </div>
-
-        {/* Canal 2: CNPJ / B2B */}
-        <div
-          onClick={() => setFilterChannel(filterChannel === 'cnpj' ? 'all' : 'cnpj')}
-          className={`p-4 rounded-3xl border transition-all cursor-pointer ${
-            filterChannel === 'cnpj'
-              ? 'bg-purple-500/10 border-purple-500/50 shadow-md shadow-purple-500/10'
-              : 'bg-[#141417] border-white/[0.08] hover:border-purple-500/30'
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('consignments')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            activeSubTab === 'consignments'
+              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40'
+              : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-white block">Empresas (CNPJ)</span>
-                <span className="text-[10px] text-slate-400">Brindes corporativos, B2B, NF</span>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
-              {cnpjSales.length} vendas
-            </span>
-          </div>
-
-          <div className="flex items-baseline justify-between pt-2 border-t border-white/[0.06]">
-            <div>
-              <span className="text-[10px] text-slate-400 block">Faturamento</span>
-              <span className="text-base font-extrabold text-white">R$ {cnpjRevenue.toFixed(2)}</span>
-            </div>
-            <span className="text-[11px] text-purple-400 font-semibold flex items-center">
-              {totalRevenue > 0 ? ((cnpjRevenue / totalRevenue) * 100).toFixed(0) : 0}% do total
-            </span>
-          </div>
-        </div>
-
-        {/* Canal 3: Pessoa Física / Balcão */}
-        <div
-          onClick={() => setFilterChannel(filterChannel === 'pf' ? 'all' : 'pf')}
-          className={`p-4 rounded-3xl border transition-all cursor-pointer ${
-            filterChannel === 'pf'
-              ? 'bg-sky-500/10 border-sky-500/50 shadow-md shadow-sky-500/10'
-              : 'bg-[#141417] border-white/[0.08] hover:border-sky-500/30'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400">
-                <User className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-white block">Pessoa Física</span>
-                <span className="text-[10px] text-slate-400">Venda direta, Balcão, PIX</span>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300">
-              {pfSales.length} vendas
-            </span>
-          </div>
-
-          <div className="flex items-baseline justify-between pt-2 border-t border-white/[0.06]">
-            <div>
-              <span className="text-[10px] text-slate-400 block">Faturamento</span>
-              <span className="text-base font-extrabold text-white">R$ {pfRevenue.toFixed(2)}</span>
-            </div>
-            <span className="text-[11px] text-sky-400 font-semibold flex items-center">
-              {totalRevenue > 0 ? ((pfRevenue / totalRevenue) * 100).toFixed(0) : 0}% do total
-            </span>
-          </div>
-        </div>
+          <Store className="w-4 h-4" />
+          Consignados & Expositores ({consignments.filter((c) => c.status === 'active').length} ativos)
+        </button>
       </div>
 
-      {/* Filtros e Busca */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#141417] p-3 rounded-2xl border border-white/[0.08]">
-        {/* Segmented filter */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setFilterChannel('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-              filterChannel === 'all'
-                ? 'bg-white text-black'
-                : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
-            }`}
-          >
-            Todos ({sales.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterChannel('platform')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-              filterChannel === 'platform'
-                ? 'bg-amber-400 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-amber-300 hover:bg-white/[0.06]'
-            }`}
-          >
-            <Store className="w-3 h-3" />
-            Plataformas ({platformSales.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterChannel('cnpj')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-              filterChannel === 'cnpj'
-                ? 'bg-purple-500 text-white font-bold'
-                : 'text-slate-400 hover:text-purple-300 hover:bg-white/[0.06]'
-            }`}
-          >
-            <Building2 className="w-3 h-3" />
-            CNPJ ({cnpjSales.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterChannel('pf')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-              filterChannel === 'pf'
-                ? 'bg-sky-500 text-white font-bold'
-                : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.06]'
-            }`}
-          >
-            <User className="w-3 h-3" />
-            Pessoa Física ({pfSales.length})
-          </button>
-        </div>
-
-        {/* Input de busca */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar produto, cliente ou canal..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Tabela de Vendas */}
-      <div className="bg-[#141417] rounded-3xl border border-white/[0.08] overflow-hidden shadow-sm">
-        {filteredSales.length === 0 ? (
-          <div className="p-12 text-center">
-            <ShoppingBag className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-300">Nenhuma venda encontrada</p>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Quando você registrar uma saída no balcão, Mercado Livre, Shopee ou venda corporativa (CNPJ), ela aparecerá aqui com baixa automática de estoque.
-            </p>
-            <button
-              type="button"
-              onClick={onOpenNewSaleModal}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Registrar Primeira Venda
-            </button>
+      {/* CONTEÚDO DA SUB-ABA: VENDAS REALIZADAS */}
+      {activeSubTab === 'sales' && (
+        <div className="space-y-6">
+          {/* Cards de Métricas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
+              <span className="text-[11px] text-slate-400 font-medium block">Faturamento Total</span>
+              <span className="text-lg font-extrabold text-emerald-400 mt-1 block">
+                R$ {totalRevenue.toFixed(2)}
+              </span>
+            </div>
+            <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
+              <span className="text-[11px] text-slate-400 font-medium block">Lucro Líquido Real</span>
+              <span className="text-lg font-extrabold text-sky-400 mt-1 block">
+                R$ {totalProfit.toFixed(2)}
+              </span>
+            </div>
+            <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
+              <span className="text-[11px] text-slate-400 font-medium block">Qtd. Peças Vendidas</span>
+              <span className="text-lg font-extrabold text-white mt-1 block">
+                {totalQuantitySold} un.
+              </span>
+            </div>
+            <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
+              <span className="text-[11px] text-slate-400 font-medium block">Ticket Médio</span>
+              <span className="text-lg font-extrabold text-purple-400 mt-1 block">
+                R$ {averageTicket.toFixed(2)}
+              </span>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-white/[0.08] bg-[#101012] text-slate-400">
-                  <th className="py-3 px-4 font-semibold">Data</th>
-                  <th className="py-3 px-4 font-semibold">Produto & Quantidade</th>
-                  <th className="py-3 px-4 font-semibold">Canal de Venda</th>
-                  <th className="py-3 px-4 font-semibold">Cliente / Detalhes</th>
-                  <th className="py-3 px-4 font-semibold">Preço Unit.</th>
-                  <th className="py-3 px-4 font-semibold">Faturamento</th>
-                  <th className="py-3 px-4 font-semibold">Custo Total</th>
-                  <th className="py-3 px-4 font-semibold">Lucro Real</th>
-                  <th className="py-3 px-4 font-semibold text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {filteredSales.map((sale) => {
-                  const saleDate = new Date(sale.created_at);
-                  const formattedDate = saleDate.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
 
-                  return (
-                    <tr key={sale.id} className="hover:bg-white/[0.02] transition">
-                      <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">
-                        {formattedDate}
-                      </td>
+          {/* Filtros e Busca */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar por produto ou cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#1c1c20] border border-white/[0.1] rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none"
+              />
+            </div>
 
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-white flex items-center gap-1.5">
-                          <span>{sale.product_name}</span>
-                          <span className="px-2 py-0.5 rounded-md bg-white/[0.08] text-slate-300 text-[11px] font-semibold">
-                            {sale.quantity}x
-                          </span>
-                        </div>
-                      </td>
+            <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+              {[
+                { label: 'Todos', value: 'all' },
+                { label: 'Venda Direta', value: 'direct' },
+                { label: 'Marketplaces', value: 'platform' },
+                { label: 'CNPJ / B2B', value: 'cnpj' },
+                { label: 'Consignação', value: 'consignment' },
+                { label: 'Pré-venda', value: 'presale' },
+              ].map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setFilterChannel(f.value as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                    filterChannel === f.value
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                      : 'bg-[#1c1c20] text-slate-400 border-white/[0.08] hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {getChannelBadge(sale)}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-300">
-                        {sale.customer_name ? (
-                          <div className="font-medium text-slate-200">
-                            {sale.customer_name}
-                            {sale.customer_document && (
-                              <span className="text-[10px] text-slate-400 block">
-                                Doc: {sale.customer_document}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500">—</span>
-                        )}
-                        {sale.notes && (
-                          <span className="text-[10px] text-slate-400 block line-clamp-1">
-                            {sale.notes}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-300 whitespace-nowrap">
-                        R$ {sale.unit_price.toFixed(2)}
-                      </td>
-
-                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
-                        R$ {sale.total_revenue.toFixed(2)}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">
-                        R$ {sale.total_cost.toFixed(2)}
-                        {sale.platform_fee_amount && sale.platform_fee_amount > 0 ? (
-                          <span className="text-[10px] text-amber-400 block">
-                            + R$ {sale.platform_fee_amount.toFixed(2)} taxa
-                          </span>
-                        ) : null}
-                      </td>
-
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`font-extrabold ${sale.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          R$ {sale.profit.toFixed(2)}
-                        </span>
-                        {sale.total_revenue > 0 && (
-                          <span className="text-[10px] text-slate-400 block">
-                            {((sale.profit / sale.total_revenue) * 100).toFixed(0)}% margem
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+          {/* Tabela de Vendas */}
+          <div className="bg-[#141417] border border-white/[0.08] rounded-3xl overflow-hidden">
+            {filteredSales.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <ShoppingBag className="w-12 h-12 text-slate-600 mx-auto" />
+                <p className="text-sm text-slate-400">Nenhuma venda registrada com os filtros selecionados.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1c1c20] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/[0.06]">
+                    <tr>
+                      <th className="px-5 py-3.5">Data / Hora</th>
+                      <th className="px-5 py-3.5">Produto</th>
+                      <th className="px-5 py-3.5">Canal / Cliente</th>
+                      <th className="px-5 py-3.5 text-center">Qtd</th>
+                      <th className="px-5 py-3.5 text-right">Valor Total</th>
+                      <th className="px-5 py-3.5 text-right">Lucro Líquido</th>
+                      <th className="px-5 py-3.5 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {filteredSales.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-white/[0.02] transition">
+                        <td className="px-5 py-4 text-slate-400 whitespace-nowrap">
+                          {new Date(sale.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="px-5 py-4 font-bold text-white">
+                          {sale.product_name}
+                          {sale.payment_method && (
+                            <span className="block text-[10px] font-normal text-slate-400">
+                              Pagto: {sale.payment_method}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">{getChannelBadge(sale)}</td>
+                        <td className="px-5 py-4 text-center font-bold text-sky-400">{sale.quantity} un.</td>
+                        <td className="px-5 py-4 text-right font-extrabold text-emerald-400">
+                          R$ {sale.total_revenue.toFixed(2)}
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-sky-300">
+                          R$ {(sale.profit || 0).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-4 text-center flex items-center justify-center gap-2">
                           {onGenerateOP && (
                             <button
                               type="button"
                               onClick={() => onGenerateOP(sale)}
-                              className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-                              title="Criar Ordem de Produção (OP) na oficina para este pedido"
+                              className="px-2.5 py-1.5 rounded-xl bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/25 transition text-[11px] font-semibold flex items-center gap-1"
+                              title="Gerar Ordem de Produção para repor estoque"
                             >
-                              <Factory className="w-3 h-3" />
-                              <span className="hidden sm:inline">Gerar OP</span>
+                              <Factory className="w-3.5 h-3.5" />
+                              Repor
                             </button>
                           )}
                           <button
                             type="button"
-                            onClick={() => onDeleteSale(sale.id)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-white/[0.06] transition cursor-pointer"
-                            title="Cancelar/Estornar venda e devolver ao estoque"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSaleToDelete(sale);
+                            }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/15 rounded-xl transition cursor-pointer"
+                            title="Excluir venda"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CONTEÚDO DA SUB-ABA: CONSIGNADOS & EXPOSITORES */}
+      {activeSubTab === 'consignments' && (
+        <div className="space-y-6">
+          <div className="bg-[#141417] p-5 rounded-3xl border border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-300">Gestão de Consignações em Lojas Parceiras</h3>
+                <p className="text-xs text-slate-400">
+                  Clique em um lote consignado para ver os itens expostos e registrar a venda (acerto) dos produtos vendidos.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenNewSaleModal('consignment')}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition"
+            >
+              + Nova Consignação
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {consignments.length === 0 ? (
+              <div className="col-span-2 text-center py-16 bg-[#141417] rounded-3xl border border-white/[0.08] space-y-3">
+                <Store className="w-12 h-12 text-slate-600 mx-auto" />
+                <p className="text-sm text-slate-400">Nenhuma consignação registrada até o momento.</p>
+              </div>
+            ) : (
+              consignments.map((cons) => {
+                const totalConsigned = cons.items.reduce((acc, i) => acc + i.quantity_consigned, 0);
+                const totalSold = cons.items.reduce((acc, i) => acc + i.quantity_sold, 0);
+                const isSettled = cons.status === 'settled';
+
+                return (
+                  <div
+                    key={cons.id}
+                    className={`bg-[#141417] border rounded-3xl p-5 space-y-4 transition ${
+                      isSettled ? 'border-white/[0.06] opacity-75' : 'border-amber-500/30 shadow-lg shadow-amber-500/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Store className="w-5 h-5 text-amber-400" />
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{cons.client_name}</h4>
+                          <span className="text-[10px] text-slate-400">
+                            Registrado em {new Date(cons.created_at).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            isSettled
+                              ? 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+                              : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          }`}
+                        >
+                          {isSettled ? 'Acertado / Baixado' : 'Exposição Ativa'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConsignmentToDelete(cons);
+                          }}
+                          className="p-1.5 text-rose-400 hover:bg-rose-500/20 rounded-xl cursor-pointer"
+                          title="Excluir consignação"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resumo de itens */}
+                    <div className="space-y-2 bg-[#1c1c20] p-3.5 rounded-2xl border border-white/[0.04]">
+                      <div className="text-xs font-semibold text-slate-300 mb-1">Itens no Expositor:</div>
+                      {cons.items.map((item) => {
+                        const unsold = item.quantity_consigned - item.quantity_sold;
+                        return (
+                          <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-white/[0.04] last:border-0">
+                            <span className="font-medium text-white">{item.product_name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-400">Consignados: <strong className="text-white">{item.quantity_consigned}</strong></span>
+                              <span className="text-emerald-400">Vendidos: <strong>{item.quantity_sold}</strong></span>
+                              <span className="text-amber-400">Em Loja: <strong>{unsold}</strong></span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {!isSettled && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenConsignment(cons)}
+                        className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        Realizar Acerto / Registrar Vendas deste Expositor
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ACERTO DE CONSIGNADOS */}
+      {selectedConsignment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="bg-[#18181b] border border-white/[0.12] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#141416]">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Store className="w-4 h-4 text-amber-400" />
+                Acerto de Consignação — {selectedConsignment.client_name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelectedConsignment(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSettleConsignmentItems} className="p-6 space-y-4">
+              {settleMsg && (
+                <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+                  {settleMsg}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-400">
+                Informe quantos itens foram vendidos nesta acerto/prestação de contas da loja parceira. O sistema gerará a receita e o lucro correspondentes.
+              </p>
+
+              <div className="space-y-3">
+                {selectedConsignment.items.map((item) => {
+                  const unsold = item.quantity_consigned - item.quantity_sold;
+                  if (unsold <= 0) return null;
+
+                  return (
+                    <div key={item.id} className="p-3 bg-[#1c1c20] rounded-2xl border border-white/[0.08] flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-bold text-white">{item.product_name}</div>
+                        <div className="text-[10px] text-slate-400">
+                          Disponível em loja: {unsold} un. | Preço Un: R$ {item.unit_price.toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-400">Vendidos agora:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={unsold}
+                          value={soldInputs[item.id] || 0}
+                          onChange={(e) =>
+                            setSoldInputs({
+                              ...soldInputs,
+                              [item.id]: Math.min(unsold, Math.max(0, parseInt(e.target.value, 10) || 0)),
+                            })
+                          }
+                          className="w-16 bg-[#141417] border border-white/[0.12] rounded-xl px-2.5 py-1 text-xs text-white font-bold text-center"
+                        />
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Forma de Recebimento do Acerto</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full bg-[#1c1c20] border border-white/[0.12] rounded-xl px-3 py-2 text-xs text-white"
+                >
+                  <option value="Acerto PIX">PIX Recebido da Loja</option>
+                  <option value="Acerto Dinheiro">Dinheiro em Espécie</option>
+                  <option value="Acerto Transferência">Transferência Bancária</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedConsignment(null)}
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSettling}
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition"
+                >
+                  {isSettling ? 'Salvando...' : 'Confirmar Acerto & Gerar Vendas'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE CONSIGNADO */}
+      {consignmentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#18181b] border border-rose-500/30 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Excluir Consignação</h3>
+                <p className="text-xs text-slate-400">{consignmentToDelete.client_name}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Tem certeza que deseja excluir esta consignação? Os itens não vendidos retornarão automaticamente para o estoque pronto.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConsignmentToDelete(null)}
+                className="px-4 py-2 text-xs text-slate-400 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = consignmentToDelete.id;
+                  setConsignmentToDelete(null);
+                  try {
+                    const res = await fetch(`/api/consignments/${id}`, { method: 'DELETE' });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || 'Erro ao excluir consignação');
+                    await fetchConsignments();
+                    if (onRefreshData) onRefreshData();
+                  } catch (e: any) {
+                    alert('Erro ao excluir: ' + (e.message || 'Erro desconhecido'));
+                  }
+                }}
+                className="px-5 py-2.5 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+              >
+                Sim, Excluir Consignação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE VENDA */}
+      {saleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#18181b] border border-rose-500/30 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Excluir Venda & Estornar Estoque</h3>
+                <p className="text-xs text-slate-400">{saleToDelete.product_name} ({saleToDelete.quantity} un.)</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Tem certeza que deseja excluir esta venda? A quantidade vendida retornará automaticamente para o estoque pronto.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSaleToDelete(null)}
+                className="px-4 py-2 text-xs text-slate-400 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = saleToDelete.id;
+                  setSaleToDelete(null);
+                  await onDeleteSale(id);
+                }}
+                className="px-5 py-2.5 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+              >
+                Sim, Excluir Venda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
