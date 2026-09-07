@@ -1823,5 +1823,56 @@ html[data-theme="high-contrast-light"] .production-table-btn-postprocess {
   font-weight: 800 !important;
 }
 
+/* Printers Sub-Tabs Theme Adaptation */
+html[data-theme="sage-bento"] .printers-subtabs-bar {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .printers-subtabs-inner {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .printers-subtab-btn {
+  color: #4A6054 !important;
+}
+
+html[data-theme="sage-bento"] .printers-subtab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printers-subtab-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="high-contrast-light"] .printers-subtabs-bar {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printers-subtabs-inner {
+  background-color: #F1F3F5 !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printers-subtab-btn {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printers-subtab-btn:hover {
+  background-color: #E2E8F0 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printers-subtab-active {
+  background-color: #09090B !important;
+  color: #FFFFFF !important;
+}
+
+
 
 

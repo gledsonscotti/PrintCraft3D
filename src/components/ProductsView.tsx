@@ -237,35 +237,41 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 className="bg-[#121215] border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-5 space-y-4 shadow-sm shadow-black/40 flex flex-col justify-between transition"
               >
                 <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-xl uppercase tracking-wider">
-                          {prod.category}
-                        </span>
+                  {/* Line 1: Category on its own line */}
+                  <div>
+                    <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl uppercase tracking-wider inline-block">
+                      {prod.category}
+                    </span>
+                  </div>
 
-                        {/* Ready Stock Status Badge */}
-                        <span
-                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-                            (prod.ready_stock_qty || 0) > 0
-                              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                              : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
-                          }`}
-                        >
-                          {(prod.ready_stock_qty || 0) > 0 ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                              {prod.ready_stock_qty} un. em estoque
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="w-3 h-3 text-slate-400" />
-                              0 un. em estoque
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-white">{prod.name}</h3>
+                  {/* Line 2: Product Name */}
+                  <div>
+                    <h3 className="text-base font-bold text-white leading-snug">{prod.name}</h3>
+                  </div>
+
+                  {/* Line 3 (Right below): Stock data, quantity adjuster (- 1 +), edit, copy, delete */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-white/[0.06]">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Ready Stock Status Badge */}
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                          (prod.ready_stock_qty || 0) > 0
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                        }`}
+                      >
+                        {(prod.ready_stock_qty || 0) > 0 ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            {prod.ready_stock_qty} un. em estoque
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="w-3 h-3 text-slate-400" />
+                            0 un. em estoque
+                          </>
+                        )}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -293,6 +299,28 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'edit');
+                        }}
+                        className="text-slate-400 hover:text-sky-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
+                        title="Editar produto na calculadora"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'copy');
+                        }}
+                        className="text-slate-400 hover:text-amber-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
+                        title="Copiar / Duplicar produto"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
 
                       <button
                         type="button"
@@ -396,34 +424,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Edit, Copy, Vender e Produzir actions */}
-                <div className="space-y-2 mt-3 pt-2 border-t border-white/[0.06]">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'edit');
-                      }}
-                      className="bg-[#1c1c22] hover:bg-white/[0.1] text-slate-300 border border-white/[0.1] py-2 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      title="Editar este produto na calculadora"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-sky-400" />
-                      Editar
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onSelectProductForCalculator) onSelectProductForCalculator(prod, 'copy');
-                      }}
-                      className="bg-[#1c1c22] hover:bg-white/[0.1] text-slate-300 border border-white/[0.1] py-2 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      title="Copiar / Duplicar este produto na calculadora"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-amber-400" />
-                      Copiar
-                    </button>
-                  </div>
-
+                {/* Vender e Produzir actions */}
+                <div className="mt-3 pt-2 border-t border-white/[0.06]">
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"

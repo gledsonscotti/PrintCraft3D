@@ -303,7 +303,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleResetDefaults}
-                  className="px-3 py-1.5 rounded-xl bg-[#1A1A20] hover:bg-[#22222A] text-slate-400 hover:text-white text-xs font-semibold border border-white/[0.08] flex items-center gap-1.5 transition cursor-pointer"
+                  className="integration-btn-secondary px-3 py-1.5 rounded-xl bg-[#1A1A20] hover:bg-[#22222A] text-slate-400 hover:text-white text-xs font-semibold border border-white/[0.08] flex items-center gap-1.5 transition cursor-pointer"
                   title="Restaurar valores de mercado recomendados"
                 >
                   <RotateCcw className="w-3 h-3" />

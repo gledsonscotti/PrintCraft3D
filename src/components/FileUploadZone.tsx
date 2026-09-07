@@ -46,6 +46,8 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [infill, setInfill] = useState(20);
   const [layerHeight, setLayerHeight] = useState(0.20);
+  const [walls, setWalls] = useState(3);
+  const [supports, setSupports] = useState<'none' | 'auto' | 'tree'>('auto');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -77,7 +79,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
         infillPercent: infill,
         layerHeightMm: layerHeight,
         filamentDiameter,
-        wallThicknessMm: 1.2,
+        wallThicknessMm: walls * 0.4,
       });
 
       let buffer: ArrayBuffer | undefined;
@@ -108,7 +110,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Drop Zone Area with Multi-Format Support */}
       <div
         id="file-dropzone"
@@ -186,28 +188,38 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
       </div>
 
       {/* Model Slicing Adjusters for Mesh & CAD */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 space-y-3.5 shadow-sm shadow-black/40">
+      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 space-y-4 shadow-sm shadow-black/40">
         {/* Title and Filament Badge on one clean row */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
           <div className="flex items-center gap-2 min-w-0">
             <Sliders className="w-4 h-4 text-sky-400 shrink-0" />
-            <span className="text-xs sm:text-sm font-bold text-white tracking-tight whitespace-nowrap">
+            <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
               Parâmetros de Fatiamento (STL, 3MF & CAD)
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 font-mono bg-white/[0.04] px-2.5 py-1 rounded-xl border border-white/[0.06] shrink-0 whitespace-nowrap">
+          <span className="text-[11px] text-slate-300 font-mono bg-white/[0.04] px-2.5 py-1 rounded-xl border border-white/[0.06] shrink-0">
             {selectedFilament?.material || 'PLA'} ({selectedFilament?.density || 1.24} g/cm³)
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {/* Preenchimento (Infill) */}
-          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-3.5 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Preenchimento (Infill) com Slider e Input Numérico */}
+          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-4 space-y-3">
+            <div className="flex justify-between items-center text-xs">
               <span className="text-slate-300 font-medium">Preenchimento (Infill):</span>
-              <span className="font-bold text-sky-400 font-mono text-xs">{infill}%</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={infill}
+                  onChange={(e) => setInfill(Math.max(0, Math.min(100, Number(e.target.value))))}
+                  className="w-16 bg-[#16161a] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-sky-400 font-mono font-bold text-center focus:outline-none focus:border-sky-400"
+                />
+                <span className="text-sky-400 font-bold text-xs">%</span>
+              </div>
             </div>
-            <div className="space-y-1.5 pt-0.5">
+            <div className="space-y-1.5">
               <input
                 type="range"
                 min="5"
@@ -225,32 +237,93 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
             </div>
           </div>
 
-          {/* Altura de Camada */}
-          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-3.5 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs mb-2">
-              <span className="text-slate-300 font-medium">Altura de Camada:</span>
-              <span className="font-bold text-sky-400 font-mono text-xs">
-                {layerHeight.toFixed(2)} mm
-              </span>
+          {/* Altura de Camada com Botões de Presets e Input Customizado */}
+          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-4 space-y-3">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-300 font-medium">Altura de Camada (mm):</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.05"
+                  max="0.40"
+                  value={layerHeight}
+                  onChange={(e) => setLayerHeight(Math.max(0.05, Math.min(0.40, Number(e.target.value))))}
+                  className="w-20 bg-[#16161a] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-sky-400 font-mono font-bold text-center focus:outline-none focus:border-sky-400"
+                />
+                <span className="text-slate-400 text-xs font-mono">mm</span>
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+            <div className="grid grid-cols-4 gap-1.5 pt-1">
               {[
-                { value: 0.12, label: '0.12mm' },
-                { value: 0.16, label: '0.16mm' },
-                { value: 0.20, label: '0.20mm' },
-                { value: 0.28, label: '0.28mm' },
+                { value: 0.12, label: '0.12' },
+                { value: 0.16, label: '0.16' },
+                { value: 0.20, label: '0.20' },
+                { value: 0.28, label: '0.28' },
               ].map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setLayerHeight(opt.value)}
-                  className={`layer-preset-btn text-xs py-1.5 px-1 rounded-xl border text-center font-mono transition cursor-pointer select-none ${
+                  className={`text-xs py-1.5 px-1 rounded-xl border text-center font-mono transition cursor-pointer select-none ${
                     Math.abs(layerHeight - opt.value) < 0.001
-                      ? 'layer-preset-active bg-sky-500/20 border-sky-400/60 text-sky-300 font-bold shadow-sm'
-                      : 'bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] hover:border-white/[0.15]'
+                      ? 'bg-sky-500/20 border-sky-400/60 text-sky-300 font-bold shadow-sm'
+                      : 'bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
                   }`}
                 >
                   {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Paredes / Perímetros */}
+          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-4 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-300 font-medium">Paredes / Perímetros:</span>
+              <span className="font-bold text-emerald-400 font-mono text-xs">{walls} paredes ({(walls * 0.4).toFixed(1)}mm)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWalls(w)}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold transition border cursor-pointer ${
+                    walls === w
+                      ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300 shadow-sm'
+                      : 'bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {w}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Suportes (Supports) */}
+          <div className="bg-[#0A0A0B]/80 border border-white/[0.06] rounded-2xl p-4 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-300 font-medium">Geração de Suportes:</span>
+              <span className="font-bold text-amber-300 font-mono text-xs uppercase">{supports}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {[
+                { id: 'none', label: 'Nenhum' },
+                { id: 'auto', label: 'Automático' },
+                { id: 'tree', label: 'Árvore (Tree)' },
+              ].map((sup) => (
+                <button
+                  key={sup.id}
+                  type="button"
+                  onClick={() => setSupports(sup.id as any)}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                    supports === sup.id
+                      ? 'bg-amber-500/20 border-amber-400/60 text-amber-300 shadow-sm'
+                      : 'bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {sup.label}
                 </button>
               ))}
             </div>

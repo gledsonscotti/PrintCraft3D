@@ -19,9 +19,10 @@ import {
   Leaf,
   Globe,
   Factory,
-  Box
+  Box,
+  Users
 } from 'lucide-react';
-import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder } from './types';
+import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder, Client } from './types';
 import { ModelAnalyzerView } from './components/ModelAnalyzerView';
 import { CostCalculatorView } from './components/CostCalculatorView';
 import { StockManagementView } from './components/StockManagementView';
@@ -30,12 +31,13 @@ import { ProductsView } from './components/ProductsView';
 import { PrintHistoryView } from './components/PrintHistoryView';
 import { SalesManagementView } from './components/SalesManagementView';
 import { ProductionControlView } from './components/ProductionControlView';
+import { ClientsView } from './components/ClientsView';
 import { SettingsView } from './components/SettingsView';
 import { RegisterSaleModal } from './components/RegisterSaleModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'history' | 'settings'>('analyzer');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'history' | 'settings'>('analyzer');
   const [calculatorInitialParams, setCalculatorInitialParams] = useState<any>(null);
   const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'integrations'>('costs');
   const [loading, setLoading] = useState(true);
@@ -122,6 +124,16 @@ export default function App() {
       return [];
     }
   });
+
+  const [clients, setClients] = useState<Client[]>(() => {
+    try {
+      const cached = localStorage.getItem('printcraft_clients');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [preselectedSaleForOP, setPreselectedSaleForOP] = useState<ProductSale | null>(null);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -147,7 +159,7 @@ export default function App() {
   // Load all data from SQLite and synchronize with localStorage
   const fetchData = async () => {
     try {
-      const [printersRes, filamentsRes, suppliesRes, productsRes, jobsRes, salesRes, ordersRes, settingsRes] = await Promise.all([
+      const [printersRes, filamentsRes, suppliesRes, productsRes, jobsRes, salesRes, ordersRes, clientsRes, settingsRes] = await Promise.all([
         safeFetchJson<Printer[]>('/api/printers', undefined, []),
         safeFetchJson<Filament[]>('/api/filaments', undefined, []),
         safeFetchJson<Supply[]>('/api/supplies', undefined, []),
@@ -155,6 +167,7 @@ export default function App() {
         safeFetchJson<PrintJob[]>('/api/print-jobs', undefined, []),
         safeFetchJson<ProductSale[]>('/api/sales', undefined, []),
         safeFetchJson<ProductionOrder[]>('/api/production-orders', undefined, []),
+        safeFetchJson<Client[]>('/api/clients', undefined, []),
         safeFetchJson<any>('/api/settings', undefined, {}),
       ]);
 
@@ -165,6 +178,7 @@ export default function App() {
       const serverJobs: PrintJob[] = Array.isArray(jobsRes) ? jobsRes : [];
       const serverSales: ProductSale[] = Array.isArray(salesRes) ? salesRes : [];
       const serverOrders: ProductionOrder[] = Array.isArray(ordersRes) ? ordersRes : [];
+      const serverClients: Client[] = Array.isArray(clientsRes) ? clientsRes : [];
 
       // Always trust the SQLite server as the single source of truth
       if (Array.isArray(serverPrinters)) {
@@ -194,6 +208,10 @@ export default function App() {
       if (Array.isArray(serverOrders)) {
         setProductionOrders(serverOrders);
         try { localStorage.setItem('printcraft_production_orders', JSON.stringify(serverOrders)); } catch {}
+      }
+      if (Array.isArray(serverClients)) {
+        setClients(serverClients);
+        try { localStorage.setItem('printcraft_clients', JSON.stringify(serverClients)); } catch {}
       }
       if (settingsRes && !settingsRes.error) {
         setSettings(settingsRes);
@@ -280,6 +298,38 @@ export default function App() {
 
               <button
                 type="button"
+                onClick={() => setActiveTab('products')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === 'products'
+                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>Catálogo</span>
+                {products.length > 0 && (
+                  <span className="text-[10px] opacity-70 font-mono">({products.length})</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('clients')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === 'clients'
+                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
+                    : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Clientes</span>
+                {clients.length > 0 && (
+                  <span className="text-[10px] opacity-70 font-mono">({clients.length})</span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('stock')}
                 className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'stock'
@@ -293,24 +343,6 @@ export default function App() {
                   <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-sm">
                     {lowStockCount}
                   </span>
-                )}
-              </button>
-
-
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('products')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'products'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <Tag className="w-3.5 h-3.5" />
-                <span>Catálogo</span>
-                {products.length > 0 && (
-                  <span className="text-[10px] opacity-70 font-mono">({products.length})</span>
                 )}
               </button>
 
@@ -353,19 +385,6 @@ export default function App() {
                 {sales.length > 0 && (
                   <span className="text-[10px] opacity-70 font-mono">({sales.length})</span>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('history')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'history'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                <History className="w-3.5 h-3.5" />
-                <span>Histórico</span>
               </button>
 
               <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
@@ -510,6 +529,26 @@ export default function App() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('products')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                activeTab === 'products' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5 shrink-0" />
+              Catálogo
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('clients')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                activeTab === 'clients' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              Clientes
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('stock')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'stock' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
@@ -522,17 +561,6 @@ export default function App() {
                   {lowStockCount}
                 </span>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('products')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'products' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5 shrink-0" />
-              Catálogo
             </button>
             <button
               type="button"
@@ -553,16 +581,6 @@ export default function App() {
             >
               <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
               Vendas
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('history')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'history' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <History className="w-3.5 h-3.5 shrink-0" />
-              Histórico
             </button>
             <button
               type="button"
@@ -658,6 +676,7 @@ export default function App() {
                 filaments={filaments}
                 supplies={supplies}
                 sales={sales}
+                printJobs={printJobs}
                 onRefreshData={fetchData}
                 preselectedSaleForOP={preselectedSaleForOP}
                 onClearPreselectedSale={() => setPreselectedSaleForOP(null)}
@@ -683,8 +702,12 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'history' && (
-              <PrintHistoryView jobs={printJobs} />
+            {activeTab === 'clients' && (
+              <ClientsView
+                clients={clients}
+                onRefreshData={fetchData}
+                theme={theme}
+              />
             )}
 
             {activeTab === 'settings' && (

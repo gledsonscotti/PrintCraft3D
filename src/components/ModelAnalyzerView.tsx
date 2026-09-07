@@ -218,33 +218,76 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
         </div>
       )}
 
-      {/* Main Grid: Upload & 3D Viewer */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: File Loader & Sample Presets (4 cols) */}
-        <div className="lg:col-span-4 space-y-5">
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Upload className="w-4 h-4 text-sky-400" />
-              Carregar Arquivo 3D / G-code
+      {/* Main Stack: Interactive 3D Viewer at Top, File Upload & Parameters Directly Below */}
+      <div className="space-y-6">
+        {/* 1. Visualizador 3D Interativo (Prominent Top Section) */}
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Box className="w-5 h-5 text-sky-400" />
+              Visualizador 3D Interativo
             </h2>
-            <FileUploadZone
-              onModelLoaded={handleModelLoaded}
-              sampleType={sampleType}
-              setSampleType={setSampleType}
-            />
+            <div className="flex items-center gap-2 bg-[#0A0A0B] px-3 py-1.5 rounded-2xl border border-white/[0.06]">
+              <span className="text-xs text-slate-400">Filamento:</span>
+              <span
+                className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
+                style={{ backgroundColor: activeFilament?.color_hex || '#2563eb' }}
+              />
+              <span className="text-xs font-mono font-bold text-white">{activeFilament?.name || 'Padrão'}</span>
+            </div>
           </div>
 
-          {/* Geometry Statistics Summary */}
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Scale className="w-4 h-4 text-emerald-400" />
-              Relatório de Geometria
+          <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B]">
+            <ModelViewer3D
+              modelObject={modelObject}
+              modelBuffer={modelBuffer}
+              sampleType={sampleType}
+              filamentColor={activeFilament?.color_hex || '#2563eb'}
+              dimensions={parsedModel.dimensions}
+              fileType={parsedModel.fileType}
+              formatLabel={parsedModel.formatLabel}
+              trianglesCount={parsedModel.trianglesCount}
+              layerCount={parsedModel.layerCount}
+              theme={theme}
+              onSnapshotReady={(getter) => {
+                canvasSnapshotGetterRef.current = getter;
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 2. Carregar Arquivo 3D / G-code & Parâmetros de Fatiamento (Logo abaixo do Visualizador 3D) */}
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-5">
+          <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+            <Upload className="w-5 h-5 text-sky-400" />
+            Carregar Arquivo 3D / G-code & Parâmetros de Fatiamento
+          </h2>
+          <FileUploadZone
+            onModelLoaded={handleModelLoaded}
+            sampleType={sampleType}
+            setSampleType={setSampleType}
+            selectedFilament={activeFilament}
+            onRequestAiOptimization={handleRequestAiOptimization}
+            loadingAi={loadingAi}
+            aiOptimizationResult={aiOptimizationResult}
+            onOpenAdvisorModal={() => setIsAdvisorModalOpen(true)}
+            aiTips={aiTips}
+          />
+        </div>
+
+        {/* 3. Relatório de Geometria & Dicas de Slicing (Grid inferior) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Geometry Statistics Summary (6 cols) */}
+          <div className="lg:col-span-6 bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Scale className="w-5 h-5 text-emerald-400" />
+              Relatório de Geometria Detalhado
             </h2>
 
             <div className="space-y-2.5 text-xs font-mono">
               <div className="flex justify-between items-center bg-[#0A0A0B] p-3 rounded-2xl border border-white/[0.06]">
                 <span className="text-slate-400 font-sans">Arquivo:</span>
-                <span className="text-white font-bold truncate max-w-[180px]" title={parsedModel.fileName}>
+                <span className="text-white font-bold truncate max-w-[220px]" title={parsedModel.fileName}>
                   {parsedModel.fileName}
                 </span>
               </div>
@@ -274,69 +317,31 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Universal 3D Viewport & AI Tips (8 cols) */}
-        <div className="lg:col-span-8 space-y-5">
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Box className="w-4 h-4 text-sky-400" />
-                Visualizador 3D Interativo
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Cor do Filamento:</span>
-                <span
-                  className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
-                  style={{ backgroundColor: activeFilament?.color_hex || '#2563eb' }}
-                />
-                <span className="text-xs font-mono text-white">{activeFilament?.name || 'Padrão'}</span>
-              </div>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B]">
-              <ModelViewer3D
-                modelObject={modelObject}
-                modelBuffer={modelBuffer}
-                sampleType={sampleType}
-                filamentColor={activeFilament?.color_hex || '#2563eb'}
-                dimensions={parsedModel.dimensions}
-                fileType={parsedModel.fileType}
-                formatLabel={parsedModel.formatLabel}
-                trianglesCount={parsedModel.trianglesCount}
-                layerCount={parsedModel.layerCount}
-                theme={theme}
-                onSnapshotReady={(getter) => {
-                  canvasSnapshotGetterRef.current = getter;
-                }}
-              />
-            </div>
-          </div>
-
-          {/* AI Recommendations & Slicing Parameters Card */}
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+          {/* AI Recommendations & Slicing Parameters Card (6 cols) */}
+          <div className="lg:col-span-6 bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
               Dicas de Slicing & Otimização Geométrica
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-1.5">
-                <span className="text-[11px] text-slate-400 font-medium block">Altura de Camada Recomendada</span>
-                <span className="text-base font-bold text-white font-mono">{parsedModel.layerHeightMm || 0.2} mm</span>
-                <span className="text-[10px] text-slate-500 block">Equilíbrio ideal entre detalhe e velocidade</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-[#0A0A0B] p-3.5 rounded-2xl border border-white/[0.06] space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium block">Altura de Camada</span>
+                <span className="text-sm font-bold text-white font-mono">{parsedModel.layerHeightMm || 0.2} mm</span>
+                <span className="text-[10px] text-slate-500 block">Equilíbrio detalhe/velocidade</span>
               </div>
 
-              <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-1.5">
-                <span className="text-[11px] text-slate-400 font-medium block">Preenchimento (Infill)</span>
-                <span className="text-base font-bold text-amber-300 font-mono">{parsedModel.infillPercent || 20}% Gyroid</span>
-                <span className="text-[10px] text-slate-500 block">Máxima rigidez estrutural</span>
+              <div className="bg-[#0A0A0B] p-3.5 rounded-2xl border border-white/[0.06] space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium block">Preenchimento</span>
+                <span className="text-sm font-bold text-amber-300 font-mono">{parsedModel.infillPercent || 20}% Gyroid</span>
+                <span className="text-[10px] text-slate-500 block">Rigidez estrutural</span>
               </div>
 
-              <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-1.5">
-                <span className="text-[11px] text-slate-400 font-medium block">Paredes / Perímetros</span>
-                <span className="text-base font-bold text-sky-300 font-mono">3 Paredes (1.2mm)</span>
-                <span className="text-[10px] text-slate-500 block">Resistência a torque e impacto</span>
+              <div className="bg-[#0A0A0B] p-3.5 rounded-2xl border border-white/[0.06] space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium block">Paredes</span>
+                <span className="text-sm font-bold text-sky-300 font-mono">3 Paredes (1.2mm)</span>
+                <span className="text-[10px] text-slate-500 block">Resistência a impacto</span>
               </div>
             </div>
 

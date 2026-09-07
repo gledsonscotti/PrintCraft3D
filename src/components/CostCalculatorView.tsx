@@ -25,7 +25,7 @@ import {
   Sliders,
   Truck
 } from 'lucide-react';
-import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier } from '../types';
+import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier, AmsHeater } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
@@ -83,10 +83,21 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   // Selected Equipment & Material
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>(printers[0]?.id || '');
   const [selectedFilamentId, setSelectedFilamentId] = useState<string>(filaments[0]?.id || '');
+  const [amsHeaters, setAmsHeaters] = useState<AmsHeater[]>([]);
+
+  useEffect(() => {
+    safeFetchJson('/api/ams-heaters')
+      .then(data => { if (Array.isArray(data)) setAmsHeaters(data); })
+      .catch(() => {});
+  }, []);
+
+  const linkedAmsHeaters = amsHeaters.filter(a => a.printer_id === selectedPrinterId && a.status !== 'inactive');
+  const effectiveHeaterWatts = linkedAmsHeaters.reduce((sum, a) => sum + (a.power_watts || 0), 0);
 
   // Formulator Parameters
   const [productName, setProductName] = useState('Chaveiro Tag Personalizado');
   const [productCategory, setProductCategory] = useState('Chaveiros & Brindes');
+  const [productImageUrl, setProductImageUrl] = useState('');
   const [customWeightGrams, setCustomWeightGrams] = useState<number>(14.5);
   const [customTimeMinutes, setCustomTimeMinutes] = useState<number>(38);
   const [lossMarginPercent, setLossMarginPercent] = useState<number>(10);
@@ -311,6 +322,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     multiColorItems,
     allFilaments: filaments,
     transportCost,
+    filamentHeaterWatts: effectiveHeaterWatts,
   });
 
   // Supplies handlers
@@ -357,6 +369,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
       const payload = {
         name: productName,
         category: productCategory,
+        image_url: productImageUrl,
         description: `Produto formado com ${customWeightGrams}g de ${activeFilament?.material || 'filamento'} e ${productSupplies.length} insumos adicionais.`,
         stl_filename: parsedModel.fileType === 'stl' ? parsedModel.fileName : '',
         gcode_filename: parsedModel.fileType === 'gcode' ? parsedModel.fileName : '',
@@ -810,6 +823,18 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </div>
 
+            {/* Product Image URL Input */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">URL da Imagem do Produto (Opcional)</label>
+              <input
+                type="url"
+                value={productImageUrl}
+                onChange={(e) => setProductImageUrl(e.target.value)}
+                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/20 transition font-mono text-xs"
+                placeholder="https://exemplo.com/foto-produto.jpg"
+              />
+            </div>
+
             {/* Equipment and Material Selection - Bento Sub-cells */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               {/* Printer Selection */}
@@ -819,8 +844,8 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                     <PrinterIcon className="w-3.5 h-3.5 text-sky-400" />
                     Impressora 3D
                   </label>
-                  <span className="text-[11px] text-slate-400 font-mono bg-white/[0.04] px-2 py-0.5 rounded-lg border border-white/[0.06]">
-                    {activePrinter ? `${activePrinter.total_power_watts}W total` : ''}
+                  <span className="text-[11px] text-sky-400 font-mono bg-white/[0.04] px-2 py-0.5 rounded-lg border border-white/[0.06]">
+                    {activePrinter ? `${activePrinter.printer_power_watts + activePrinter.bed_heater_watts + effectiveHeaterWatts}W total` : ''}
                   </span>
                 </div>
 
@@ -829,19 +854,31 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                   onChange={(e) => setSelectedPrinterId(e.target.value)}
                   className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-400 transition"
                 >
-                  {printers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.printer_power_watts}W + {p.bed_heater_watts}W mesa)
-                    </option>
-                  ))}
+                  {printers.map((p) => {
+                    const inMnt = p.status === 'maintenance';
+                    return (
+                      <option key={p.id} value={p.id} disabled={inMnt}>
+                        {p.name} {inMnt ? '⚠️ (EM MANUTENÇÃO - BLOQUEADA)' : `(${p.printer_power_watts}W + ${p.bed_heater_watts}W mesa)`}
+                      </option>
+                    );
+                  })}
                 </select>
 
                 {activePrinter && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
+                  <div className="grid grid-cols-3 gap-1 text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
                     <span>
                       Mesa: <strong className="text-slate-200 font-mono">{activePrinter.bed_heater_watts}W</strong>
                     </span>
-                    <span>
+                    {effectiveHeaterWatts > 0 ? (
+                      <span className="text-sky-400">
+                        AMS/Aq.: <strong className="text-sky-300 font-mono">+{effectiveHeaterWatts}W</strong>
+                      </span>
+                    ) : (
+                      <span>
+                        AMS: <strong className="text-slate-500 font-mono">0W</strong>
+                      </span>
+                    )}
+                    <span className="text-right">
                       Deprec.: <strong className="text-slate-200 font-mono">R$ {activePrinter.hourly_depreciation.toFixed(2)}/h</strong>
                     </span>
                   </div>

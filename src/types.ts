@@ -3,6 +3,7 @@ export interface Printer {
   name: string;
   printer_power_watts: number;
   bed_heater_watts: number;
+  filament_heater_watts: number;
   total_power_watts: number;
   hourly_depreciation: number;
   failure_rate_default: number;
@@ -317,5 +318,35 @@ export interface ShippingCarrier {
   delivery_days?: string;
   notes?: string;
   created_at: string;
+}
+
+export interface AmsHeater {
+  id: string;
+  printer_id?: string;
+  printer_name?: string;
+  name: string;
+  type: 'ams' | 'heater' | 'drybox' | 'multi_feeder';
+  slots_count: number;
+  power_watts: number;
+  status: 'active' | 'maintenance' | 'inactive';
+  notes?: string;
+}
+
+export type MaintenanceType = 'preventiva' | 'corretiva' | 'limpeza_bico' | 'calibracao' | 'troca_ptfe' | 'outros';
+export type MaintenanceStatus = 'scheduled' | 'in_progress' | 'resolved';
+export type MaintenanceSeverity = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface PrinterMaintenance {
+  id: string;
+  printer_id: string;
+  printer_name: string;
+  maintenance_type: MaintenanceType;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  status: MaintenanceStatus;
+  severity: MaintenanceSeverity;
+  technician?: string;
 }
 

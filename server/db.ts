@@ -47,10 +47,48 @@ function initTables(database: Database) {
       name TEXT NOT NULL,
       printer_power_watts REAL NOT NULL DEFAULT 80,
       bed_heater_watts REAL NOT NULL DEFAULT 200,
+      filament_heater_watts REAL NOT NULL DEFAULT 0,
       total_power_watts REAL NOT NULL DEFAULT 280,
       hourly_depreciation REAL NOT NULL DEFAULT 0.50,
       failure_rate_default REAL NOT NULL DEFAULT 10,
       status TEXT NOT NULL DEFAULT 'available'
+    );
+  `);
+  try {
+    database.run("ALTER TABLE printers ADD COLUMN filament_heater_watts REAL NOT NULL DEFAULT 0;");
+  } catch (e) {
+    // Column already exists
+  }
+
+  // AMS & Heaters table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS ams_heaters (
+      id TEXT PRIMARY KEY,
+      printer_id TEXT,
+      printer_name TEXT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'ams',
+      slots_count INTEGER DEFAULT 4,
+      power_watts REAL DEFAULT 0,
+      status TEXT DEFAULT 'active',
+      notes TEXT
+    );
+  `);
+
+  // Printer Maintenance table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS printer_maintenance (
+      id TEXT PRIMARY KEY,
+      printer_id TEXT NOT NULL,
+      printer_name TEXT NOT NULL,
+      maintenance_type TEXT NOT NULL DEFAULT 'preventiva',
+      title TEXT NOT NULL,
+      description TEXT,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      status TEXT NOT NULL DEFAULT 'scheduled',
+      severity TEXT NOT NULL DEFAULT 'normal',
+      technician TEXT
     );
   `);
 

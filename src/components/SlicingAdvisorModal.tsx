@@ -59,6 +59,7 @@ export const SlicingAdvisorModal: React.FC<SlicingAdvisorModalProps> = ({
   onApplyProfile,
 }) => {
   const [selectedProfileId, setSelectedProfileId] = useState<'eco' | 'balanced' | 'strength'>('balanced');
+  const [selectedSlicer, setSelectedSlicer] = useState<'bambu' | 'orca' | 'prusa' | 'cura' | 'simplify'>('bambu');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [userNotes, setUserNotes] = useState('');
   const [selectedIntent, setSelectedIntent] = useState<'keychain' | 'gear' | 'vase' | 'support' | 'auto'>('auto');
@@ -193,6 +194,54 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
 
         {/* Modal Scrollable Content */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs text-slate-300">
+          {/* Slicer Selector Toolbar (User explicitly requested selecting slicer beforehand for better guidance) */}
+          <div className="bg-[#0A0A0E] border border-white/[0.08] rounded-2xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Box className="w-4 h-4 text-sky-400" />
+                Selecione seu Fatiador Principal (Slicer):
+              </span>
+              <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                Confiança IA: 96.8%
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { id: 'bambu', name: 'Bambu Studio', badge: 'Bambu/X1/P1' },
+                { id: 'orca', name: 'OrcaSlicer', badge: 'Open Multi' },
+                { id: 'prusa', name: 'PrusaSlicer', badge: 'MK4/MK3/XL' },
+                { id: 'cura', name: 'Ultimaker Cura', badge: 'FDM Standard' },
+                { id: 'simplify', name: 'Simplify3D', badge: 'Pro CAD' },
+              ].map((s) => {
+                const active = selectedSlicer === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedSlicer(s.id as any)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      active
+                        ? 'bg-sky-500/15 border-sky-500/50 text-white shadow-md'
+                        : 'bg-[#121216] border-white/[0.06] text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
+                    }`}
+                  >
+                    <span className="font-bold text-xs truncate">{s.name}</span>
+                    <span className="text-[10px] font-mono opacity-75">{s.badge}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Experimental AI Disclaimer (Mandatory per user request) */}
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-3 text-amber-200/90 text-[11px]">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold text-amber-300">Aviso Experimental:</strong> As recomendações, orientações de menus e perfis gerados por Inteligência Artificial para o fatiador <span className="uppercase font-mono font-bold text-white">{selectedSlicer}</span> são experimentais. A validação mecânica e o uso em impressões reais correm por conta e risco exclusivo do usuário.
+            </div>
+          </div>
+
           {/* Piece Header Snapshot & Context Bar */}
           <div className="bg-[#0A0A0E] border border-white/[0.08] rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 w-full md:w-auto">
@@ -543,6 +592,23 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Slicer Specific Menu Navigation Guide */}
+              <div className="bg-[#121216] border border-white/[0.08] rounded-xl p-3.5 space-y-1.5">
+                <span className="text-[11px] font-bold text-sky-300 flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5" />
+                  Caminho nos Menus do {selectedSlicer === 'bambu' ? 'Bambu Studio' : selectedSlicer === 'orca' ? 'OrcaSlicer' : selectedSlicer === 'prusa' ? 'PrusaSlicer' : selectedSlicer === 'cura' ? 'Ultimaker Cura' : 'Simplify3D'}:
+                </span>
+                <p className="text-[11px] text-slate-300 font-mono leading-relaxed">
+                  {selectedSlicer === 'bambu' || selectedSlicer === 'orca'
+                    ? 'Process > Quality (Altura de camada) • Strength (Paredes e Infill) • Speed (Velocidades externas).'
+                    : selectedSlicer === 'prusa'
+                    ? 'Print Settings > Layers and Perimeters & Infill • Filament Settings > Temperatures.'
+                    : selectedSlicer === 'cura'
+                    ? 'Custom Settings (Painel Direito) > Quality (Layer Height) > Shell (Wall Thickness) > Infill.'
+                    : 'Edit Process Settings > Layers (Altura/Perímetros) > Infill (Padrão/Densidade) > Temperatures.'}
+                </p>
               </div>
 
               {/* Performance / Radar Balance Bars */}

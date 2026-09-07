@@ -271,6 +271,7 @@ async function startServer() {
         name,
         printer_power_watts,
         bed_heater_watts,
+        filament_heater_watts = 0,
         hourly_depreciation = 0.50,
         failure_rate_default = 10,
         status = 'available'
@@ -279,12 +280,13 @@ async function startServer() {
       const id = 'p-' + Date.now();
       const printerWatts = Number(printer_power_watts) || 80;
       const bedWatts = Number(bed_heater_watts) || 200;
-      const totalWatts = printerWatts + bedWatts;
+      const filamentHeaterWatts = Number(filament_heater_watts) || 0;
+      const totalWatts = printerWatts + bedWatts + filamentHeaterWatts;
 
       db.run(`
-        INSERT INTO printers (id, name, printer_power_watts, bed_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, name, printerWatts, bedWatts, totalWatts, Number(hourly_depreciation), Number(failure_rate_default), status]);
+        INSERT INTO printers (id, name, printer_power_watts, bed_heater_watts, filament_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, name, printerWatts, bedWatts, filamentHeaterWatts, totalWatts, Number(hourly_depreciation), Number(failure_rate_default), status]);
 
       saveDb();
       const created = queryOne(db, 'SELECT * FROM printers WHERE id = ?', [id]);
@@ -301,6 +303,7 @@ async function startServer() {
         name,
         printer_power_watts,
         bed_heater_watts,
+        filament_heater_watts = 0,
         hourly_depreciation,
         failure_rate_default,
         status
@@ -308,14 +311,15 @@ async function startServer() {
 
       const printerWatts = Number(printer_power_watts) || 80;
       const bedWatts = Number(bed_heater_watts) || 200;
-      const totalWatts = printerWatts + bedWatts;
+      const filamentHeaterWatts = Number(filament_heater_watts) || 0;
+      const totalWatts = printerWatts + bedWatts + filamentHeaterWatts;
 
       db.run(`
         UPDATE printers
-        SET name = ?, printer_power_watts = ?, bed_heater_watts = ?, total_power_watts = ?,
+        SET name = ?, printer_power_watts = ?, bed_heater_watts = ?, filament_heater_watts = ?, total_power_watts = ?,
             hourly_depreciation = ?, failure_rate_default = ?, status = ?
         WHERE id = ?
-      `, [name, printerWatts, bedWatts, totalWatts, Number(hourly_depreciation), Number(failure_rate_default), status, id]);
+      `, [name, printerWatts, bedWatts, filamentHeaterWatts, totalWatts, Number(hourly_depreciation), Number(failure_rate_default), status, id]);
 
       saveDb();
       const updated = queryOne(db, 'SELECT * FROM printers WHERE id = ?', [id]);
@@ -329,6 +333,204 @@ async function startServer() {
     try {
       const { id } = req.params;
       db.run('DELETE FROM printers WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // AMS & Heaters API
+  app.get('/api/ams-heaters', (req: Request, res: Response) => {
+    try {
+      const items = queryAll(db, 'SELECT * FROM ams_heaters ORDER BY name ASC');
+      res.json(items);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/ams-heaters', (req: Request, res: Response) => {
+    try {
+      const {
+        printer_id = null,
+        name,
+        type = 'ams',
+        slots_count = 4,
+        power_watts = 0,
+        status = 'active',
+        notes = ''
+      } = req.body;
+
+      const id = 'ams-' + Date.now();
+      let printerName = null;
+      if (printer_id) {
+        const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printer_id]);
+        if (p) printerName = p.name;
+      }
+
+      db.run(`
+        INSERT INTO ams_heaters (id, printer_id, printer_name, name, type, slots_count, power_watts, status, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, printer_id, printerName, name, type, Number(slots_count) || 4, Number(power_watts) || 0, status, notes]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM ams_heaters WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/ams-heaters/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        printer_id = null,
+        name,
+        type,
+        slots_count,
+        power_watts,
+        status,
+        notes
+      } = req.body;
+
+      let printerName = null;
+      if (printer_id) {
+        const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printer_id]);
+        if (p) printerName = p.name;
+      }
+
+      db.run(`
+        UPDATE ams_heaters
+        SET printer_id = ?, printer_name = ?, name = ?, type = ?, slots_count = ?, power_watts = ?, status = ?, notes = ?
+        WHERE id = ?
+      `, [printer_id, printerName, name, type, Number(slots_count) || 4, Number(power_watts) || 0, status, notes, id]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM ams_heaters WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/ams-heaters/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM ams_heaters WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Printer Maintenance API
+  app.get('/api/printer-maintenance', (req: Request, res: Response) => {
+    try {
+      const records = queryAll(db, 'SELECT * FROM printer_maintenance ORDER BY start_date DESC');
+      res.json(records);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/printer-maintenance', (req: Request, res: Response) => {
+    try {
+      const {
+        printer_id,
+        maintenance_type = 'preventiva',
+        title,
+        description = '',
+        start_date = new Date().toISOString().split('T')[0],
+        end_date = null,
+        status = 'scheduled',
+        severity = 'normal',
+        technician = ''
+      } = req.body;
+
+      if (!printer_id || !title) {
+        return res.status(400).json({ error: 'Impressora e título da manutenção são obrigatórios' });
+      }
+
+      const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printer_id]);
+      const printerName = p ? p.name : 'Impressora';
+
+      const id = 'mnt-' + Date.now();
+      db.run(`
+        INSERT INTO printer_maintenance (id, printer_id, printer_name, maintenance_type, title, description, start_date, end_date, status, severity, technician)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, printer_id, printerName, maintenance_type, title, description, start_date, end_date, status, severity, technician]);
+
+      if (status === 'scheduled' || status === 'in_progress') {
+        db.run('UPDATE printers SET status = ? WHERE id = ?', ['maintenance', printer_id]);
+      } else if (status === 'resolved') {
+        db.run('UPDATE printers SET status = ? WHERE id = ?', ['available', printer_id]);
+      }
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM printer_maintenance WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/printer-maintenance/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        printer_id,
+        maintenance_type,
+        title,
+        description,
+        start_date,
+        end_date,
+        status,
+        severity,
+        technician
+      } = req.body;
+
+      const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printer_id]);
+      const printerName = p ? p.name : 'Impressora';
+
+      db.run(`
+        UPDATE printer_maintenance
+        SET printer_id = ?, printer_name = ?, maintenance_type = ?, title = ?, description = ?, start_date = ?, end_date = ?, status = ?, severity = ?, technician = ?
+        WHERE id = ?
+      `, [printer_id, printerName, maintenance_type, title, description, start_date, end_date, status, severity, technician, id]);
+
+      if (status === 'scheduled' || status === 'in_progress') {
+        db.run('UPDATE printers SET status = ? WHERE id = ?', ['maintenance', printer_id]);
+      } else if (status === 'resolved') {
+        const activeCount = queryOne<{ c: number }>(db, 'SELECT COUNT(*) as c FROM printer_maintenance WHERE printer_id = ? AND status IN ("scheduled", "in_progress") AND id != ?', [printer_id, id]);
+        if (!activeCount || activeCount.c === 0) {
+          db.run('UPDATE printers SET status = ? WHERE id = ?', ['available', printer_id]);
+        }
+      }
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM printer_maintenance WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/printer-maintenance/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const mnt = queryOne<{ printer_id: string }>(db, 'SELECT printer_id FROM printer_maintenance WHERE id = ?', [id]);
+      db.run('DELETE FROM printer_maintenance WHERE id = ?', [id]);
+
+      if (mnt) {
+        const activeCount = queryOne<{ c: number }>(db, 'SELECT COUNT(*) as c FROM printer_maintenance WHERE printer_id = ? AND status IN ("scheduled", "in_progress")', [mnt.printer_id]);
+        if (!activeCount || activeCount.c === 0) {
+          db.run('UPDATE printers SET status = ? WHERE id = ?', ['available', mnt.printer_id]);
+        }
+      }
+
       saveDb();
       res.json({ success: true, id });
     } catch (e: any) {
@@ -416,6 +618,26 @@ async function startServer() {
       saveDb();
       const client = queryOne(db, 'SELECT * FROM clients WHERE id = ?', [id]);
       res.status(201).json(client);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/clients/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, type, document, phone, email, address } = req.body;
+      if (!name) {
+        return res.status(400).json({ error: 'Nome do cliente é obrigatório' });
+      }
+      db.run(`
+        UPDATE clients
+        SET name = ?, type = ?, document = ?, phone = ?, email = ?, address = ?
+        WHERE id = ?
+      `, [name, type || 'pf', document || '', phone || '', email || '', address || '', id]);
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM clients WHERE id = ?', [id]);
+      res.json(updated);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -1281,6 +1503,13 @@ async function startServer() {
         return res.status(400).json({ error: 'Nome do produto/peça é obrigatório' });
       }
 
+      if (printer_id) {
+        const printerCheck = queryOne<{ status: string, name: string }>(db, 'SELECT status, name FROM printers WHERE id = ?', [printer_id]);
+        if (printerCheck && printerCheck.status === 'maintenance') {
+          return res.status(400).json({ error: `A impressora "${printerCheck.name}" está em período de manutenção e não pode receber novas produções.` });
+        }
+      }
+
       // Generate OP Number
       const countRow = queryOne<{ c: number }>(db, 'SELECT COUNT(*) as c FROM production_orders');
       const nextNum = (countRow?.c || 0) + 101;
@@ -1882,7 +2111,7 @@ async function startServer() {
   });
 
   // AI Assistant for Print Optimization (using Gemini Server-Side Multimodal or Fallback)
-  app.post('/api/ai-optimize', async (req: Request, res: Response) => {
+  app.post(['/api/ai-optimize', '/api/gemini/optimize-slicing'], async (req: Request, res: Response) => {
     const input = req.body;
     try {
       const ai = getAI();

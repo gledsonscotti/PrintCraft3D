@@ -24,7 +24,8 @@ import {
   ChevronRight,
   BarChart3,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  History
 } from 'lucide-react';
 import {
   ProductionOrder,
@@ -35,8 +36,10 @@ import {
   Printer,
   Filament,
   Supply,
-  ProductSale
+  ProductSale,
+  PrintJob
 } from '../types';
+import { PrintHistoryView } from './PrintHistoryView';
 
 interface ProductionControlViewProps {
   orders: ProductionOrder[];
@@ -45,6 +48,7 @@ interface ProductionControlViewProps {
   filaments: Filament[];
   supplies: Supply[];
   sales: ProductSale[];
+  printJobs?: PrintJob[];
   onRefreshData: () => void;
   onOpenCreateOrderModal?: () => void;
   preselectedSaleForOP?: ProductSale | null;
@@ -59,12 +63,13 @@ export function ProductionControlView({
   filaments,
   supplies,
   sales,
+  printJobs = [],
   onRefreshData,
   preselectedSaleForOP,
   onClearPreselectedSale,
   theme
 }: ProductionControlViewProps) {
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'farm'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'farm' | 'history'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterPrinter, setFilterPrinter] = useState<string>('all');
@@ -420,6 +425,18 @@ export function ProductionControlView({
               <PrinterIcon className="w-3.5 h-3.5" />
               <span>Farm</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('history')}
+              className={`production-view-mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                viewMode === 'history'
+                  ? 'production-view-mode-btn-active bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Histórico</span>
+            </button>
           </div>
 
           <button
@@ -428,7 +445,7 @@ export function ProductionControlView({
             className="production-btn-new-op flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-sm shadow-emerald-500/20 cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>+Ordem de Produção (OP)</span>
+            <span>Ordem de Produção (OP)</span>
           </button>
         </div>
       </div>
@@ -1144,6 +1161,11 @@ export function ProductionControlView({
         </div>
       )}
 
+      {/* VIEW 4: HISTORY */}
+      {viewMode === 'history' && (
+        <PrintHistoryView jobs={printJobs || []} />
+      )}
+
       {/* MODAL: NOVA ORDEM DE PRODUÇÃO (OP) */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -1263,11 +1285,14 @@ export function ProductionControlView({
                     className="production-modal-input w-full px-3.5 py-2.5 rounded-xl bg-[#1c1c20] border border-white/[0.12] text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="">A definir na oficina...</option>
-                    {printers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.status === 'available' ? 'Livre' : 'Ocupada'})
-                      </option>
-                    ))}
+                    {printers.map((p) => {
+                      const inMnt = p.status === 'maintenance';
+                      return (
+                        <option key={p.id} value={p.id} disabled={inMnt}>
+                          {p.name} {inMnt ? '⚠️ (EM MANUTENÇÃO - BLOQUEADA)' : `(${p.status === 'available' ? 'Livre' : 'Ocupada'})`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

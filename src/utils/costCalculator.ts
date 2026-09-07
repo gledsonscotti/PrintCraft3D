@@ -19,6 +19,7 @@ export interface CostCalculatorParams {
   multiColorItems?: MultiColorItemInput[];
   allFilaments?: Filament[];
   transportCost?: number;
+  filamentHeaterWatts?: number;
 }
 
 export function calculatePieceCost(params: CostCalculatorParams): CostCalculationResult {
@@ -61,7 +62,8 @@ export function calculatePieceCost(params: CostCalculatorParams): CostCalculatio
   const filamentCost = baseFilamentCost + lossMarginCost;
 
   // 2. Machine Energy Cost
-  const printerWatts = printer ? (printer.printer_power_watts + printer.bed_heater_watts) : 280;
+  const heaterWatts = params.filamentHeaterWatts !== undefined ? params.filamentHeaterWatts : (printer?.filament_heater_watts || 0);
+  const printerWatts = printer ? (printer.printer_power_watts + printer.bed_heater_watts + heaterWatts) : 280;
   const printTimeHours = printTimeMinutes / 60;
   const energyKwh = (printerWatts * printTimeHours) / 1000;
   const energyCost = energyKwh * (settings.energy_kwh_rate || 0.85);
