@@ -265,13 +265,13 @@ export function SalesManagementView({
             <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
               <span className="text-[11px] text-slate-400 font-medium block">Faturamento Total</span>
               <span className="text-lg font-extrabold text-emerald-400 mt-1 block">
-                R$ {totalRevenue.toFixed(2)}
+                R$ {Number(totalRevenue || 0).toFixed(2)}
               </span>
             </div>
             <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
               <span className="text-[11px] text-slate-400 font-medium block">Lucro Líquido Real</span>
               <span className="text-lg font-extrabold text-sky-400 mt-1 block">
-                R$ {totalProfit.toFixed(2)}
+                R$ {Number(totalProfit || 0).toFixed(2)}
               </span>
             </div>
             <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
@@ -283,7 +283,7 @@ export function SalesManagementView({
             <div className="bg-[#141417] p-4 rounded-2xl border border-white/[0.06]">
               <span className="text-[11px] text-slate-400 font-medium block">Ticket Médio</span>
               <span className="text-lg font-extrabold text-purple-400 mt-1 block">
-                R$ {averageTicket.toFixed(2)}
+                R$ {Number(averageTicket || 0).toFixed(2)}
               </span>
             </div>
           </div>
@@ -369,10 +369,10 @@ export function SalesManagementView({
                         <td className="px-5 py-4">{getChannelBadge(sale)}</td>
                         <td className="px-5 py-4 text-center font-bold text-sky-400">{sale.quantity} un.</td>
                         <td className="px-5 py-4 text-right font-extrabold text-emerald-400">
-                          R$ {sale.total_revenue.toFixed(2)}
+                          R$ {Number(sale.total_revenue || 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-4 text-right font-bold text-sky-300">
-                          R$ {(sale.profit || 0).toFixed(2)}
+                          R$ {Number(sale.profit || 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-4 text-center flex items-center justify-center gap-2">
                           {onGenerateOP && (
@@ -561,7 +561,7 @@ export function SalesManagementView({
                       <div>
                         <div className="text-xs font-bold text-white">{item.product_name}</div>
                         <div className="text-[10px] text-slate-400">
-                          Disponível em loja: {unsold} un. | Preço Un: R$ {item.unit_price.toFixed(2)}
+                          Disponível em loja: {unsold} un. | Preço Un: R$ {Number(item.unit_price || 0).toFixed(2)}
                         </div>
                       </div>
 

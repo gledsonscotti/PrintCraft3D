@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings as SettingsIcon,
   Sliders,
@@ -8,25 +8,29 @@ import {
   Percent,
   CheckCircle2,
   Globe,
-  Database,
-  Download,
-  Upload,
   Sun,
   Moon,
   Sparkles,
   Leaf,
-  Layers,
   Save,
   Store,
-  ShieldCheck,
   RotateCcw,
   Printer as PrinterIcon,
-  Truck
+  Truck,
+  FolderTree,
+  RefreshCw,
+  Info,
+  Package,
+  FileSpreadsheet,
+  AlertTriangle,
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 import { AppSettings, AppTheme, Product, ProductSale, Printer } from '../types';
 import { IntegrationsView } from './IntegrationsView';
 import { PrintersView } from './PrintersView';
 import { CarriersView } from './CarriersView';
+import { CategoriesView } from './CategoriesView';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -37,8 +41,10 @@ interface SettingsViewProps {
   products: Product[];
   sales: ProductSale[];
   onNavigateToSales: () => void;
-  initialSubTab?: 'costs' | 'printers' | 'carriers' | 'integrations';
+  initialSubTab?: 'costs' | 'printers' | 'carriers' | 'categories' | 'integrations';
   printers?: Printer[];
+  isCompanyAdmin?: boolean;
+  companyName?: string;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -52,8 +58,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onNavigateToSales,
   initialSubTab = 'costs',
   printers = [],
+  isCompanyAdmin = true,
+  companyName,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'carriers' | 'integrations'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'carriers' | 'categories' | 'integrations'>(initialSubTab);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -71,12 +79,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
-
-  // Backup & Restore states
-  const [isExporting, setIsExporting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [backupMsg, setBackupMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync state if settings prop changes
   useEffect(() => {
@@ -123,66 +125,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleExportBackup = async () => {
-    setIsExporting(true);
-    setBackupMsg(null);
-    try {
-      const res = await fetch('/api/backup/export');
-      if (!res.ok) throw new Error('Falha ao gerar arquivo de exportação');
-      const data = await res.json();
-
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const dateStr = new Date().toISOString().split('T')[0];
-      a.href = url;
-      a.download = `printcraft3d_backup_${dateStr}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      setBackupMsg({ type: 'success', text: 'Backup exportado com sucesso!' });
-      setTimeout(() => setBackupMsg(null), 4000);
-    } catch (err: any) {
-      setBackupMsg({ type: 'error', text: 'Erro ao exportar backup: ' + err.message });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsImporting(true);
-    setBackupMsg(null);
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-
-      const res = await fetch('/api/backup/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Falha ao restaurar dados no servidor');
-      }
-
-      setBackupMsg({ type: 'success', text: 'Dados restaurados com sucesso!' });
-      onRefreshData();
-      setTimeout(() => setBackupMsg(null), 4000);
-    } catch (err: any) {
-      setBackupMsg({ type: 'error', text: 'Erro ao importar arquivo: ' + err.message });
-    } finally {
-      setIsImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleResetDefaults = () => {
     if (confirm('Deseja redefinir os parâmetros de custos para os valores padrão de mercado?')) {
       setEnergyKwhRate(0.85);
@@ -196,24 +138,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Page Header with Sub-tabs Navigation */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
-              <SettingsIcon className="w-5 h-5 text-sky-400" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                Ajustes do Sistema
-              </h1>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Parâmetros operacionais de cálculo, temas de alto contraste e integrações de marketplaces
-              </p>
-            </div>
+      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+        {/* Linha 1: Ajustes do Sistema e Descrição em uma linha */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
+            <SettingsIcon className="w-5 h-5 text-sky-400" />
           </div>
+          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 flex-wrap">
+            <h1 className="text-xl font-bold text-white tracking-tight whitespace-nowrap">
+              Ajustes do Sistema
+            </h1>
+            <span className="hidden sm:inline text-slate-500 text-xs">•</span>
+            <p className="text-xs text-slate-400">
+              Parâmetros operacionais de cálculo, temas de alto contraste e integrações de marketplaces
+            </p>
+          </div>
+        </div>
 
-          {/* Clean Segmented Control Tabs */}
-          <div className="flex items-center p-1 bg-[#0A0A0B] rounded-2xl border border-white/[0.08] shrink-0">
+        {/* Linha 2: Menus de Ajustes do Sistema na próxima linha */}
+        <div className="pt-2 border-t border-white/[0.06] flex items-center">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#0A0A0B] rounded-2xl border border-white/[0.08] w-fit shadow-sm">
             <button
               type="button"
               id="tab-btn-global-costs"
@@ -261,6 +205,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <button
               type="button"
+              id="tab-btn-categories"
+              onClick={() => setActiveSubTab('categories')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === 'categories'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FolderTree className="w-3.5 h-3.5" />
+              <span>Categorias & Subcategorias</span>
+            </button>
+
+            <button
+              type="button"
               id="tab-btn-integrations"
               onClick={() => setActiveSubTab('integrations')}
               className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
@@ -287,10 +245,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Parâmetros Operacionais de Custos (8 cols) */}
-            <div className="lg:col-span-8 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-6">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+          {/* Card 1: Parâmetros Operacionais de Custos */}
+          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -430,150 +387,102 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </form>
             </div>
 
-            {/* Right Column: Tema da Oficina & Backup (4 cols) */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* Tema de Alto Contraste para Chão de Oficina */}
-              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-4">
-                <div className="border-b border-white/[0.06] pb-3">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Sun className="w-4 h-4 text-amber-400" />
-                    Modo de Contraste da Oficina
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Ajuste o visual para iluminação forte, poeira ou ambientes escuros
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onChangeTheme('standard')}
-                    className={`p-3 rounded-2xl text-left border transition cursor-pointer ${
-                      currentTheme === 'standard'
-                        ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
-                        : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Moon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">Dark Studio</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Padrão Escuro</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onChangeTheme('sage-bento')}
-                    className={`p-3 rounded-2xl text-left border transition cursor-pointer relative ${
-                      currentTheme === 'sage-bento'
-                        ? 'bg-emerald-900/30 border-emerald-400 text-emerald-300 font-bold ring-2 ring-emerald-400/80'
-                        : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                      <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">Sage Bento</span>
-                    </div>
-                    <span className="text-[10px] text-emerald-400/80 block mt-1 leading-tight">Verde Sálvia</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onChangeTheme('high-contrast-light')}
-                    className={`p-3 rounded-2xl text-left border transition cursor-pointer ${
-                      currentTheme === 'high-contrast-light'
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-2 ring-amber-400'
-                        : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                      <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="truncate">Oficina Clara</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Anti-reflexo</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onChangeTheme('high-contrast-dark')}
-                    className={`p-3 rounded-2xl text-left border transition cursor-pointer ${
-                      currentTheme === 'high-contrast-dark'
-                        ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-1 ring-sky-400'
-                        : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                      <span className="truncate">Preto Puro</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 block mt-1 leading-tight">Linhas OLED</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Persistência & Backup do SQLite */}
-              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 shadow-sm space-y-3.5">
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Database className="w-4 h-4 text-emerald-400" />
-                      Backup & Dados
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Segurança e portabilidade da oficina
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    SQLite Ativo
-                  </span>
-                </div>
-
-                {backupMsg && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-                      backupMsg.type === 'success'
-                        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-                        : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>{backupMsg.text}</span>
-                  </div>
-                )}
-
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Gere um arquivo JSON com todos os dados: impressoras, filamentos, estoque, catálogo, ordens de produção e vendas registradas.
+          {/* Card 2: Modo de Contraste da Oficina (Logo abaixo de Parâmetros Operacionais de Custos) */}
+          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.06] pb-4 gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  Modo de Contraste da Oficina (Tema da Empresa)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isCompanyAdmin
+                    ? `Gerenciado pelo Administrador da Empresa${companyName ? ` (${companyName})` : ''}. Aplicado a todos os operadores.`
+                    : `Tema definido pelo Administrador da Empresa${companyName ? ` (${companyName})` : ''}. Somente admins podem alterar.`}
                 </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleExportBackup}
-                    disabled={isExporting}
-                    className="p-3 rounded-2xl bg-[#0A0A0B] border border-white/[0.08] hover:border-sky-500/40 text-slate-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold transition cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 text-sky-400" />
-                    {isExporting ? 'Exportando...' : 'Exportar JSON'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isImporting}
-                    className="p-3 rounded-2xl bg-[#0A0A0B] border border-white/[0.08] hover:border-emerald-500/40 text-slate-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold transition cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    {isImporting ? 'Restaurando...' : 'Importar JSON'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={handleImportFile}
-                  />
-                </div>
               </div>
+              <span className="text-[11px] font-mono text-slate-400 bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.06] w-fit">
+                Tema Ativo: <strong className="text-white capitalize">{currentTheme === 'sage-bento' ? 'Sage Bento' : currentTheme === 'high-contrast-light' ? 'Oficina Clara' : currentTheme === 'high-contrast-dark' ? 'Preto Puro' : 'Dark Studio'}</strong>
+              </span>
+            </div>
+
+            {!isCompanyAdmin && (
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3 rounded-2xl text-xs flex items-center gap-2.5">
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  O tema visual da oficina é definido pelo Administrador da Empresa. Seu usuário está visualizando a oficina com o tema oficial cadastrado pelo administrador.
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <button
+                type="button"
+                disabled={!isCompanyAdmin}
+                onClick={() => onChangeTheme('standard')}
+                className={`p-3.5 rounded-2xl text-left border transition ${!isCompanyAdmin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
+                  currentTheme === 'standard'
+                    ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-2 ring-sky-400'
+                    : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs">
+                  <Moon className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="font-semibold">Dark Studio</span>
+                </div>
+                <span className="text-[11px] text-slate-400 block mt-1.5 leading-tight">Padrão Escuro Suave</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={!isCompanyAdmin}
+                onClick={() => onChangeTheme('sage-bento')}
+                className={`p-3.5 rounded-2xl text-left border transition ${!isCompanyAdmin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
+                  currentTheme === 'sage-bento'
+                    ? 'bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold ring-2 ring-emerald-400/80 shadow-sm shadow-emerald-500/20'
+                    : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                  <Leaf className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Sage Bento</span>
+                </div>
+                <span className="text-[11px] text-emerald-400/80 block mt-1.5 leading-tight">Verde Sálvia Bento</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={!isCompanyAdmin}
+                onClick={() => onChangeTheme('high-contrast-light')}
+                className={`p-3.5 rounded-2xl text-left border transition ${!isCompanyAdmin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
+                  currentTheme === 'high-contrast-light'
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-2 ring-amber-400'
+                    : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Oficina Clara</span>
+                </div>
+                <span className="text-[11px] text-slate-400 block mt-1.5 leading-tight">Anti-reflexo Chão de Fábrica</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={!isCompanyAdmin}
+                onClick={() => onChangeTheme('high-contrast-dark')}
+                className={`p-3.5 rounded-2xl text-left border transition ${!isCompanyAdmin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
+                  currentTheme === 'high-contrast-dark'
+                    ? 'bg-sky-500/20 border-sky-400 text-white font-bold ring-2 ring-sky-400'
+                    : 'bg-[#0A0A0B] border-white/[0.08] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
+                  <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span>Preto Puro</span>
+                </div>
+                <span className="text-[11px] text-slate-400 block mt-1.5 leading-tight">Linhas Alto Contraste OLED</span>
+              </button>
             </div>
           </div>
         </div>
@@ -598,6 +507,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
+      {/* SUB-TAB: Categorias & Subcategorias */}
+      {activeSubTab === 'categories' && (
+        <div className="space-y-4">
+          <CategoriesView
+            products={products}
+            onRefreshData={onRefreshData}
+          />
+        </div>
+      )}
+
       {/* SUB-TAB 4: Integrações */}
       {activeSubTab === 'integrations' && (
         <div className="space-y-4">
@@ -609,6 +528,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           />
         </div>
       )}
+
     </div>
   );
 };

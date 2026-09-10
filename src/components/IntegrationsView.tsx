@@ -660,7 +660,7 @@ export function IntegrationsView({
                       </div>
                       <span className="text-[11px] text-slate-400 block mt-0.5">
                         Taxa: {integ?.default_commission_percent || meta.defaultCommission}%
-                        {integ?.fixed_fee_per_sale ? ` + R$ ${integ.fixed_fee_per_sale.toFixed(2)}` : ''}
+                        {integ?.fixed_fee_per_sale ? ` + R$ ${Number(integ.fixed_fee_per_sale || 0).toFixed(2)}` : ''}
                       </span>
                     </div>
                   </div>
@@ -1267,25 +1267,25 @@ export function IntegrationsView({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Preço Bruto:</span>
-                      <span className="font-mono text-slate-200">R$ {simCustomPrice.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">R$ {Number(simCustomPrice || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Custo Produção:</span>
-                      <span className="font-mono text-slate-200">- R$ {simCustomCost.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">- R$ {Number(simCustomCost || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-rose-400">
                       <span>Taxas ML:</span>
-                      <span className="font-mono">- R$ {feeAmount.toFixed(2)}</span>
+                      <span className="font-mono">- R$ {Number(feeAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="pt-2 border-t border-white/[0.08] flex justify-between items-baseline">
                       <span className="font-bold text-slate-200">Lucro Líquido:</span>
                       <span className={`text-base font-bold font-mono ${netProfit > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        R$ {netProfit.toFixed(2)}
+                        R$ {Number(netProfit || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>Margem Líquida:</span>
-                      <span className="font-mono font-semibold text-sky-400">{marginPercent.toFixed(1)}%</span>
+                      <span className="font-mono font-semibold text-sky-400">{Number(marginPercent || 0).toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
@@ -1310,25 +1310,25 @@ export function IntegrationsView({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Preço Bruto:</span>
-                      <span className="font-mono text-slate-200">R$ {simCustomPrice.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">R$ {Number(simCustomPrice || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Custo Produção:</span>
-                      <span className="font-mono text-slate-200">- R$ {simCustomCost.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">- R$ {Number(simCustomCost || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-rose-400">
                       <span>Taxas Shopee:</span>
-                      <span className="font-mono">- R$ {feeAmount.toFixed(2)}</span>
+                      <span className="font-mono">- R$ {Number(feeAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="pt-2 border-t border-white/[0.08] flex justify-between items-baseline">
                       <span className="font-bold text-slate-200">Lucro Líquido:</span>
                       <span className={`text-base font-bold font-mono ${netProfit > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        R$ {netProfit.toFixed(2)}
+                        R$ {Number(netProfit || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>Margem Líquida:</span>
-                      <span className="font-mono font-semibold text-sky-400">{marginPercent.toFixed(1)}%</span>
+                      <span className="font-mono font-semibold text-sky-400">{Number(marginPercent || 0).toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
@@ -1353,25 +1353,25 @@ export function IntegrationsView({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Preço Bruto:</span>
-                      <span className="font-mono text-slate-200">R$ {simCustomPrice.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">R$ {Number(simCustomPrice || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Custo Produção:</span>
-                      <span className="font-mono text-slate-200">- R$ {simCustomCost.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">- R$ {Number(simCustomCost || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-rose-400">
                       <span>Taxas Amazon:</span>
-                      <span className="font-mono">- R$ {feeAmount.toFixed(2)}</span>
+                      <span className="font-mono">- R$ {Number(feeAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="pt-2 border-t border-white/[0.08] flex justify-between items-baseline">
                       <span className="font-bold text-slate-200">Lucro Líquido:</span>
                       <span className={`text-base font-bold font-mono ${netProfit > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        R$ {netProfit.toFixed(2)}
+                        R$ {Number(netProfit || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>Margem Líquida:</span>
-                      <span className="font-mono font-semibold text-sky-400">{marginPercent.toFixed(1)}%</span>
+                      <span className="font-mono font-semibold text-sky-400">{Number(marginPercent || 0).toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
@@ -1393,11 +1393,11 @@ export function IntegrationsView({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Preço Bruto:</span>
-                      <span className="font-mono text-slate-200">R$ {simCustomPrice.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">R$ {Number(simCustomPrice || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Custo Produção:</span>
-                      <span className="font-mono text-slate-200">- R$ {simCustomCost.toFixed(2)}</span>
+                      <span className="font-mono text-slate-200">- R$ {Number(simCustomCost || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-emerald-400">
                       <span>Taxas Marketplace:</span>
@@ -1406,12 +1406,12 @@ export function IntegrationsView({
                     <div className="pt-2 border-t border-white/[0.08] flex justify-between items-baseline">
                       <span className="font-bold text-slate-200">Lucro Líquido:</span>
                       <span className="text-base font-bold font-mono text-emerald-400">
-                        R$ {netProfit.toFixed(2)}
+                        R$ {Number(netProfit || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>Margem Líquida:</span>
-                      <span className="font-mono font-semibold text-emerald-400">{marginPercent.toFixed(1)}%</span>
+                      <span className="font-mono font-semibold text-emerald-400">{Number(marginPercent || 0).toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>

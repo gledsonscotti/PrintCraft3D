@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Flame,
   Package,
@@ -18,15 +18,19 @@ import {
   Tag,
   ShoppingBag,
   Play,
-  Minus
+  Minus,
+  Sparkles
 } from 'lucide-react';
-import { Filament, Supply, Product } from '../types';
+import { Filament, Supply, Product, ProductSale, ProductionOrder } from '../types';
 import { ConfirmModal } from './ConfirmModal';
+import { SmartShoppingAlert, calculateSmartShoppingSuggestions } from './SmartShoppingAlert';
 
 interface StockManagementViewProps {
   filaments: Filament[];
   supplies: Supply[];
   products: Product[];
+  sales?: ProductSale[];
+  productionOrders?: ProductionOrder[];
   onRefreshData: () => void | Promise<void>;
   onOpenSaleModal?: (product: Product) => void;
 }
@@ -35,11 +39,18 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
   filaments,
   supplies,
   products,
+  sales = [],
+  productionOrders = [],
   onRefreshData,
   onOpenSaleModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies' | 'products'>('filaments');
+  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies' | 'smart_alerts' | 'products'>('filaments');
   const [stockAdjustingId, setStockAdjustingId] = useState<string | null>(null);
+
+  // Pre-calculate smart shopping alerts count for the tab badge
+  const { suggestions: smartSuggestions, criticalCount: smartCriticalCount } = useMemo(() => {
+    return calculateSmartShoppingSuggestions(filaments, supplies, products, sales, productionOrders, 30);
+  }, [filaments, supplies, products, sales, productionOrders]);
 
   // Deletion Modal State
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -371,7 +382,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
           <div>
             <span className="text-xs font-semibold text-slate-400">Total Filamento em Estoque</span>
             <span className="text-2xl font-bold font-mono text-white block mt-1 tracking-tight">
-              {(totalFilamentsStockG / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-400">kg</span>
+              {Number((totalFilamentsStockG || 0) / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-400">kg</span>
             </span>
             <span className="text-[11px] text-slate-400 mt-1 block font-mono">{filaments.length} carretéis cadastrados</span>
           </div>
@@ -384,7 +395,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
           <div>
             <span className="text-xs font-semibold text-slate-400">Valor em Filamentos</span>
             <span className="text-2xl font-bold font-mono text-emerald-400 block mt-1 tracking-tight">
-              R$ {totalFilamentValue.toFixed(2)}
+              R$ {Number(totalFilamentValue || 0).toFixed(2)}
             </span>
             <span className="text-[11px] text-slate-400 mt-1 block font-mono">Avaliado por grama</span>
           </div>
@@ -410,7 +421,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
           <div>
             <span className="text-xs font-semibold text-slate-400">Valor em Insumos</span>
             <span className="text-2xl font-bold font-mono text-teal-400 block mt-1 tracking-tight">
-              R$ {totalSuppliesValue.toFixed(2)}
+              R$ {Number(totalSuppliesValue || 0).toFixed(2)}
             </span>
             <span className="text-[11px] text-slate-400 mt-1 block font-mono">Argolas, embalagens</span>
           </div>
@@ -425,7 +436,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             <span className="text-2xl font-bold font-mono text-emerald-300 block mt-1 tracking-tight">
               {totalFinishedUnits} <span className="text-sm font-normal text-slate-400">un</span>
             </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">R$ {totalFinishedValue.toFixed(2)} em custo</span>
+            <span className="text-[11px] text-slate-400 mt-1 block font-mono">R$ {Number(totalFinishedValue || 0).toFixed(2)} em custo</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
             <Tag className="w-5 h-5" />
@@ -435,11 +446,12 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
 
       {/* Tabs Switcher and Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-        <div className="flex items-center gap-1.5 bg-[#121215] p-1.5 rounded-2xl border border-white/[0.08] w-fit shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#121215] p-1.5 rounded-2xl border border-white/[0.08] w-fit shadow-sm">
+          {/* Aba 1: Filamentos 3D */}
           <button
             type="button"
             onClick={() => setActiveTab('filaments')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
               activeTab === 'filaments'
                 ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -449,10 +461,11 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             Filamentos 3D ({filaments.length})
           </button>
 
+          {/* Aba 2: Insumos & Acessórios */}
           <button
             type="button"
             onClick={() => setActiveTab('supplies')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
               activeTab === 'supplies'
                 ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -462,10 +475,37 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             Insumos & Acessórios ({supplies.length})
           </button>
 
+          {/* Aba 3: Alerta Inteligente (Posicionado logo após Insumos & Acessórios) */}
+          <button
+            type="button"
+            id="tab-smart-shopping-alert"
+            onClick={() => setActiveTab('smart_alerts')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+              activeTab === 'smart_alerts'
+                ? 'bg-amber-500/20 border border-amber-400/40 text-amber-300 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Alerta Inteligente</span>
+            {smartSuggestions.length > 0 && (
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
+                  smartCriticalCount > 0
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                }`}
+              >
+                {smartSuggestions.length}
+              </span>
+            )}
+          </button>
+
+          {/* Aba 4: Produtos Acabados */}
           <button
             type="button"
             onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
               activeTab === 'products'
                 ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -481,7 +521,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenFilamentModal()}
-              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm"
+              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Adicionar Carretel de Filamento
@@ -490,11 +530,16 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenSupplyModal()}
-              className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm"
+              className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Cadastrar Novo Insumo
             </button>
+          ) : activeTab === 'smart_alerts' ? (
+            <div className="text-xs text-amber-300 font-medium flex items-center gap-1.5 bg-amber-500/10 px-3.5 py-2 rounded-2xl border border-amber-500/25">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Previsão de Ruptura & Sugestão de Compras
+            </div>
           ) : (
             <div className="text-xs text-slate-400 font-mono">
               Resultado da produção prontas para envio/venda
@@ -585,11 +630,11 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                 <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] flex items-center justify-between text-xs">
                   <div>
                     <span className="text-slate-400 block text-[10px]">Preço do Carretel</span>
-                    <span className="font-bold text-white font-mono">R$ {f.cost_per_spool.toFixed(2)}</span>
+                    <span className="font-bold text-white font-mono">R$ {Number(f.cost_per_spool || 0).toFixed(2)}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-slate-400 block text-[10px]">Custo por Grama</span>
-                    <span className="font-bold text-emerald-400 font-mono">R$ {costPerG.toFixed(4)}/g</span>
+                    <span className="font-bold text-emerald-400 font-mono">R$ {Number(costPerG || 0).toFixed(4)}/g</span>
                   </div>
                 </div>
 
@@ -674,7 +719,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                 <div className="bg-[#0A0A0B]/80 p-3.5 rounded-2xl border border-white/[0.06] flex items-center justify-between text-xs">
                   <div>
                     <span className="text-slate-400 block text-[10px]">Custo Unitário</span>
-                    <span className="font-bold text-emerald-400 text-sm font-mono">R$ {s.unit_cost.toFixed(2)}</span>
+                    <span className="font-bold text-emerald-400 text-sm font-mono">R$ {Number(s.unit_cost || 0).toFixed(2)}</span>
                   </div>
 
                   <div className="text-right">
@@ -728,6 +773,23 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Tab: Alerta Inteligente de Reposição & Compras */}
+      {activeTab === 'smart_alerts' && (
+        <div className="animate-fadeIn">
+          <SmartShoppingAlert
+            filaments={filaments}
+            supplies={supplies}
+            products={products}
+            sales={sales}
+            productionOrders={productionOrders}
+            onQuickAddFilamentStock={handleAdjustFilamentStock}
+            onQuickAddSupplyStock={handleAdjustSupplyStock}
+            onQuickAddProductStock={handleQuickStockAdjustProduct}
+            onRefreshData={onRefreshData}
+          />
         </div>
       )}
 
@@ -790,19 +852,19 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                   <div className="bg-[#0A0A0B]/80 p-3.5 rounded-2xl border border-white/[0.06] space-y-2 text-xs font-mono">
                     <div className="flex justify-between">
                       <span className="text-slate-400 font-sans">Custo de Produção:</span>
-                      <span className="text-white">R$ {prod.total_cost.toFixed(2)}</span>
+                      <span className="text-white">R$ {Number(prod.total_cost || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400 font-sans">Preço de Venda:</span>
-                      <span className="text-emerald-400 font-bold">R$ {prod.sale_price.toFixed(2)}</span>
+                      <span className="text-emerald-400 font-bold">R$ {Number(prod.sale_price || 0).toFixed(2)}</span>
                     </div>
                     <div className="pt-2 border-t border-white/[0.06] flex justify-between">
                       <span className="text-slate-400 font-sans">Valor em Estoque (Custo):</span>
-                      <span className="text-sky-300 font-bold">R$ {totalValue.toFixed(2)}</span>
+                      <span className="text-sky-300 font-bold">R$ {Number(totalValue || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400 font-sans">Receita Potencial:</span>
-                      <span className="text-emerald-300 font-bold">R$ {potentialRevenue.toFixed(2)}</span>
+                      <span className="text-emerald-300 font-bold">R$ {Number(potentialRevenue || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

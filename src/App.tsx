@@ -20,7 +20,13 @@ import {
   Globe,
   Factory,
   Box,
-  Users
+  Users,
+  Building2,
+  LogOut,
+  UserPlus,
+  Lock,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder, Client } from './types';
 import { ModelAnalyzerView } from './components/ModelAnalyzerView';
@@ -34,6 +40,9 @@ import { ProductionControlView } from './components/ProductionControlView';
 import { ClientsView } from './components/ClientsView';
 import { SettingsView } from './components/SettingsView';
 import { RegisterSaleModal } from './components/RegisterSaleModal';
+import { AdminView } from './components/admin/AdminView';
+import { ProductAuthModal } from './components/auth/ProductAuthModal';
+import { CompanyTeamModal } from './components/auth/CompanyTeamModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
@@ -42,24 +51,256 @@ export default function App() {
   const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'integrations'>('costs');
   const [loading, setLoading] = useState(true);
 
+  // Authentication & Multi-Tenant Company Session State
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    try {
+      const saved = localStorage.getItem('printcraft_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [currentCompany, setCurrentCompany] = useState<any | null>(() => {
+    try {
+      const saved = localStorage.getItem('printcraft_auth_company');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isSuperadmin, setIsSuperadmin] = useState<boolean>(() => {
+    return localStorage.getItem('printcraft_is_superadmin') === 'true';
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(() => {
+    return !localStorage.getItem('printcraft_auth_token');
+  });
+
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // Module Permission Checker
+  const canAccess = (moduleKey: string): boolean => {
+    if (!currentUser) return false;
+    if (isSuperadmin || currentUser.role === 'superadmin' || currentUser.role === 'admin') return true;
+    const permissions: string[] = currentUser.permissions || [];
+    if (permissions.includes('all')) return true;
+    return permissions.includes(moduleKey);
+  };
+
+  // Auto-switch to first authorized tab if user doesn't have access to active tab
+  useEffect(() => {
+    if (currentUser && !canAccess(activeTab)) {
+      const validTabs: Array<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'settings'> = [
+        'analyzer', 'calculator', 'stock', 'products', 'production', 'sales', 'clients', 'settings'
+      ];
+      const firstAllowed = validTabs.find((t) => canAccess(t));
+      if (firstAllowed) {
+        setActiveTab(firstAllowed);
+      }
+    }
+  }, [currentUser]);
+
   // Ready Product Sales Modal State
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [saleModalDefaultMode, setSaleModalDefaultMode] = useState<'direct' | 'indirect' | 'consignment' | 'presale'>('direct');
   const [selectedProductForSale, setSelectedProductForSale] = useState<Product | undefined>(undefined);
 
-  // Workshop Contrast Theme State (persisted in localStorage)
-  const [theme, setTheme] = useState<AppTheme>(() => {
-    const saved = localStorage.getItem('printcraft_theme') as AppTheme;
-    if (saved === 'high-contrast-light' || saved === 'high-contrast-dark' || saved === 'standard' || saved === 'sage-bento') {
-      return saved;
+  // Decoupled Theme State Architecture:
+  // 1. Superadmin Theme: follows the superadmin's choice across administrative screens (/admin)
+  const [adminTheme, setAdminTheme] = useState<AppTheme>(() => {
+    try {
+      const saved = localStorage.getItem('printcraft_admin_theme') as AppTheme;
+      if (saved === 'high-contrast-light' || saved === 'high-contrast-dark' || saved === 'standard' || saved === 'sage-bento') {
+        return saved;
+      }
+    } catch {}
+    return 'sage-bento';
+  });
+
+  // 2. Company Theme: follows the Company Admin's choice for the registered company workspace
+  const [companyTheme, setCompanyTheme] = useState<AppTheme>(() => {
+    try {
+      const savedCompany = localStorage.getItem('printcraft_auth_company');
+      const parsedCompany = savedCompany ? JSON.parse(savedCompany) : null;
+      if (parsedCompany?.id) {
+        const companySpecificTheme = localStorage.getItem(`printcraft_company_theme_${parsedCompany.id}`) as AppTheme;
+        if (companySpecificTheme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(companySpecificTheme)) {
+          return companySpecificTheme;
+        }
+        if (parsedCompany.theme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(parsedCompany.theme)) {
+          return parsedCompany.theme;
+        }
+      }
+      const genericCompanyTheme = localStorage.getItem('printcraft_company_theme') as AppTheme;
+      if (genericCompanyTheme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(genericCompanyTheme)) {
+        return genericCompanyTheme;
+      }
+    } catch {}
+    return 'sage-bento';
+  });
+
+  // Handle /admin route navigation
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const savedIsSuper = localStorage.getItem('printcraft_is_superadmin') === 'true';
+      if (savedIsSuper && window.location.pathname === '/') {
+        try {
+          window.history.replaceState({}, '', '/admin');
+        } catch {}
+        return '/admin';
+      }
+      return window.location.pathname;
     }
-    return 'standard';
+    return '/';
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('printcraft_theme', theme);
-  }, [theme]);
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  // Ao logar como superadmin ou carregar como superadmin, direciona imediatamente para o Admin Console (/admin)
+  useEffect(() => {
+    if ((isSuperadmin || currentUser?.role === 'superadmin') && currentPath === '/') {
+      navigateToAdmin();
+    }
+  }, [isSuperadmin, currentUser, currentPath]);
+
+  // Synchronize active HTML theme according to route:
+  // - /admin -> adminTheme (Superadmin preference)
+  // - / (and workshop) -> companyTheme (Company Admin preference)
+  useEffect(() => {
+    const isAdminArea = currentPath === '/admin' || currentPath.startsWith('/admin');
+    const effectiveTheme = isAdminArea ? adminTheme : companyTheme;
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
+  }, [currentPath, adminTheme, companyTheme]);
+
+  // Synchronize company theme if company changes
+  useEffect(() => {
+    if (currentCompany?.id) {
+      try {
+        const cached = localStorage.getItem(`printcraft_company_theme_${currentCompany.id}`) as AppTheme;
+        if (cached && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(cached)) {
+          setCompanyTheme(cached);
+        } else if (currentCompany.theme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(currentCompany.theme)) {
+          setCompanyTheme(currentCompany.theme);
+        }
+      } catch {}
+    }
+  }, [currentCompany?.id, currentCompany?.theme]);
+
+  const handleAdminThemeChange = (newTheme: AppTheme) => {
+    setAdminTheme(newTheme);
+    try {
+      localStorage.setItem('printcraft_admin_theme', newTheme);
+    } catch {}
+    if (currentPath === '/admin' || currentPath.startsWith('/admin')) {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+    fetch('/api/admin/theme', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: newTheme }),
+    }).catch((e) => console.warn('Erro ao salvar tema do admin no servidor:', e));
+  };
+
+  const handleCompanyThemeChange = (newTheme: AppTheme) => {
+    const isCompAdmin = currentUser?.role === 'admin' || isSuperadmin || currentUser?.role === 'superadmin';
+    if (!isCompAdmin) {
+      alert(`O tema da oficina foi configurado pelo Administrador da Empresa (${currentCompany?.trade_name || currentCompany?.name || 'sua empresa'}). Apenas administradores podem alterá-lo.`);
+      return;
+    }
+
+    setCompanyTheme(newTheme);
+    try {
+      localStorage.setItem('printcraft_company_theme', newTheme);
+      if (currentCompany?.id) {
+        localStorage.setItem(`printcraft_company_theme_${currentCompany.id}`, newTheme);
+      }
+    } catch {}
+
+    if (currentCompany?.id) {
+      const updated = { ...currentCompany, theme: newTheme };
+      setCurrentCompany(updated);
+      try {
+        localStorage.setItem('printcraft_auth_company', JSON.stringify(updated));
+      } catch {}
+
+      fetch(`/api/company/${currentCompany.id}/theme`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: newTheme }),
+      }).catch((e) => console.warn('Erro ao salvar tema da empresa no servidor:', e));
+    }
+
+    if (currentPath !== '/admin' && !currentPath.startsWith('/admin')) {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+  };
+
+  const navigateToAdmin = () => {
+    window.history.pushState({}, '', '/admin');
+    setCurrentPath('/admin');
+  };
+
+  const navigateToApp = () => {
+    window.history.pushState({}, '', '/');
+    setCurrentPath('/');
+  };
+
+  const handleLoginSuccess = (user: any, company: any, token: string, isSuper: boolean) => {
+    setCurrentUser(user);
+    setCurrentCompany(company);
+    setIsSuperadmin(isSuper);
+    setIsAuthModalOpen(false);
+
+    // Ao logar como superadmin, direciona imediatamente para o Admin console (/admin) e não para a tela de APP
+    if (isSuper || user?.role === 'superadmin') {
+      try {
+        localStorage.setItem('printcraft_admin_token', token);
+        localStorage.setItem('printcraft_admin_user', JSON.stringify(user));
+        localStorage.setItem('printcraft_is_superadmin', 'true');
+      } catch {}
+      navigateToAdmin();
+      return;
+    }
+
+    const themeToUse = (company?.theme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(company.theme))
+      ? company.theme
+      : 'sage-bento';
+    setCompanyTheme(themeToUse);
+    try {
+      if (company?.id) {
+        localStorage.setItem(`printcraft_company_theme_${company.id}`, themeToUse);
+      }
+      localStorage.setItem('printcraft_company_theme', themeToUse);
+    } catch {}
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('printcraft_auth_token');
+      localStorage.removeItem('printcraft_auth_user');
+      localStorage.removeItem('printcraft_auth_company');
+      localStorage.removeItem('printcraft_is_superadmin');
+      localStorage.removeItem('printcraft_admin_token');
+      localStorage.removeItem('printcraft_admin_user');
+    } catch (e) {
+      console.error('Logout cleanup error:', e);
+    }
+    setCurrentUser(null);
+    setCurrentCompany(null);
+    setIsSuperadmin(false);
+    setIsTeamModalOpen(false);
+    setCompanyTheme('sage-bento');
+    setIsAuthModalOpen(true);
+    navigateToApp();
+  };
 
   // App Data States with localStorage initial hydration for instant load and resilience
   const [printers, setPrinters] = useState<Printer[]>(() => {
@@ -217,6 +458,29 @@ export default function App() {
         setSettings(settingsRes);
         try { localStorage.setItem('printcraft_settings', JSON.stringify(settingsRes)); } catch {}
       }
+
+      // Sync Admin Theme from server
+      try {
+        const adminThemeRes = await fetch('/api/admin/theme').then(r => r.json());
+        if (adminThemeRes?.theme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(adminThemeRes.theme)) {
+          setAdminTheme(adminThemeRes.theme);
+          try { localStorage.setItem('printcraft_admin_theme', adminThemeRes.theme); } catch {}
+        }
+      } catch {}
+
+      // Sync Company Theme from server
+      if (currentCompany?.id) {
+        try {
+          const compThemeRes = await fetch(`/api/company/${currentCompany.id}/theme`).then(r => r.json());
+          if (compThemeRes?.theme && ['standard', 'sage-bento', 'high-contrast-light', 'high-contrast-dark'].includes(compThemeRes.theme)) {
+            setCompanyTheme(compThemeRes.theme);
+            try {
+              localStorage.setItem(`printcraft_company_theme_${currentCompany.id}`, compThemeRes.theme);
+              localStorage.setItem('printcraft_company_theme', compThemeRes.theme);
+            } catch {}
+          }
+        } catch {}
+      }
     } catch (err) {
       console.error('Error fetching data from SQLite API:', err);
     } finally {
@@ -243,357 +507,475 @@ export default function App() {
     fetchData();
   }, []);
 
+  // Dedicated Route: /admin -> Product Administration Panel (Acesso restrito ao Superadmin)
+  const isSuperUser = isSuperadmin || currentUser?.role === 'superadmin' || (typeof window !== 'undefined' && localStorage.getItem('printcraft_is_superadmin') === 'true');
+
+  if (currentPath === '/admin' || currentPath.startsWith('/admin') || (isSuperUser && currentUser)) {
+    if (!isSuperUser) {
+      navigateToApp();
+      setIsAuthModalOpen(true);
+      return null;
+    }
+
+    return (
+      <AdminView
+        onLogout={handleLogout}
+        currentTheme={adminTheme}
+        onChangeTheme={handleAdminThemeChange}
+        onRefreshData={fetchData}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-slate-200 flex flex-col font-sans selection:bg-sky-500 selection:text-white">
-      {/* Top Navigation Header - Clean, Single-Line & Uncluttered */}
-      <header className="sticky top-0 z-40 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/[0.08]">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
-            {/* Brand / Logo - Sleek & Compact */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20 border border-white/20 shrink-0">
-                <Layers className="w-5 h-5" />
+      {/* Top Navigation Header - Sleek, Balanced & Intuitive */}
+      <header className="sticky top-0 z-40 bg-[#0A0A0B]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
+            {/* Brand Logo - Clean & Uncluttered */}
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-sm border border-white/20 shrink-0">
+                <Layers className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-white tracking-tight leading-none whitespace-nowrap">
-                  PrintCraft <span className="text-sky-400 font-extrabold">3D</span>
-                </h1>
-                <span
-                  className="hidden 2xl:inline-flex items-center gap-1.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full whitespace-nowrap"
-                  title="SQLite Local Conectado"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  SQLite
-                </span>
-              </div>
+              <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none whitespace-nowrap">
+                PrintCraft <span className="text-sky-400 font-extrabold">3D</span>
+              </span>
             </div>
 
-            {/* Main Navigation Tabs - Guaranteed Single-Line Segmented Control */}
-            <nav className="hidden md:flex items-center gap-1 bg-[#131316] p-1 rounded-2xl border border-white/[0.08] shadow-inner overflow-x-auto no-scrollbar shrink-0">
+            {/* Main Navigation Tabs - Desktop (Fixed structure with all modules, restricted ones disabled) */}
+            <nav className="hidden lg:flex items-center gap-1 bg-[#131316] p-1.5 rounded-xl border border-white/[0.08] shadow-inner shrink-0">
+              {/* Analisador */}
               <button
                 type="button"
-                onClick={() => setActiveTab('analyzer')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'analyzer'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                disabled={!canAccess('analyzer')}
+                onClick={() => canAccess('analyzer') && setActiveTab('analyzer')}
+                title={canAccess('analyzer') ? 'Analisador 3D de Arquivos' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('analyzer')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'analyzer'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Box className="w-3.5 h-3.5" />
-                <span>Analisador 3D</span>
+                <Box className="w-4 h-4" />
+                <span>Analisador</span>
+                {!canAccess('analyzer') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
+              {/* Calculadora */}
               <button
                 type="button"
-                onClick={() => setActiveTab('calculator')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'calculator'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                disabled={!canAccess('calculator')}
+                onClick={() => canAccess('calculator') && setActiveTab('calculator')}
+                title={canAccess('calculator') ? 'Calculadora de Custos & Orçamentos' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('calculator')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'calculator'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Calculator className="w-3.5 h-3.5" />
+                <Calculator className="w-4 h-4" />
                 <span>Calculadora</span>
+                {!canAccess('calculator') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
+              {/* Catálogo */}
               <button
                 type="button"
-                onClick={() => setActiveTab('products')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'products'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                disabled={!canAccess('products')}
+                onClick={() => canAccess('products') && setActiveTab('products')}
+                title={canAccess('products') ? 'Catálogo de Modelos & Peças Prontas' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('products')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'products'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Tag className="w-3.5 h-3.5" />
+                <Tag className="w-4 h-4" />
                 <span>Catálogo</span>
-                {products.length > 0 && (
-                  <span className="text-[10px] opacity-70 font-mono">({products.length})</span>
-                )}
+                {!canAccess('products') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
+              {/* Pessoas */}
               <button
                 type="button"
-                onClick={() => setActiveTab('clients')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'clients'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.04]'
+                disabled={!canAccess('clients')}
+                onClick={() => canAccess('clients') && setActiveTab('clients')}
+                title={canAccess('clients') ? 'Gestão de Pessoas (Clientes e Equipe)' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('clients')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'clients'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" />
-                <span>Clientes</span>
-                {clients.length > 0 && (
-                  <span className="text-[10px] opacity-70 font-mono">({clients.length})</span>
-                )}
+                <Users className="w-4 h-4" />
+                <span>Pessoas</span>
+                {!canAccess('clients') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
+              {/* Estoque */}
               <button
                 type="button"
-                onClick={() => setActiveTab('stock')}
-                className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'stock'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                disabled={!canAccess('stock')}
+                onClick={() => canAccess('stock') && setActiveTab('stock')}
+                title={canAccess('stock') ? 'Estoque de Insumos & Matéria-prima' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`relative px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('stock')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'stock'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Flame className="w-3.5 h-3.5" />
+                <Flame className="w-4 h-4" />
                 <span>Estoque</span>
-                {lowStockCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-sm">
-                    {lowStockCount}
-                  </span>
+                {!canAccess('stock') ? (
+                  <Lock className="w-3 h-3 text-slate-500/80" />
+                ) : (
+                  lowStockCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-xs">
+                      {lowStockCount}
+                    </span>
+                  )
                 )}
               </button>
 
+              {/* Produção */}
               <button
                 type="button"
-                onClick={() => setActiveTab('production')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'production'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/25 border border-emerald-400/40 font-bold'
-                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04]'
+                disabled={!canAccess('production')}
+                onClick={() => canAccess('production') && setActiveTab('production')}
+                title={canAccess('production') ? 'PCP & Linha de Impressão 3D' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('production')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'production'
+                    ? 'bg-emerald-500 text-slate-950 shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <Factory className="w-3.5 h-3.5" />
+                <Factory className="w-4 h-4" />
                 <span>Produção</span>
-                {productionOrders.filter((o) => o.status === 'in_progress').length > 0 && (
-                  <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'production' ? 'bg-white' : 'bg-sky-400'} animate-pulse`} />
-                )}
-                {productionOrders.filter((o) => o.status === 'pending').length > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono leading-none border transition-colors ${
-                    activeTab === 'production'
-                      ? 'bg-black/20 text-white border-white/20 font-bold'
-                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                  }`}>
-                    {productionOrders.filter((o) => o.status === 'pending').length}
-                  </span>
+                {!canAccess('production') ? (
+                  <Lock className="w-3 h-3 text-slate-500/80" />
+                ) : (
+                  <>
+                    {productionOrders.filter((o) => o.status === 'in_progress').length > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
+                    {productionOrders.filter((o) => o.status === 'pending').length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 font-bold">
+                        {productionOrders.filter((o) => o.status === 'pending').length}
+                      </span>
+                    )}
+                  </>
                 )}
               </button>
 
+              {/* Vendas */}
               <button
                 type="button"
-                onClick={() => setActiveTab('sales')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeTab === 'sales'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/25 border border-emerald-400/40 font-bold'
-                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04]'
+                disabled={!canAccess('sales')}
+                onClick={() => canAccess('sales') && setActiveTab('sales')}
+                title={canAccess('sales') ? 'Vendas & Faturamento' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('sales')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'sales'
+                    ? 'bg-emerald-500 text-slate-950 shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
+                <ShoppingBag className="w-4 h-4" />
                 <span>Vendas</span>
-                {sales.length > 0 && (
-                  <span className="text-[10px] opacity-70 font-mono">({sales.length})</span>
-                )}
+                {!canAccess('sales') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
+            </nav>
 
-              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
-
-              {/* Workshop Theme Toggle - Icon Only */}
+            {/* Right Actions: Tools, User Profile & Logoff */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Theme Toggle - Icon Only */}
               <button
                 type="button"
                 id="btn-workshop-contrast"
                 onClick={() => {
-                  setTheme((prev) => {
-                    if (prev === 'standard') return 'sage-bento';
-                    if (prev === 'sage-bento') return 'high-contrast-light';
-                    if (prev === 'high-contrast-light') return 'high-contrast-dark';
-                    return 'standard';
-                  });
+                  const isCompAdmin = currentUser?.role === 'admin' || isSuperadmin || currentUser?.role === 'superadmin';
+                  if (!isCompAdmin) {
+                    alert(`O tema da oficina foi configurado pelo Administrador da Empresa (${currentCompany?.trade_name || currentCompany?.name || 'sua empresa'}). Apenas administradores da empresa podem alterá-lo.`);
+                    return;
+                  }
+                  const nextTheme: AppTheme =
+                    companyTheme === 'standard'
+                      ? 'sage-bento'
+                      : companyTheme === 'sage-bento'
+                      ? 'high-contrast-light'
+                      : companyTheme === 'high-contrast-light'
+                      ? 'high-contrast-dark'
+                      : 'standard';
+                  handleCompanyThemeChange(nextTheme);
                 }}
-                className={`p-2 rounded-xl text-xs transition-all duration-150 flex items-center justify-center shrink-0 cursor-pointer ${
-                  theme === 'sage-bento'
-                    ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-400/60 ring-1 ring-emerald-400/30 font-bold'
-                    : theme === 'high-contrast-light'
+                className={`p-2 rounded-lg text-xs transition-all duration-150 flex items-center justify-center shrink-0 cursor-pointer ${
+                  companyTheme === 'sage-bento'
+                    ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-400/50 font-bold'
+                    : companyTheme === 'high-contrast-light'
                     ? 'bg-amber-400 text-slate-950 border border-amber-500 font-bold'
-                    : theme === 'high-contrast-dark'
+                    : companyTheme === 'high-contrast-dark'
                     ? 'bg-white text-black border border-white font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
                 }`}
-                title={`Tema atual: ${
-                  theme === 'sage-bento'
+                title={`Tema da Oficina: ${
+                  companyTheme === 'sage-bento'
                     ? 'Sage Bento'
-                    : theme === 'high-contrast-light'
+                    : companyTheme === 'high-contrast-light'
                     ? 'Oficina Clara'
-                    : theme === 'high-contrast-dark'
+                    : companyTheme === 'high-contrast-dark'
                     ? 'Preto Puro'
                     : 'Dark Studio'
-                } (Clique para alternar)`}
+                }`}
               >
-                {theme === 'sage-bento' ? (
-                  <Leaf className="w-4 h-4 text-emerald-400" />
-                ) : theme === 'high-contrast-light' ? (
-                  <Sun className="w-4 h-4 text-slate-950" />
-                ) : theme === 'high-contrast-dark' ? (
-                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                {companyTheme === 'sage-bento' ? (
+                  <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+                ) : companyTheme === 'high-contrast-light' ? (
+                  <Sun className="w-3.5 h-3.5 text-slate-950" />
+                ) : companyTheme === 'high-contrast-dark' ? (
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 ) : (
-                  <Moon className="w-4 h-4 text-slate-400" />
+                  <Moon className="w-3.5 h-3.5 text-slate-400" />
                 )}
               </button>
 
-              {/* Sync SQLite Button - Icon Only */}
-              <button
-                type="button"
-                id="btn-refresh-sqlite"
-                onClick={fetchData}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-all duration-150 shrink-0 cursor-pointer"
-                title="Sincronizar dados do SQLite"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              {/* Ajustes do Sistema (Configurações) */}
+              {canAccess('settings') && (
+                <button
+                  type="button"
+                  id="btn-open-settings"
+                  onClick={() => {
+                    setSettingsSubTab('costs');
+                    setActiveTab('settings');
+                  }}
+                  className={`p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer ${
+                    activeTab === 'settings'
+                      ? 'bg-sky-500 text-white shadow-xs font-bold'
+                      : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.05]'
+                  }`}
+                  title="Configurações do Sistema"
+                >
+                  <SettingsIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
 
-              {/* Ajustes do Sistema - Somente Ícone de Catraca (Engrenagem) */}
-              <button
-                type="button"
-                id="btn-open-settings"
-                onClick={() => {
-                  setSettingsSubTab('costs');
-                  setActiveTab('settings');
-                }}
-                className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer ${
-                  activeTab === 'settings'
-                    ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/25 border border-sky-400/40 font-bold'
-                    : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.04]'
-                }`}
-                title="Ajustes do Sistema (Configurações e Integrações)"
-              >
-                <SettingsIcon className="w-4 h-4" />
-              </button>
-            </nav>
+              {/* Acesso Admin Console (visível SOMENTE para Superadmin) */}
+              {isSuperadmin && (
+                <button
+                  type="button"
+                  id="btn-open-admin"
+                  onClick={navigateToAdmin}
+                  className="p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                  title="Painel Super Admin (/admin)"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Subtle vertical divider */}
+              <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+
+              {/* User Profile & Logoff */}
+              {currentUser ? (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* User / Superadmin Profile Badge */}
+                  <div
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs shrink-0 cursor-default"
+                    title={`Usuário: ${currentUser.name} • Perfil: ${isSuperadmin || currentUser.role === 'superadmin' ? 'Superadmin' : currentUser.role === 'admin' ? 'Administrador' : 'Usuário / Operador'}`}
+                  >
+                    <div className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-[11px] shrink-0">
+                      {isSuperadmin || currentUser.role === 'superadmin' ? (
+                        'S'
+                      ) : (
+                        currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'
+                      )}
+                    </div>
+                    <span className="font-semibold text-slate-200 text-xs whitespace-nowrap">
+                      {isSuperadmin || currentUser.role === 'superadmin'
+                        ? 'Superadmin'
+                        : currentUser.name.trim().split(/\s+/)[0]}
+                    </span>
+                  </div>
+
+                  {/* Functional Logout Button - Icon Only */}
+                  <button
+                    type="button"
+                    id="btn-logout"
+                    onClick={handleLogout}
+                    className="p-2 rounded-lg text-xs font-semibold flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
+                    title="Sair da conta (Logoff)"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  id="btn-open-login"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Acessar</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Mobile Navigation Row - Clean Single Space with Icon-Only Controls */}
-          <div className="md:hidden flex items-center gap-1.5 overflow-x-auto py-2 border-t border-white/[0.08] no-scrollbar">
-            {/* Quick Toggle Theme - Icon Only */}
+          {/* Mobile / Tablet Navigation Row - Fixed full item row with restricted items disabled */}
+          <div className="lg:hidden flex items-center gap-1 overflow-x-auto py-1.5 border-t border-white/[0.08] no-scrollbar">
+            {/* Analisador */}
             <button
               type="button"
-              onClick={() => {
-                setTheme((prev) => {
-                  if (prev === 'standard') return 'sage-bento';
-                  if (prev === 'sage-bento') return 'high-contrast-light';
-                  if (prev === 'high-contrast-light') return 'high-contrast-dark';
-                  return 'standard';
-                });
-              }}
-              className={`p-2 rounded-xl text-xs font-bold shrink-0 flex items-center justify-center ${
-                theme === 'sage-bento'
-                  ? 'bg-emerald-800/40 text-emerald-200 border border-emerald-400'
-                  : theme === 'high-contrast-light'
-                  ? 'bg-amber-400 text-black border border-amber-500'
-                  : theme === 'high-contrast-dark'
-                  ? 'bg-white text-black border border-white'
-                  : 'text-slate-300 bg-[#131316] border border-white/[0.1]'
+              disabled={!canAccess('analyzer')}
+              onClick={() => canAccess('analyzer') && setActiveTab('analyzer')}
+              title={canAccess('analyzer') ? 'Analisador' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('analyzer')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'analyzer'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
               }`}
-              title="Alternar tema"
             >
-              {theme === 'sage-bento' ? (
-                <Leaf className="w-3.5 h-3.5 text-emerald-400" />
-              ) : theme === 'high-contrast-light' ? (
-                <Sun className="w-3.5 h-3.5 text-slate-950" />
-              ) : theme === 'high-contrast-dark' ? (
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <Box className="w-3 h-3 shrink-0" />
+              <span>Analisador</span>
+              {!canAccess('analyzer') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+            </button>
+
+            {/* Calculadora */}
+            <button
+              type="button"
+              disabled={!canAccess('calculator')}
+              onClick={() => canAccess('calculator') && setActiveTab('calculator')}
+              title={canAccess('calculator') ? 'Calculadora' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('calculator')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'calculator'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
+            >
+              <Calculator className="w-3 h-3 shrink-0" />
+              <span>Calculadora</span>
+              {!canAccess('calculator') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+            </button>
+
+            {/* Catálogo */}
+            <button
+              type="button"
+              disabled={!canAccess('products')}
+              onClick={() => canAccess('products') && setActiveTab('products')}
+              title={canAccess('products') ? 'Catálogo' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('products')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'products'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
+            >
+              <Tag className="w-3 h-3 shrink-0" />
+              <span>Catálogo</span>
+              {!canAccess('products') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+            </button>
+
+            {/* Pessoas */}
+            <button
+              type="button"
+              disabled={!canAccess('clients')}
+              onClick={() => canAccess('clients') && setActiveTab('clients')}
+              title={canAccess('clients') ? 'Pessoas (Clientes e Equipe)' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('clients')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'clients'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
+            >
+              <Users className="w-3 h-3 shrink-0" />
+              <span>Pessoas</span>
+              {!canAccess('clients') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+            </button>
+
+            {/* Estoque */}
+            <button
+              type="button"
+              disabled={!canAccess('stock')}
+              onClick={() => canAccess('stock') && setActiveTab('stock')}
+              title={canAccess('stock') ? 'Estoque' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('stock')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'stock'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
+            >
+              <Flame className="w-3 h-3 shrink-0" />
+              <span>Estoque</span>
+              {!canAccess('stock') ? (
+                <Lock className="w-2.5 h-2.5 text-slate-500" />
               ) : (
-                <Moon className="w-3.5 h-3.5 text-slate-400" />
+                lowStockCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center font-bold shrink-0">
+                    {lowStockCount}
+                  </span>
+                )
               )}
             </button>
 
-            {/* Refresh SQLite Mobile - Icon Only */}
+            {/* Produção */}
             <button
               type="button"
-              onClick={fetchData}
-              className="p-2 rounded-xl text-slate-300 bg-[#131316] border border-white/[0.1] shrink-0"
-              title="Sincronizar"
+              disabled={!canAccess('production')}
+              onClick={() => canAccess('production') && setActiveTab('production')}
+              title={canAccess('production') ? 'Produção' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('production')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'production'
+                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <Factory className="w-3 h-3 shrink-0" />
+              <span>Produção</span>
+              {!canAccess('production') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
+            {/* Vendas */}
             <button
               type="button"
-              onClick={() => setActiveTab('analyzer')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'analyzer' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
+              disabled={!canAccess('sales')}
+              onClick={() => canAccess('sales') && setActiveTab('sales')}
+              title={canAccess('sales') ? 'Vendas' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('sales')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'sales'
+                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
-              <Box className="w-3.5 h-3.5 shrink-0" />
-              Analisador 3D
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('calculator')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'calculator' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Calculator className="w-3.5 h-3.5 shrink-0" />
-              Calculadora
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('products')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'products' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5 shrink-0" />
-              Catálogo
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('clients')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'clients' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5 shrink-0" />
-              Clientes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('stock')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'stock' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5 shrink-0" />
-              Estoque
-              {lowStockCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">
-                  {lowStockCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('production')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'production' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <Factory className="w-3.5 h-3.5 shrink-0" />
-              Produção
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('sales')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activeTab === 'sales' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
-              Vendas
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSettingsSubTab('costs');
-                setActiveTab('settings');
-              }}
-              className={`p-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center justify-center ${
-                activeTab === 'settings' ? 'bg-sky-500 text-white font-bold' : 'text-slate-400 bg-[#131316]'
-              }`}
-              title="Ajustes"
-            >
-              <SettingsIcon className="w-3.5 h-3.5 shrink-0" />
+              <ShoppingBag className="w-3 h-3 shrink-0" />
+              <span>Vendas</span>
+              {!canAccess('sales') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
           </div>
         </div>
@@ -606,6 +988,23 @@ export default function App() {
             <div className="w-10 h-10 border-3 border-sky-400 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs text-slate-400 font-medium">Carregando dados do banco SQLite...</p>
           </div>
+        ) : !canAccess(activeTab) ? (
+          <div className="py-16 text-center max-w-md mx-auto space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+              <Lock className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-slate-100">Módulo Restrito</h2>
+              <p className="text-xs text-slate-400">
+                O administrador da sua empresa não habilitou permissão para seu usuário acessar esta funcionalidade.
+              </p>
+            </div>
+            <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300 text-left space-y-1">
+              <p><strong className="text-slate-400">Usuário:</strong> {currentUser?.name || 'Operador'} ({currentUser?.email})</p>
+              <p><strong className="text-slate-400">Empresa:</strong> {currentCompany?.name || 'Oficina'}</p>
+              <p><strong className="text-slate-400">Cargo:</strong> {currentUser?.role}</p>
+            </div>
+          </div>
         ) : (
           <>
             {activeTab === 'analyzer' && (
@@ -613,7 +1012,7 @@ export default function App() {
                 printers={printers}
                 filaments={filaments}
                 settings={settings}
-                theme={theme}
+                theme={companyTheme}
                 onNavigateToCalculator={(params) => {
                   setCalculatorInitialParams(params);
                   setActiveTab('calculator');
@@ -629,7 +1028,7 @@ export default function App() {
                 settings={settings}
                 onRefreshData={fetchData}
                 onNavigateToStock={() => setActiveTab('stock')}
-                theme={theme}
+                theme={companyTheme}
                 initialParams={calculatorInitialParams}
               />
             </div>
@@ -639,6 +1038,8 @@ export default function App() {
                 filaments={filaments}
                 supplies={supplies}
                 products={products}
+                sales={sales}
+                productionOrders={productionOrders}
                 onRefreshData={fetchData}
                 onOpenSaleModal={(product) => {
                   setSelectedProductForSale(product);
@@ -680,7 +1081,7 @@ export default function App() {
                 onRefreshData={fetchData}
                 preselectedSaleForOP={preselectedSaleForOP}
                 onClearPreselectedSale={() => setPreselectedSaleForOP(null)}
-                theme={theme}
+                theme={companyTheme}
               />
             )}
 
@@ -706,7 +1107,10 @@ export default function App() {
               <ClientsView
                 clients={clients}
                 onRefreshData={fetchData}
-                theme={theme}
+                theme={companyTheme}
+                currentUser={currentUser}
+                currentCompany={currentCompany}
+                isSuperadmin={isSuperadmin}
               />
             )}
 
@@ -714,14 +1118,16 @@ export default function App() {
               <SettingsView
                 settings={settings}
                 onSaveSettings={(newSet) => setSettings(newSet)}
-                currentTheme={theme}
-                onChangeTheme={(newTheme) => setTheme(newTheme)}
+                currentTheme={companyTheme}
+                onChangeTheme={handleCompanyThemeChange}
                 onRefreshData={fetchData}
                 products={products}
                 sales={sales}
                 onNavigateToSales={() => setActiveTab('sales')}
                 initialSubTab={settingsSubTab}
                 printers={printers}
+                isCompanyAdmin={currentUser?.role === 'admin' || isSuperadmin || currentUser?.role === 'superadmin'}
+                companyName={currentCompany?.trade_name || currentCompany?.name}
               />
             )}
           </>
@@ -756,6 +1162,27 @@ export default function App() {
         }}
         onRefreshData={fetchData}
       />
+
+      {/* PrintCraft Authentication & Registration Modal */}
+      <ProductAuthModal
+        isOpen={isAuthModalOpen || !currentUser}
+        onClose={() => {
+          if (currentUser) setIsAuthModalOpen(false);
+        }}
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToSuperadminConsole={navigateToAdmin}
+      />
+
+      {/* Company Team Management Modal */}
+      {currentCompany && (
+        <CompanyTeamModal
+          isOpen={isTeamModalOpen}
+          onClose={() => setIsTeamModalOpen(false)}
+          companyId={currentCompany.id}
+          companyName={currentCompany.name}
+          isSuperadmin={isSuperadmin}
+        />
+      )}
     </div>
   );
 }

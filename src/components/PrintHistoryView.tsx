@@ -226,20 +226,20 @@ export const PrintHistoryView: React.FC<PrintHistoryViewProps> = ({ jobs }) => {
                 <div className="flex items-center gap-6 border-t md:border-t-0 md:border-l border-white/[0.08] pt-3 md:pt-0 md:pl-6 shrink-0">
                   <div className="text-left md:text-right">
                     <span className="text-[11px] text-slate-400 block">Filamento Gasto</span>
-                    <span className="text-sm font-bold text-sky-400 font-mono">{job.filament_used_g.toFixed(1)} g</span>
+                    <span className="text-sm font-bold text-sky-400 font-mono">{Number(job.filament_used_g || 0).toFixed(1)} g</span>
                   </div>
 
                   <div className="text-left md:text-right">
                     <span className="text-[11px] text-slate-400 block">Tempo Total</span>
                     <span className="text-sm font-bold text-amber-400 font-mono">
-                      {Math.floor(job.total_time_minutes / 60)}h {job.total_time_minutes % 60}m
+                      {Math.floor((job.total_time_minutes || 0) / 60)}h {(job.total_time_minutes || 0) % 60}m
                     </span>
                   </div>
 
                   <div className="text-left md:text-right">
                     <span className="text-[11px] text-slate-400 block">Custo Total</span>
                     <span className="text-sm font-black text-emerald-400 font-mono">
-                      R$ {job.total_cost.toFixed(2)}
+                      R$ {Number(job.total_cost || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>

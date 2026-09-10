@@ -17,10 +17,19 @@ import {
   Thermometer,
   Calendar,
   ShieldAlert,
-  Clock
+  Clock,
+  Wifi,
+  Cloud,
+  Layers,
+  Search,
+  Check,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
-import { Printer, AmsHeater, PrinterMaintenance, MaintenanceType, MaintenanceStatus, MaintenanceSeverity } from '../types';
+import { Printer, AmsHeater, PrinterMaintenance, MaintenanceType, MaintenanceStatus, MaintenanceSeverity, PrinterBrand, PrinterProtocol } from '../types';
 import { ConfirmModal } from './ConfirmModal';
+import { NetworkDiscoveryModal } from './NetworkDiscoveryModal';
+import { PRINTER_BRANDS } from '../data/printerBrands';
 
 interface PrintersViewProps {
   printers: Printer[];
@@ -66,16 +75,40 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
 
   // Printer Modal State
   const [showModal, setShowModal] = useState(false);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Printer | null>(null);
 
-  // Printer Form State
+  // Printer Form State (Technical, Brand, and Connectivity)
   const [name, setName] = useState('');
+  const [brand, setBrand] = useState<PrinterBrand>('Outra');
+  const [model, setModel] = useState('');
+  const [connectionType, setConnectionType] = useState<'lan' | 'cloud'>('lan');
+  const [protocol, setProtocol] = useState<PrinterProtocol>('moonraker_klipper');
+  const [ipAddress, setIpAddress] = useState('');
+  const [port, setPort] = useState(80);
+  const [apiKey, setApiKey] = useState('');
+  const [deviceId, setDeviceId] = useState('');
+  const [cloudEndpoint, setCloudEndpoint] = useState('');
+  const [cameraStreamUrl, setCameraStreamUrl] = useState('');
+  const [bedSizeX, setBedSizeX] = useState(220);
+  const [bedSizeY, setBedSizeY] = useState(220);
+  const [bedSizeZ, setBedSizeZ] = useState(250);
+  const [nozzleDiameter, setNozzleDiameter] = useState(0.4);
+
   const [printerPowerWatts, setPrinterPowerWatts] = useState(80);
   const [bedHeaterWatts, setBedHeaterWatts] = useState(200);
   const [hourlyDepreciation, setHourlyDepreciation] = useState(0.60);
   const [failureRateDefault, setFailureRateDefault] = useState(10);
   const [status, setStatus] = useState<'available' | 'printing' | 'maintenance'>('available');
+
+  // Modal Connection Test state
+  const [isTestingModalConn, setIsTestingModalConn] = useState(false);
+  const [modalTestResult, setModalTestResult] = useState<{ success: boolean; message: string; latency?: number } | null>(null);
+
+  // Card Live Connection Ping states
+  const [testingCardId, setTestingCardId] = useState<string | null>(null);
+  const [cardTestResults, setCardTestResults] = useState<Record<string, { success: boolean; latency?: number; message: string }>>({});
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -120,11 +153,147 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
     fetchMaintenance();
   }, []);
 
+  // When changing brand, auto-suggest defaults
+  const handleSelectBrand = (newBrand: PrinterBrand) => {
+    setBrand(newBrand);
+    const preset = PRINTER_BRANDS[newBrand];
+    if (preset) {
+      const defaultModel = preset.models[0];
+      if (defaultModel) {
+        if (!editingPrinter || !model) {
+          setModel(defaultModel.model);
+          setName(`${newBrand} ${defaultModel.model}`);
+        }
+        setBedSizeX(defaultModel.bedSize.x);
+        setBedSizeY(defaultModel.bedSize.y);
+        setBedSizeZ(defaultModel.bedSize.z);
+        setNozzleDiameter(defaultModel.nozzleDiameter);
+        setPrinterPowerWatts(defaultModel.powerWatts);
+        setBedHeaterWatts(defaultModel.bedWatts);
+        setHourlyDepreciation(defaultModel.hourlyDepreciation);
+        setProtocol(defaultModel.defaultProtocol);
+        setPort(defaultModel.defaultLanPort);
+      }
+      if (preset.cloudDefaultEndpoint && !cloudEndpoint) {
+        setCloudEndpoint(preset.cloudDefaultEndpoint);
+      }
+    }
+    setModalTestResult(null);
+  };
+
+  const handleSelectModel = (modelName: string) => {
+    setModel(modelName);
+    const preset = PRINTER_BRANDS[brand];
+    if (preset) {
+      const found = preset.models.find(m => m.model === modelName);
+      if (found) {
+        setName(`${brand} ${found.model}`);
+        setBedSizeX(found.bedSize.x);
+        setBedSizeY(found.bedSize.y);
+        setBedSizeZ(found.bedSize.z);
+        setNozzleDiameter(found.nozzleDiameter);
+        setPrinterPowerWatts(found.powerWatts);
+        setBedHeaterWatts(found.bedWatts);
+        setHourlyDepreciation(found.hourlyDepreciation);
+      }
+    }
+  };
+
+  // Test connection within modal
+  const handleTestModalConnection = async () => {
+    setIsTestingModalConn(true);
+    setModalTestResult(null);
+    try {
+      const res = await fetch('/api/printers/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand,
+          connection_type: connectionType,
+          ip_address: ipAddress,
+          port: Number(port),
+          protocol,
+          api_key: apiKey,
+          device_id: deviceId,
+          cloud_endpoint: cloudEndpoint
+        }),
+      });
+      const data = await res.json();
+      setModalTestResult({
+        success: data.success,
+        message: data.status_message || 'Conexão confirmada com sucesso!',
+        latency: data.latency_ms
+      });
+    } catch (e: any) {
+      setModalTestResult({
+        success: false,
+        message: e.message || 'Falha ao conectar com o endpoint especificado.'
+      });
+    } finally {
+      setIsTestingModalConn(false);
+    }
+  };
+
+  // Live test connection from card
+  const handleTestCardConnection = async (printer: Printer) => {
+    setTestingCardId(printer.id);
+    try {
+      const res = await fetch('/api/printers/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand: printer.brand || 'Outra',
+          connection_type: printer.connection_type || 'lan',
+          ip_address: printer.ip_address || '192.168.1.100',
+          port: printer.port || 80,
+          protocol: printer.protocol,
+          api_key: printer.api_key,
+          device_id: printer.device_id,
+          cloud_endpoint: printer.cloud_endpoint
+        }),
+      });
+      const data = await res.json();
+      setCardTestResults(prev => ({
+        ...prev,
+        [printer.id]: {
+          success: data.success,
+          latency: data.latency_ms,
+          message: data.status_message || 'Online'
+        }
+      }));
+    } catch (e: any) {
+      setCardTestResults(prev => ({
+        ...prev,
+        [printer.id]: {
+          success: false,
+          message: 'Sem resposta'
+        }
+      }));
+    } finally {
+      setTestingCardId(null);
+    }
+  };
+
   // Printer Handlers
   const handleOpenModal = (printer?: Printer) => {
+    setModalTestResult(null);
     if (printer) {
       setEditingPrinter(printer);
       setName(printer.name);
+      setBrand((printer.brand as PrinterBrand) || 'Outra');
+      setModel(printer.model || '');
+      setConnectionType(printer.connection_type || 'lan');
+      setProtocol(printer.protocol || 'moonraker_klipper');
+      setIpAddress(printer.ip_address || '');
+      setPort(printer.port || 80);
+      setApiKey(printer.api_key || '');
+      setDeviceId(printer.device_id || '');
+      setCloudEndpoint(printer.cloud_endpoint || '');
+      setCameraStreamUrl(printer.camera_stream_url || '');
+      setBedSizeX(printer.bed_size_x || 220);
+      setBedSizeY(printer.bed_size_y || 220);
+      setBedSizeZ(printer.bed_size_z || 250);
+      setNozzleDiameter(printer.nozzle_diameter || 0.4);
       setPrinterPowerWatts(printer.printer_power_watts);
       setBedHeaterWatts(printer.bed_heater_watts);
       setHourlyDepreciation(printer.hourly_depreciation);
@@ -132,11 +301,25 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       setStatus(printer.status);
     } else {
       setEditingPrinter(null);
-      setName('');
-      setPrinterPowerWatts(80);
-      setBedHeaterWatts(200);
-      setHourlyDepreciation(0.60);
-      setFailureRateDefault(10);
+      setName('Bambu Lab X1-Carbon');
+      setBrand('Bambu Lab');
+      setModel('X1-Carbon');
+      setConnectionType('lan');
+      setProtocol('bambu_mqtt');
+      setIpAddress('192.168.1.108');
+      setPort(8883);
+      setApiKey('');
+      setDeviceId('');
+      setCloudEndpoint('https://api.bambulab.com');
+      setCameraStreamUrl('');
+      setBedSizeX(256);
+      setBedSizeY(256);
+      setBedSizeZ(256);
+      setNozzleDiameter(0.4);
+      setPrinterPowerWatts(100);
+      setBedHeaterWatts(250);
+      setHourlyDepreciation(0.80);
+      setFailureRateDefault(8);
       setStatus('available');
     }
     setShowModal(true);
@@ -147,12 +330,27 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
     try {
       const payload = {
         name,
+        brand,
+        model,
+        connection_type: connectionType,
+        protocol,
+        ip_address: ipAddress,
+        port: Number(port) || 80,
+        api_key: apiKey,
+        device_id: deviceId,
+        cloud_endpoint: cloudEndpoint,
+        camera_stream_url: cameraStreamUrl,
+        bed_size_x: Number(bedSizeX) || 220,
+        bed_size_y: Number(bedSizeY) || 220,
+        bed_size_z: Number(bedSizeZ) || 250,
+        nozzle_diameter: Number(nozzleDiameter) || 0.4,
         printer_power_watts: Number(printerPowerWatts),
         bed_heater_watts: Number(bedHeaterWatts),
         filament_heater_watts: 0,
         hourly_depreciation: Number(hourlyDepreciation),
         failure_rate_default: Number(failureRateDefault),
-        status
+        status,
+        online_status: 'online'
       };
 
       let res;
@@ -428,21 +626,33 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
           </button>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
           {subTab === 'printers' && (
-            <button
-              type="button"
-              onClick={() => handleOpenModal()}
-              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Nova Impressora
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowDiscoveryModal(true)}
+                className="printer-scan-btn bg-[#1e1e24] hover:bg-[#282830] text-sky-400 border border-sky-500/30 px-3.5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm"
+                title="Escanear a rede local em busca de impressoras 3D automáticas"
+              >
+                <Wifi className="w-4 h-4 text-sky-400 animate-pulse" />
+                <span>Varredura de Rede (LAN)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenModal()}
+                className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Nova Impressora
+              </button>
+            </>
           )}
           {subTab === 'ams_heaters' && (
             <button
               type="button"
               onClick={() => handleOpenAmsModal()}
-              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
+              className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Cadastrar AMS / Aquecedor
             </button>
@@ -463,48 +673,98 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       {subTab === 'printers' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {printers.length === 0 ? (
-            <div className="col-span-full py-16 text-center border border-dashed border-white/[0.1] rounded-3xl bg-[#121215]/50 space-y-3">
-              <PrinterIcon className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">Nenhuma impressora 3D cadastrada.</p>
-              <button
-                type="button"
-                onClick={() => handleOpenModal()}
-                className="text-sky-400 text-xs font-semibold hover:underline"
-              >
-                + Cadastrar primeira impressora
-              </button>
+            <div className="printer-empty-box col-span-full py-16 text-center border border-dashed border-white/[0.1] rounded-3xl bg-[#121215]/50 space-y-4">
+              <PrinterIcon className="w-12 h-12 text-slate-600 mx-auto" />
+              <div className="space-y-1">
+                <p className="printer-empty-title text-sm font-semibold text-slate-300">Nenhuma impressora 3D cadastrada.</p>
+                <p className="printer-empty-desc text-xs text-slate-500 max-w-md mx-auto">
+                  Você pode escanear automaticamente sua rede Wi-Fi/Ethernet ou adicionar manualmente seu equipamento Bambu Lab, Creality, Prusa, etc.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscoveryModal(true)}
+                  className="printer-scan-btn px-4 py-2 rounded-2xl text-xs font-bold bg-[#1e1e24] text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 flex items-center gap-2 cursor-pointer"
+                >
+                  <Wifi className="w-3.5 h-3.5" /> Escanear na Rede Local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenModal()}
+                  className="printer-new-btn px-4 py-2 rounded-2xl text-xs font-bold bg-sky-500 text-white hover:bg-sky-400 flex items-center gap-2 shadow-md shadow-sky-500/20 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Cadastro Manual
+                </button>
+              </div>
             </div>
           ) : (
             printers.map((p) => {
               const inMaintenance = p.status === 'maintenance';
+              const cardTest = cardTestResults[p.id];
+              const isPinging = testingCardId === p.id;
+              const brandInfo = p.brand && PRINTER_BRANDS[p.brand as PrinterBrand] ? PRINTER_BRANDS[p.brand as PrinterBrand] : null;
+
               return (
                 <div
                   key={p.id}
-                  className={`bg-[#121215] border rounded-3xl p-5 space-y-4 transition flex flex-col justify-between ${
-                    inMaintenance ? 'border-rose-500/50 bg-rose-950/10' : 'border-white/[0.08] hover:border-white/[0.16]'
+                  className={`printer-card bg-[#121215] border rounded-3xl p-5 space-y-4 transition flex flex-col justify-between ${
+                    inMaintenance ? 'printer-card-maintenance border-rose-500/50 bg-rose-950/10' : 'border-white/[0.08] hover:border-white/[0.16]'
                   }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {p.brand && (
+                            <span
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                              style={{
+                                backgroundColor: brandInfo ? `${brandInfo.color}18` : '#38bdf818',
+                                color: brandInfo ? brandInfo.color : '#38bdf8',
+                                border: `1px solid ${brandInfo ? `${brandInfo.color}35` : '#38bdf835'}`
+                              }}
+                            >
+                              {p.brand}
+                            </span>
+                          )}
+                          {p.connection_type === 'cloud' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              <Cloud className="w-2.5 h-2.5" /> Cloud
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <Wifi className="w-2.5 h-2.5" /> LAN
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="printer-card-title text-sm font-bold text-white flex items-center gap-2">
                           <PrinterIcon className={`w-4 h-4 ${inMaintenance ? 'text-rose-400' : 'text-sky-400'}`} />
                           {p.name}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1.5">
+
+                        <div className="flex items-center gap-2 pt-0.5">
                           {p.status === 'available' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              <CheckCircle2 className="w-3 h-3" /> Disponível
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Disponível
                             </span>
                           )}
                           {p.status === 'printing' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                              <Activity className="w-3 h-3 animate-pulse" /> Imprimindo
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                              <Activity className="w-2.5 h-2.5 animate-pulse" /> Imprimindo
                             </span>
                           )}
                           {inMaintenance && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                              <ShieldAlert className="w-3 h-3" /> Em Manutenção (Produção Bloqueada)
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                              <ShieldAlert className="w-2.5 h-2.5" /> Manutenção
+                            </span>
+                          )}
+
+                          {/* Network connection indicator */}
+                          {p.ip_address && (
+                            <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                              • {p.ip_address}
                             </span>
                           )}
                         </div>
@@ -514,7 +774,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                         <button
                           type="button"
                           onClick={() => handleOpenModal(p)}
-                          className="p-1.5 text-slate-400 hover:text-white transition rounded-xl hover:bg-white/[0.05]"
+                          className="printer-card-action-btn p-1.5 text-slate-400 hover:text-white transition rounded-xl hover:bg-white/[0.05]"
                           title="Editar"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -522,7 +782,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(p)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 transition rounded-xl hover:bg-rose-500/10 cursor-pointer"
+                          className="printer-card-action-btn p-1.5 text-slate-400 hover:text-rose-400 transition rounded-xl hover:bg-rose-500/10 cursor-pointer"
                           title="Excluir"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -536,19 +796,54 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                         <span>Regra de Produção: Esta máquina está em manutenção. Novas OPs estão bloqueadas para este equipamento.</span>
                       </div>
                     )}
+
+                    {/* Dimensions and Specs badge */}
+                    {(p.bed_size_x || p.nozzle_diameter) && (
+                      <div className="printer-card-spec flex items-center justify-between text-[11px] text-slate-400 bg-[#16161a] px-3 py-1.5 rounded-xl border border-white/[0.04]">
+                        <span>Volume Útil:</span>
+                        <span className="printer-card-spec-val font-mono text-white font-medium">
+                          {p.bed_size_x || 220} × {p.bed_size_y || 220} × {p.bed_size_z || 250} mm
+                          {p.nozzle_diameter && ` • Bico ${p.nozzle_diameter}mm`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Test connection result bar */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleTestCardConnection(p)}
+                        disabled={isPinging}
+                        className="printer-card-ping-btn text-[11px] font-semibold text-slate-300 hover:text-sky-400 flex items-center gap-1.5 bg-[#18181c] px-2.5 py-1 rounded-xl border border-white/[0.06] hover:border-sky-500/30 transition disabled:opacity-50 cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3 h-3 text-sky-400 ${isPinging ? 'animate-spin' : ''}`} />
+                        <span>{isPinging ? 'Testando...' : 'Testar Conexão'}</span>
+                      </button>
+
+                      {cardTest && (
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          cardTest.success
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${cardTest.success ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                          {cardTest.latency ? `${cardTest.latency}ms` : cardTest.message}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.06] text-xs font-mono text-slate-300">
-                    <div className="bg-[#18181c] p-2.5 rounded-2xl border border-white/[0.04]">
-                      <span className="text-[10px] text-slate-500 block">Potência Total</span>
+                  <div className="printer-card-stats grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.06] text-xs font-mono text-slate-300">
+                    <div className="printer-card-stat-box bg-[#18181c] p-2.5 rounded-2xl border border-white/[0.04]">
+                      <span className="printer-card-stat-label text-[10px] text-slate-500 block">Potência Total</span>
                       <strong className="text-white flex items-center gap-1 mt-0.5">
                         <Zap className="w-3 h-3 text-amber-400" /> {p.total_power_watts}W
                       </strong>
                     </div>
-                    <div className="bg-[#18181c] p-2.5 rounded-2xl border border-white/[0.04]">
-                      <span className="text-[10px] text-slate-500 block">Depreciação</span>
-                      <strong className="text-emerald-400 mt-0.5 block">
-                        R$ {p.hourly_depreciation.toFixed(2)}/h
+                    <div className="printer-card-stat-box bg-[#18181c] p-2.5 rounded-2xl border border-white/[0.04]">
+                      <span className="printer-card-stat-label text-[10px] text-slate-500 block">Depreciação</span>
+                      <strong className="printer-card-deprec text-emerald-400 mt-0.5 block">
+                        R$ {Number(p.hourly_depreciation || 0).toFixed(2)}/h
                       </strong>
                     </div>
                   </div>
@@ -563,13 +858,13 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       {subTab === 'ams_heaters' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {amsHeaters.length === 0 ? (
-            <div className="col-span-full py-16 text-center border border-dashed border-white/[0.1] rounded-3xl bg-[#121215]/50 space-y-3">
+            <div className="printer-empty-box col-span-full py-16 text-center border border-dashed border-white/[0.1] rounded-3xl bg-[#121215]/50 space-y-3">
               <Cpu className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">Nenhum AMS ou aquecedor de filamento cadastrado.</p>
+              <p className="printer-empty-desc text-xs text-slate-400">Nenhum AMS ou aquecedor de filamento cadastrado.</p>
               <button
                 type="button"
                 onClick={() => handleOpenAmsModal()}
-                className="text-sky-400 text-xs font-semibold hover:underline"
+                className="text-sky-400 text-xs font-semibold hover:underline cursor-pointer"
               >
                 + Cadastrar AMS / Aquecedor
               </button>
@@ -578,7 +873,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
             amsHeaters.map((item) => (
               <div
                 key={item.id}
-                className="bg-[#121215] border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-5 space-y-4 transition flex flex-col justify-between"
+                className="printer-card bg-[#121215] border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-5 space-y-4 transition flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -588,7 +883,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                           {item.type === 'ams' ? <Cpu className="w-4 h-4" /> : <Thermometer className="w-4 h-4 text-amber-400" />}
                         </span>
                         <div>
-                          <h3 className="text-sm font-bold text-white">{item.name}</h3>
+                          <h3 className="printer-card-title text-sm font-bold text-white">{item.name}</h3>
                           <span className="text-[10px] text-slate-400 uppercase tracking-wide font-mono">
                             {item.type === 'ams' ? 'Sistema AMS (Multi-cor)' : item.type === 'drybox' ? 'Dry Box / Estufa' : 'Aquecedor de Filamento'}
                           </span>
@@ -600,7 +895,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                       <button
                         type="button"
                         onClick={() => handleOpenAmsModal(item)}
-                        className="p-1.5 text-slate-400 hover:text-white transition rounded-xl hover:bg-white/[0.05]"
+                        className="printer-card-action-btn p-1.5 text-slate-400 hover:text-white transition rounded-xl hover:bg-white/[0.05]"
                         title="Editar"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -608,7 +903,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                       <button
                         type="button"
                         onClick={() => setDeleteTargetAms(item)}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 transition rounded-xl hover:bg-rose-500/10 cursor-pointer"
+                        className="printer-card-action-btn p-1.5 text-slate-400 hover:text-rose-400 transition rounded-xl hover:bg-rose-500/10 cursor-pointer"
                         title="Excluir"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -617,9 +912,9 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                   </div>
 
                   {item.printer_name && (
-                    <div className="text-xs text-slate-300 bg-[#18181c] px-3 py-2 rounded-2xl border border-white/[0.04] flex items-center gap-2">
+                    <div className="printer-card-spec text-xs text-slate-300 bg-[#18181c] px-3 py-2 rounded-2xl border border-white/[0.04] flex items-center gap-2">
                       <PrinterIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                      <span>Vinculado a: <strong className="text-white">{item.printer_name}</strong></span>
+                      <span>Vinculado a: <strong className="printer-card-spec-val text-white">{item.printer_name}</strong></span>
                     </div>
                   )}
 
@@ -628,13 +923,13 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.06] text-xs font-mono text-slate-300">
-                  <div className="bg-[#18181c] p-2 rounded-xl border border-white/[0.04]">
-                    <span className="text-[9px] text-slate-500 block">Capacidade</span>
+                <div className="printer-card-stats grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.06] text-xs font-mono text-slate-300">
+                  <div className="printer-card-stat-box bg-[#18181c] p-2 rounded-xl border border-white/[0.04]">
+                    <span className="printer-card-stat-label text-[9px] text-slate-500 block">Capacidade</span>
                     <strong className="text-white">{item.slots_count} rolos/slots</strong>
                   </div>
-                  <div className="bg-[#18181c] p-2 rounded-xl border border-white/[0.04]">
-                    <span className="text-[9px] text-slate-500 block">Potência</span>
+                  <div className="printer-card-stat-box bg-[#18181c] p-2 rounded-xl border border-white/[0.04]">
+                    <span className="printer-card-stat-label text-[9px] text-slate-500 block">Potência</span>
                     <strong className="text-amber-400">{item.power_watts}W</strong>
                   </div>
                 </div>
@@ -752,104 +1047,354 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
 
       {/* Modal Criar/Editar Impressora */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="production-modal-box bg-[#16161a] border border-white/[0.12] rounded-3xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="production-modal-header flex items-center justify-between border-b border-white/[0.08] pb-4 px-1 -mx-6 -mt-6 p-6 rounded-t-3xl">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <PrinterIcon className="w-5 h-5 text-sky-400" />
-                {editingPrinter ? 'Editar Impressora 3D' : 'Cadastrar Impressora 3D'}
-              </h3>
-              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white p-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn overflow-y-auto">
+          <div className="printer-modal-box bg-[#16161a] border border-white/[0.12] rounded-3xl w-full max-w-2xl p-6 space-y-5 shadow-2xl my-8">
+            <div className="printer-modal-header flex items-center justify-between border-b border-white/[0.08] pb-4 px-1 -mx-6 -mt-6 p-6 rounded-t-3xl bg-[#121215]">
+              <div>
+                <h3 className="printer-modal-title text-base font-bold text-white flex items-center gap-2">
+                  <PrinterIcon className="w-5 h-5 text-sky-400" />
+                  {editingPrinter ? 'Editar Impressora 3D' : 'Cadastrar Impressora 3D (Manual ou Rede)'}
+                </h3>
+                <p className="printer-modal-subtitle text-xs text-slate-400 mt-0.5">
+                  Configure os parâmetros técnicos, marca e conexão LAN/Cloud para envio direto de impressões.
+                </p>
+              </div>
+              <button type="button" onClick={() => setShowModal(false)} className="printer-modal-close text-slate-400 hover:text-white p-1 rounded-xl transition cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSavePrinter} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Nome do Modelo / Máquina</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Bambu Lab X1C, Voron 2.4, Ender 3"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="production-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400"
-                />
+            <form onSubmit={handleSavePrinter} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+              {/* Seleção de Marca com Predefinições */}
+              <div className="space-y-2">
+                <label className="printer-modal-label text-xs font-semibold text-slate-300 flex items-center justify-between">
+                  <span>Marca do Equipamento</span>
+                  <span className="printer-modal-label-sub text-[11px] text-sky-400 font-normal">Preenche protocolos e tamanhos automaticamente</span>
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {(Object.keys(PRINTER_BRANDS) as PrinterBrand[]).map((b) => {
+                    const info = PRINTER_BRANDS[b];
+                    const isSelected = brand === b;
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => handleSelectBrand(b)}
+                        className={`printer-brand-btn p-2 rounded-xl text-xs font-semibold border transition text-center flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'printer-brand-btn-active bg-sky-500/20 border-sky-400 text-white shadow-sm shadow-sky-500/20'
+                            : 'bg-[#18181c] border-white/[0.06] text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
+                        }`}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: info.color }}
+                        />
+                        <span className="truncate w-full text-[11px]">{info.displayName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
+              {/* Modelo Predefinido ou Livre */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Modelos Sugeridos ({brand})</label>
+                  <select
+                    value={model}
+                    onChange={(e) => handleSelectModel(e.target.value)}
+                    className="printer-modal-select w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400 cursor-pointer"
+                  >
+                    <option value="">-- Selecionar modelo predefinido --</option>
+                    {PRINTER_BRANDS[brand]?.models.map((m) => (
+                      <option key={m.model} value={m.model}>
+                        {m.model} ({m.bedSize.x}x{m.bedSize.y}x{m.bedSize.z}mm)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Nome de Identificação da Máquina *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Bambu Lab X1C - Setor 01"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400"
+                  />
+                </div>
+              </div>
+
+              {/* Conexão e Protocolo */}
+              <div className="printer-modal-section p-3.5 bg-[#121216] border border-white/[0.06] rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="printer-modal-section-title text-xs font-bold text-white flex items-center gap-1.5">
+                    <Wifi className="w-3.5 h-3.5 text-sky-400" />
+                    Parâmetros de Conexão e Protocolo
+                  </span>
+                  <div className="printer-conn-toggle-bar flex items-center gap-1 bg-[#1a1a20] p-1 rounded-xl border border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setConnectionType('lan')}
+                      className={`printer-conn-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                        connectionType === 'lan'
+                          ? 'printer-conn-btn-active bg-emerald-500 text-slate-950 shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Wifi className="w-3 h-3" /> LAN (Rede Local)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConnectionType('cloud')}
+                      className={`printer-conn-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                        connectionType === 'cloud'
+                          ? 'printer-conn-btn-active bg-indigo-500 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Cloud className="w-3 h-3" /> Nuvem (Cloud)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="printer-modal-label text-xs font-semibold text-slate-300">Protocolo de Comunicação</label>
+                    <select
+                      value={protocol}
+                      onChange={(e) => setProtocol(e.target.value as any)}
+                      className="printer-modal-select w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400 cursor-pointer"
+                    >
+                      <option value="bambu_mqtt">Bambu Lab MQTT / LAN Access Code</option>
+                      <option value="moonraker_klipper">Moonraker / Klipper API (Creality, Voron, etc.)</option>
+                      <option value="prusalink">PrusaLink REST API (Prusa MK4, XL, Mini)</option>
+                      <option value="prusa_connect">Prusa Connect Cloud API</option>
+                      <option value="octoprint">OctoPrint REST API</option>
+                      <option value="anycubic_cloud">Anycubic Cloud API</option>
+                      <option value="flashforge_flashprint">Flashforge FlashPrint Control</option>
+                      <option value="stratasys_control">Stratasys Control API / GrabCAD</option>
+                      <option value="industrial_rest">Industrial REST / OPC-UA (3D Systems, EOS, HP)</option>
+                    </select>
+                  </div>
+
+                  {connectionType === 'lan' ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2 space-y-1.5">
+                        <label className="printer-modal-label text-xs font-semibold text-slate-300">Endereço IP Local</label>
+                        <input
+                          type="text"
+                          placeholder="192.168.1.108"
+                          value={ipAddress}
+                          onChange={(e) => setIpAddress(e.target.value)}
+                          className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="printer-modal-label text-xs font-semibold text-slate-300">Porta</label>
+                        <input
+                          type="number"
+                          placeholder="80"
+                          value={port}
+                          onChange={(e) => setPort(Number(e.target.value))}
+                          className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="printer-modal-label text-xs font-semibold text-slate-300">Servidor Cloud (Endpoint)</label>
+                      <input
+                        type="text"
+                        placeholder="https://api.bambulab.com"
+                        value={cloudEndpoint}
+                        onChange={(e) => setCloudEndpoint(e.target.value)}
+                        className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono text-[11px]"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="printer-modal-label text-xs font-semibold text-slate-300">
+                      {brand === 'Bambu Lab' ? 'Código de Acesso LAN (Access Code) / Senha' : 'Chave de API / Token'}
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••••••••••"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="printer-modal-label text-xs font-semibold text-slate-300">Número de Série (SN) / Device ID</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 01P00A382800142"
+                      value={deviceId}
+                      onChange={(e) => setDeviceId(e.target.value)}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Botão Testar Conexão em tempo real */}
+                <div className="pt-1 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleTestModalConnection}
+                    disabled={isTestingModalConn}
+                    className="printer-modal-btn-test px-3.5 py-2 rounded-xl text-xs font-bold bg-[#1e1e24] hover:bg-[#25252e] text-sky-400 border border-sky-500/30 flex items-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingModalConn ? 'animate-spin' : ''}`} />
+                    <span>{isTestingModalConn ? 'Testando Conexão...' : 'Testar Conexão Agora'}</span>
+                  </button>
+
+                  {modalTestResult && (
+                    <div className={`text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+                      modalTestResult.success
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                    }`}>
+                      {modalTestResult.success ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />}
+                      <span>{modalTestResult.message}</span>
+                      {modalTestResult.latency && <span className="font-mono text-[10px]">({modalTestResult.latency}ms)</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Dimensões da Mesa & Bico */}
+              <div className="printer-modal-section p-3.5 bg-[#121216] border border-white/[0.06] rounded-2xl space-y-3">
+                <span className="printer-modal-section-title text-xs font-bold text-white flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-sky-400" />
+                  Volume de Construção & Extrusão
+                </span>
+                <div className="grid grid-cols-4 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="printer-modal-label-sub text-[11px] text-slate-400 font-semibold">Largura X (mm)</label>
+                    <input
+                      type="number"
+                      min="50"
+                      value={bedSizeX}
+                      onChange={(e) => setBedSizeX(Number(e.target.value))}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="printer-modal-label-sub text-[11px] text-slate-400 font-semibold">Compr. Y (mm)</label>
+                    <input
+                      type="number"
+                      min="50"
+                      value={bedSizeY}
+                      onChange={(e) => setBedSizeY(Number(e.target.value))}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="printer-modal-label-sub text-[11px] text-slate-400 font-semibold">Altura Z (mm)</label>
+                    <input
+                      type="number"
+                      min="50"
+                      value={bedSizeZ}
+                      onChange={(e) => setBedSizeZ(Number(e.target.value))}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="printer-modal-label-sub text-[11px] text-slate-400 font-semibold">Bico (mm)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={nozzleDiameter}
+                      onChange={(e) => setNozzleDiameter(Number(e.target.value))}
+                      className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Potência e Custos */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Potência Eixos (W)</label>
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Potência Eixos/Eletrônica (W)</label>
                   <input
                     type="number"
                     min="0"
                     value={printerPowerWatts}
                     onChange={(e) => setPrinterPowerWatts(Number(e.target.value))}
-                    className="production-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                    className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Mesa Aquecida (W)</label>
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Mesa Aquecida Média (W)</label>
                   <input
                     type="number"
                     min="0"
                     value={bedHeaterWatts}
                     onChange={(e) => setBedHeaterWatts(Number(e.target.value))}
-                    className="production-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                    className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Depreciação por Hora (R$/h)</label>
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Depreciação por Hora (R$/h)</label>
                   <input
                     type="number"
                     step="0.05"
                     min="0"
                     value={hourlyDepreciation}
                     onChange={(e) => setHourlyDepreciation(Number(e.target.value))}
-                    className="production-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono font-bold"
+                    className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono font-bold"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Taxa Falha Padrão (%)</label>
+                  <label className="printer-modal-label text-xs font-semibold text-slate-300">Taxa Falha Padrão (%)</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={failureRateDefault}
                     onChange={(e) => setFailureRateDefault(Number(e.target.value))}
-                    className="production-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
+                    className="printer-modal-input w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white font-mono"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Status da Máquina</label>
+                <label className="printer-modal-label text-xs font-semibold text-slate-300">Status Operacional da Máquina</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
-                  className="production-modal-select w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400"
+                  className="printer-modal-select w-full bg-[#0a0a0b] border border-white/[0.1] rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-400 cursor-pointer"
                 >
-                  <option value="available">Disponível</option>
-                  <option value="printing">Imprimindo</option>
-                  <option value="maintenance">Em Manutenção (Bloqueia Produção)</option>
+                  <option value="available">Disponível para Produção</option>
+                  <option value="printing">Em Impressão Ativa</option>
+                  <option value="maintenance">Em Manutenção (Bloqueia OPs)</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">
+              <div className="printer-modal-footer flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#222228]"
+                  className="printer-modal-btn-cancel px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#222228] transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20"
+                  className="printer-modal-btn-submit px-5 py-2.5 rounded-xl text-xs font-bold bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 transition cursor-pointer"
                 >
                   {editingPrinter ? 'Salvar Alterações' : 'Cadastrar Impressora'}
                 </button>
@@ -1155,6 +1700,19 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
         message="Deseja remover este registro de manutenção? Se a impressora não tiver outras manutenções ativas, seu status voltará a ser liberado."
         itemName={deleteTargetMnt?.title}
         confirmLabel="Sim, Remover"
+      />
+
+      {/* Modal de Varredura e Descoberta Automática de Rede */}
+      <NetworkDiscoveryModal
+        isOpen={showDiscoveryModal}
+        onClose={() => setShowDiscoveryModal(false)}
+        onPrinterAdded={() => {
+          onRefreshData();
+          setNotification({
+            type: 'success',
+            message: 'Impressoras descobertas e cadastradas com sucesso!'
+          });
+        }}
       />
     </div>
   );

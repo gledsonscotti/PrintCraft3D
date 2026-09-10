@@ -14,21 +14,30 @@ import {
   FileText,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
-import { Client } from '../types';
+import { Client, AppUser, Company } from '../types';
+import { CompanyTeamView } from './CompanyTeamView';
 
 interface ClientsViewProps {
   clients: Client[];
   onRefreshData: () => void;
   theme?: string;
+  currentUser?: AppUser | null;
+  currentCompany?: Company | null;
+  isSuperadmin?: boolean;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clients,
   onRefreshData,
-  theme = 'standard'
+  theme = 'standard',
+  currentUser,
+  currentCompany,
+  isSuperadmin = false,
 }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'team'>('clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'pf' | 'cnpj' | 'store'>('all');
 
@@ -158,8 +167,48 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header & Stats Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#131316] border border-white/[0.08] p-5 rounded-2xl">
+      {/* Top Sub-Navigation Tabs: Clientes vs Equipe */}
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+        <div className="flex items-center gap-2 p-1 bg-[#131316] border border-white/[0.08] rounded-xl shadow-xs">
+          <button
+            type="button"
+            id="tab-sub-clients"
+            onClick={() => setActiveSubTab('clients')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'clients'
+                ? 'bg-sky-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Clientes & Lojas</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${
+              activeSubTab === 'clients' ? 'bg-slate-950/20 text-slate-950' : 'bg-white/10 text-slate-300'
+            }`}>
+              {clients.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            id="tab-sub-team"
+            onClick={() => setActiveSubTab('team')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'team'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Equipe da Oficina</span>
+          </button>
+        </div>
+      </div>
+
+      {activeSubTab === 'clients' ? (
+        <>
+          {/* Header & Stats Banner */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#131316] border border-white/[0.08] p-5 rounded-2xl">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
@@ -550,6 +599,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+        </>
+      ) : (
+        <CompanyTeamView
+          companyId={currentCompany?.id || (isSuperadmin ? 'superadmin' : 'comp-1')}
+          companyName={currentCompany?.trade_name || currentCompany?.name || (isSuperadmin ? 'Superadmin Console' : 'Oficina')}
+          isSuperadmin={isSuperadmin}
+          currentUser={currentUser}
+          theme={theme}
+        />
       )}
     </div>
   );

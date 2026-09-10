@@ -19,9 +19,12 @@ import {
   Edit3,
   Copy,
   Image as ImageIcon,
-  Maximize2
+  Maximize2,
+  Filter,
+  FolderTree,
+  Search
 } from 'lucide-react';
-import { ExtraSupplyItem, Filament, Printer, Product } from '../types';
+import { ExtraSupplyItem, Filament, Printer, Product, ProductCategory } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 
 interface ProductsViewProps {
@@ -34,9 +37,9 @@ interface ProductsViewProps {
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
-  products,
-  printers,
-  filaments,
+  products = [],
+  printers = [],
+  filaments = [],
   onRefreshData,
   onSelectProductForCalculator,
   onOpenSaleModal,
@@ -59,6 +62,86 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock'>('all');
+  const [categoriesList, setCategoriesList] = useState<ProductCategory[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setCategoriesList(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Unique categories from registered list + products
+  const availableCategories = Array.from(
+    new Set([
+      ...categoriesList.map((c) => c.name),
+      ...products.map((p) => p.category).filter(Boolean),
+    ])
+  ).filter(Boolean);
+
+  // Available subcategories for the selected category
+  const availableSubcategories = Array.from(
+    new Set([
+      ...(selectedCategory !== 'all'
+        ? categoriesList
+            .find((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())
+            ?.subcategories?.map((s) => s.name) || []
+        : categoriesList.flatMap((c) => c.subcategories?.map((s) => s.name) || [])),
+      ...products
+        .filter((p) => selectedCategory === 'all' || p.category?.toLowerCase() === selectedCategory.toLowerCase())
+        .map((p) => p.subcategory)
+        .filter(Boolean) as string[],
+    ])
+  ).filter(Boolean);
+
+  const filteredProducts = products.filter((prod) => {
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = prod.name.toLowerCase().includes(q);
+      const matchDesc = prod.description?.toLowerCase().includes(q);
+      const matchCat = prod.category?.toLowerCase().includes(q);
+      const matchSub = prod.subcategory?.toLowerCase().includes(q);
+      if (!matchName && !matchDesc && !matchCat && !matchSub) return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== 'all') {
+      if (prod.category?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+    }
+
+    // Subcategory filter
+    if (selectedSubcategory !== 'all') {
+      if (prod.subcategory?.toLowerCase() !== selectedSubcategory.toLowerCase()) return false;
+    }
+
+    // Stock filter
+    if (stockFilter === 'in_stock' && (prod.ready_stock_qty || 0) <= 0) return false;
+    if (stockFilter === 'out_of_stock' && (prod.ready_stock_qty || 0) > 0) return false;
+
+    return true;
+  });
+
+  const isFiltered =
+    searchQuery !== '' ||
+    selectedCategory !== 'all' ||
+    selectedSubcategory !== 'all' ||
+    stockFilter !== 'all';
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedSubcategory('all');
+    setStockFilter('all');
+  };
 
   useEffect(() => {
     if (!notification) return;
@@ -210,6 +293,130 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         </div>
       </div>
 
+      {/* Filter and Search Bar */}
+      {products.length > 0 && (
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-4 space-y-3 shadow-sm shadow-black/40">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+            {/* Search Input */}
+            <div className="lg:col-span-4 relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por produto, insumos..."
+                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-2xl pl-10 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter */}
+            <div className="lg:col-span-3">
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setSelectedSubcategory('all');
+                }}
+                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-2xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
+              >
+                <option value="all">Todas as Categorias ({availableCategories.length})</option>
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subcategory Filter */}
+            <div className="lg:col-span-3">
+              <select
+                value={selectedSubcategory}
+                onChange={(e) => setSelectedSubcategory(e.target.value)}
+                disabled={availableSubcategories.length === 0}
+                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-2xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 transition disabled:opacity-50"
+              >
+                <option value="all">
+                  {selectedCategory === 'all'
+                    ? `Todas as Subcategorias (${availableSubcategories.length})`
+                    : `Subcategorias de "${selectedCategory}" (${availableSubcategories.length})`}
+                </option>
+                {availableSubcategories.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Stock Filter */}
+            <div className="lg:col-span-2">
+              <select
+                value={stockFilter}
+                onChange={(e) => setStockFilter(e.target.value as any)}
+                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-2xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition"
+              >
+                <option value="all">Estoque (Todos)</option>
+                <option value="in_stock">Com Estoque (&gt; 0)</option>
+                <option value="out_of_stock">Esgotados (0 un)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filter summary & Clear button */}
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/[0.04] text-[11px] text-slate-400 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>
+                Exibindo <strong className="text-emerald-400 font-mono">{filteredProducts.length}</strong> de <strong className="text-white font-mono">{products.length}</strong> produtos
+              </span>
+              {selectedCategory !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono">
+                  {selectedCategory}
+                  <button type="button" onClick={() => setSelectedCategory('all')}>
+                    <X className="w-3 h-3 hover:text-white" />
+                  </button>
+                </span>
+              )}
+              {selectedSubcategory !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono">
+                  {selectedSubcategory}
+                  <button type="button" onClick={() => setSelectedSubcategory('all')}>
+                    <X className="w-3 h-3 hover:text-white" />
+                  </button>
+                </span>
+              )}
+              {stockFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono">
+                  {stockFilter === 'in_stock' ? 'Com Estoque' : 'Esgotado'}
+                  <button type="button" onClick={() => setStockFilter('all')}>
+                    <X className="w-3 h-3 hover:text-white" />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold transition underline cursor-pointer"
+              >
+                Limpar Filtros
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {products.length === 0 ? (
         <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-slate-400 mx-auto">
@@ -220,9 +427,26 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             Utilize a Calculadora de Custos para formar produtos com insumos e salvá-los no catálogo.
           </p>
         </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-12 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-slate-400 mx-auto">
+            <Filter className="w-6 h-6" />
+          </div>
+          <h3 className="text-sm font-semibold text-white">Nenhum produto encontrado com os filtros ativos</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            Tente remover os filtros de categoria, subcategoria ou status de estoque.
+          </p>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer"
+          >
+            Limpar todos os filtros
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {products.map((prod) => {
+          {filteredProducts.map((prod) => {
             const printer = printers.find((p) => p.id === prod.printer_id);
             const filament = filaments.find((f) => f.id === prod.filament_id);
 
@@ -237,11 +461,18 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 className="bg-[#121215] border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-5 space-y-4 shadow-sm shadow-black/40 flex flex-col justify-between transition"
               >
                 <div className="space-y-3">
-                  {/* Line 1: Category on its own line */}
-                  <div>
-                    <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl uppercase tracking-wider inline-block">
+                  {/* Line 1: Category on its own line (with Subcategory if defined) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl uppercase tracking-wider inline-flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
                       {prod.category}
                     </span>
+                    {prod.subcategory && (
+                      <span className="text-[10px] font-mono font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-xl uppercase tracking-wider inline-flex items-center gap-1">
+                        <FolderTree className="w-3 h-3" />
+                        {prod.subcategory}
+                      </span>
+                    )}
                   </div>
 
                   {/* Line 2: Product Name */}
@@ -411,14 +642,14 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06]">
                       <span className="text-[10px] text-slate-400 block">Custo de Produção</span>
                       <span className="text-sm font-bold text-white font-mono">
-                        R$ {prod.total_cost.toFixed(2)}
+                        R$ {Number(prod.total_cost || 0).toFixed(2)}
                       </span>
                     </div>
 
                     <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 text-right">
                       <span className="text-[10px] text-emerald-300 block">Preço de Venda</span>
                       <span className="text-base font-black text-emerald-400 font-mono">
-                        R$ {prod.sale_price.toFixed(2)}
+                        R$ {Number(prod.sale_price || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -493,7 +724,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   </div>
                   <div className="text-slate-400 flex justify-between">
                     <span className="font-sans">Custo unitário:</span>
-                    <strong className="text-emerald-400">R$ {printModalProduct.total_cost.toFixed(2)}</strong>
+                    <strong className="text-emerald-400">R$ {Number(printModalProduct.total_cost || 0).toFixed(2)}</strong>
                   </div>
                 </div>
 
@@ -512,7 +743,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     />
                     <div className="text-xs text-slate-400 font-mono space-y-0.5">
                       <div>
-                        Baixa de filamento: <strong className="text-white">{(printModalProduct.filament_weight_g * quantity).toFixed(1)}g</strong>
+                        Baixa de filamento: <strong className="text-white">{Number((printModalProduct.filament_weight_g || 0) * (quantity || 1)).toFixed(1)}g</strong>
                       </div>
                       <div className="text-emerald-400 font-sans font-semibold">
                         + {quantity} un. no estoque de peças prontas

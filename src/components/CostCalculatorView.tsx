@@ -25,12 +25,12 @@ import {
   Sliders,
   Truck
 } from 'lucide-react';
-import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier, AmsHeater } from '../types';
+import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier, AmsHeater, ProductCategory } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
 import { FileUploadZone } from './FileUploadZone';
-import { SlicingAdvisorModal } from './SlicingAdvisorModal';
+import { DirectPrintModal } from './DirectPrintModal';
 import { safeFetchJson } from '../utils/api';
 
 interface CostCalculatorViewProps {
@@ -84,6 +84,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>(printers[0]?.id || '');
   const [selectedFilamentId, setSelectedFilamentId] = useState<string>(filaments[0]?.id || '');
   const [amsHeaters, setAmsHeaters] = useState<AmsHeater[]>([]);
+  const [showDirectPrintModal, setShowDirectPrintModal] = useState(false);
 
   useEffect(() => {
     safeFetchJson('/api/ams-heaters')
@@ -97,6 +98,8 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   // Formulator Parameters
   const [productName, setProductName] = useState('Chaveiro Tag Personalizado');
   const [productCategory, setProductCategory] = useState('Chaveiros & Brindes');
+  const [productSubcategory, setProductSubcategory] = useState('Natal');
+  const [categoriesList, setCategoriesList] = useState<ProductCategory[]>([]);
   const [productImageUrl, setProductImageUrl] = useState('');
   const [customWeightGrams, setCustomWeightGrams] = useState<number>(14.5);
   const [customTimeMinutes, setCustomTimeMinutes] = useState<number>(38);
@@ -104,6 +107,23 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(5);
   const [transportCost, setTransportCost] = useState<number>(0);
   const [markupPercent, setMarkupPercent] = useState<number>(120);
+
+  // Fetch available categories and subcategories
+  useEffect(() => {
+    safeFetchJson<ProductCategory[]>('/api/categories')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategoriesList(data);
+          // If default category exists in list, sync subcategories
+          const defaultCat = data.find((c) => c.name === 'Chaveiros & Brindes') || data[0];
+          if (defaultCat && defaultCat.subcategories && defaultCat.subcategories.length > 0) {
+            setProductCategory(defaultCat.name);
+            setProductSubcategory(defaultCat.subcategories[0].name);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Apply initialParams when coming from ModelAnalyzerView
   useEffect(() => {
@@ -369,6 +389,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
       const payload = {
         name: productName,
         category: productCategory,
+        subcategory: productSubcategory,
         image_url: productImageUrl,
         description: `Produto formado com ${customWeightGrams}g de ${activeFilament?.material || 'filamento'} e ${productSupplies.length} insumos adicionais.`,
         stl_filename: parsedModel.fileType === 'stl' ? parsedModel.fileName : '',
@@ -795,8 +816,8 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         <div className="space-y-6">
           {/* Header Card: Product Info */}
           <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm shadow-black/40 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+              <div className="sm:col-span-6">
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">Nome do Produto</label>
                 <input
                   type="text"
@@ -807,19 +828,79 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Categoria</label>
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Categoria</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">Taxonomia</span>
+                </label>
                 <select
                   value={productCategory}
-                  onChange={(e) => setProductCategory(e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/20 transition"
+                  onChange={(e) => {
+                    const newCat = e.target.value;
+                    setProductCategory(newCat);
+                    const catObj = categoriesList.find((c) => c.name === newCat);
+                    if (catObj && catObj.subcategories && catObj.subcategories.length > 0) {
+                      setProductSubcategory(catObj.subcategories[0].name);
+                    } else {
+                      setProductSubcategory('');
+                    }
+                  }}
+                  className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/20 transition"
                 >
-                  <option value="Chaveiros & Brindes">Chaveiros & Brindes</option>
-                  <option value="Acessórios">Acessórios</option>
-                  <option value="Decoração">Decoração</option>
-                  <option value="Peças Técnicas">Peças Técnicas</option>
-                  <option value="Suportes">Suportes</option>
+                  {categoriesList.length > 0 ? (
+                    categoriesList.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Chaveiros & Brindes">Chaveiros & Brindes</option>
+                      <option value="Acessórios">Acessórios</option>
+                      <option value="Decoração">Decoração</option>
+                      <option value="Peças Técnicas & Ferramentas">Peças Técnicas & Ferramentas</option>
+                      <option value="Utilidades Domésticas">Utilidades Domésticas</option>
+                    </>
+                  )}
                 </select>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Subcategoria</span>
+                  <span className="text-[10px] text-sky-400 font-mono">Sazonal / Linha</span>
+                </label>
+                {(() => {
+                  const currentCatObj = categoriesList.find(
+                    (c) => c.name.toLowerCase() === productCategory.toLowerCase()
+                  );
+                  const subs = currentCatObj?.subcategories || [];
+                  if (subs.length > 0) {
+                    return (
+                      <select
+                        value={productSubcategory}
+                        onChange={(e) => setProductSubcategory(e.target.value)}
+                        className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/20 transition"
+                      >
+                        <option value="">Sem subcategoria</option>
+                        {subs.map((s) => (
+                          <option key={s.id} value={s.name}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  }
+                  return (
+                    <input
+                      type="text"
+                      value={productSubcategory}
+                      onChange={(e) => setProductSubcategory(e.target.value)}
+                      placeholder="Ex: Natal, Games, Geral..."
+                      className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-400 transition"
+                    />
+                  );
+                })()}
               </div>
             </div>
 
@@ -879,7 +960,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                       </span>
                     )}
                     <span className="text-right">
-                      Deprec.: <strong className="text-slate-200 font-mono">R$ {activePrinter.hourly_depreciation.toFixed(2)}/h</strong>
+                      Deprec.: <strong className="text-slate-200 font-mono">R$ {Number(activePrinter.hourly_depreciation || 0).toFixed(2)}/h</strong>
                     </span>
                   </div>
                 )}
@@ -923,7 +1004,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                     >
                       {filaments.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.name} ({f.material}) - R$ {f.cost_per_spool.toFixed(2)}
+                          {f.name} ({f.material}) - R$ {Number(f.cost_per_spool || 0).toFixed(2)}
                         </option>
                       ))}
                     </select>
@@ -1008,7 +1089,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
                       <span>Total de Filamento:</span>
                       <strong className="text-amber-400 font-mono">
-                        {effectiveWeightGrams.toFixed(1)}g
+                        {Number(effectiveWeightGrams || 0).toFixed(1)}g
                       </strong>
                     </div>
                   </div>
@@ -1111,7 +1192,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                   className="w-full accent-teal-400 h-1.5 bg-[#1F1F24] rounded-lg cursor-pointer"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
-                  Fatiamento e pós-processamento (R$ {settings.hourly_labor_rate.toFixed(2)}/h).
+                  Fatiamento e pós-processamento (R$ {Number(settings?.hourly_labor_rate || 0).toFixed(2)}/h).
                 </span>
               </div>
 
@@ -1121,7 +1202,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                     <Truck className="w-3.5 h-3.5 text-sky-400" />
                     Transportadora / Envio:
                   </span>
-                  <span className="font-bold text-amber-400 font-mono">R$ {transportCost.toFixed(2)}</span>
+                  <span className="font-bold text-amber-400 font-mono">R$ {Number(transportCost || 0).toFixed(2)}</span>
                 </div>
                 <select
                   value={selectedCarrierId}
@@ -1140,7 +1221,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                   <option value="none">Sem Frete (Retirada / Venda Direta)</option>
                   {carriers.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.service_type}) - R$ {c.default_cost.toFixed(2)}
+                      {c.name} ({c.service_type}) - R$ {Number(c.default_cost || 0).toFixed(2)}
                     </option>
                   ))}
                   <option value="custom">Outro / Valor Personalizado</option>
@@ -1177,7 +1258,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 </p>
               </div>
               <span className="text-xs font-bold text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/20 font-mono">
-                + R$ {costResult.suppliesCost.toFixed(2)}
+                + R$ {Number(costResult?.suppliesCost || 0).toFixed(2)}
               </span>
             </div>
 
@@ -1202,7 +1283,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                         <div>
                           <span className="font-semibold text-slate-200">{item.name}</span>
                           <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
-                            <span>R$ {item.unit_cost.toFixed(2)}/un</span>
+                            <span>R$ {Number(item.unit_cost || 0).toFixed(2)}/un</span>
                             {dbSupply && (
                               <span className={isStockLow ? 'text-rose-400 font-semibold' : 'text-slate-500'}>
                                 (Estoque: {dbSupply.in_stock_qty} un)
@@ -1225,7 +1306,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                           />
                         </div>
                         <span className="font-bold text-white font-mono w-16 text-right">
-                          R$ {(item.qty * item.unit_cost).toFixed(2)}
+                          R$ {Number((item.qty || 0) * (item.unit_cost || 0)).toFixed(2)}
                         </span>
                         <button
                           type="button"
@@ -1251,7 +1332,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 <option value="">Selecionar insumo do estoque...</option>
                 {supplies.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} (R$ {s.unit_cost.toFixed(2)} / un - Disp: {s.in_stock_qty})
+                    {s.name} (R$ {Number(s.unit_cost || 0).toFixed(2)} / un - Disp: {s.in_stock_qty})
                   </option>
                 ))}
               </select>
@@ -1288,7 +1369,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 Composição Completa de Custos da Peça
               </span>
               <span className="text-xs text-slate-400 font-mono bg-white/[0.04] px-2.5 py-1 rounded-xl border border-white/[0.06]">
-                Tarifa: R$ {settings.energy_kwh_rate.toFixed(2)}/kWh
+                Tarifa: R$ {Number(settings?.energy_kwh_rate || 0).toFixed(2)}/kWh
               </span>
             </h3>
 
@@ -1296,7 +1377,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Filamento + Perda</span>
-                <span className="text-sm font-bold text-sky-400 font-mono mt-0.5 block">R$ {costResult.filamentCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-sky-400 font-mono mt-0.5 block">R$ {Number(costResult?.filamentCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   {customWeightGrams}g + {lossMarginPercent}%
                 </span>
@@ -1304,7 +1385,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Energia Elétrica</span>
-                <span className="text-sm font-bold text-amber-400 font-mono mt-0.5 block">R$ {costResult.energyCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-amber-400 font-mono mt-0.5 block">R$ {Number(costResult?.energyCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   {costResult.energyKwh} kWh
                 </span>
@@ -1312,15 +1393,15 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Depreciação Máq.</span>
-                <span className="text-sm font-bold text-purple-400 font-mono mt-0.5 block">R$ {costResult.depreciationCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-purple-400 font-mono mt-0.5 block">R$ {Number(costResult?.depreciationCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
-                  R$ {activePrinter?.hourly_depreciation.toFixed(2)}/h
+                  R$ {Number(activePrinter?.hourly_depreciation || 0).toFixed(2)}/h
                 </span>
               </div>
 
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Insumos (BOM)</span>
-                <span className="text-sm font-bold text-emerald-400 font-mono mt-0.5 block">R$ {costResult.suppliesCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-emerald-400 font-mono mt-0.5 block">R$ {Number(costResult?.suppliesCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   {productSupplies.length} itens
                 </span>
@@ -1328,7 +1409,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition col-span-2 sm:col-span-1">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Mão de Obra</span>
-                <span className="text-sm font-bold text-teal-400 font-mono mt-0.5 block">R$ {costResult.laborCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-teal-400 font-mono mt-0.5 block">R$ {Number(costResult?.laborCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   {prepTimeMinutes} min
                 </span>
@@ -1336,7 +1417,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
               <div className="bg-[#0A0A0B]/80 p-3 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition col-span-2 sm:col-span-1">
                 <span className="text-[11px] text-slate-400 block truncate font-medium">Transporte / Frete</span>
-                <span className="text-sm font-bold text-amber-400 font-mono mt-0.5 block">R$ {costResult.transportCost.toFixed(2)}</span>
+                <span className="text-sm font-bold text-amber-400 font-mono mt-0.5 block">R$ {Number(costResult?.transportCost || 0).toFixed(2)}</span>
                 <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
                   Logística
                 </span>
@@ -1380,7 +1461,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 <div>
                   <span className="text-xs font-semibold text-slate-400 block">Custo de Produção Total</span>
                   <span className="text-2xl font-extrabold text-white tracking-tight font-mono mt-0.5 block">
-                    R$ {costResult.totalProductionCost.toFixed(2)}
+                    R$ {Number(costResult?.totalProductionCost || 0).toFixed(2)}
                   </span>
                   <span className="text-[11px] text-slate-500 block mt-0.5">por unidade produzida</span>
                 </div>
@@ -1393,10 +1474,10 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                 <div>
                   <span className="text-xs font-semibold text-emerald-300 block">Preço de Venda Sugerido</span>
                   <span className="text-2xl font-extrabold text-emerald-400 tracking-tight font-mono mt-0.5 block">
-                    R$ {costResult.suggestedSalePrice.toFixed(2)}
+                    R$ {Number(costResult?.suggestedSalePrice || 0).toFixed(2)}
                   </span>
                   <span className="text-[11px] text-emerald-400/90 block mt-0.5 font-mono">
-                    Lucro líquido: <strong>R$ {costResult.profitAmount.toFixed(2)}</strong> ({costResult.profitMarginPercent}%)
+                    Lucro líquido: <strong>R$ {Number(costResult?.profitAmount || 0).toFixed(2)}</strong> ({costResult?.profitMarginPercent || 0}%)
                   </span>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
@@ -1405,46 +1486,94 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons: Save & Execute Print Job */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleSaveProduct}
-                disabled={savingProduct}
-                className="flex-1 bg-[#18181E] hover:bg-[#22222A] text-slate-200 border border-white/[0.1] py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-sm"
-              >
-                <BookmarkPlus className="w-4 h-4 text-sky-400" />
-                {savingProduct ? 'Salvando...' : 'Salvar no Catálogo'}
-              </button>
-
-              <div className="flex items-center gap-2.5 flex-1">
-                <div className="flex items-center gap-1.5 bg-[#0A0A0B] border border-white/[0.1] px-3.5 py-2.5 rounded-2xl">
-                  <span className="text-xs text-slate-400">Lote:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="500"
-                    value={printQuantity}
-                    onChange={(e) => setPrintQuantity(Math.max(1, Number(e.target.value)))}
-                    className="w-10 bg-transparent text-center font-bold text-xs text-white font-mono focus:outline-none"
-                  />
-                  <span className="text-[11px] text-slate-400">un</span>
-                </div>
-
+            {/* Action Buttons: Save, Queue & Direct Print */}
+            <div className="flex flex-col gap-2.5 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
-                  onClick={handleSendToProductionQueue}
-                  disabled={isSubmittingQueue}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-500/20 cursor-pointer"
+                  onClick={handleSaveProduct}
+                  disabled={savingProduct}
+                  className="flex-1 bg-[#18181E] hover:bg-[#22222A] text-slate-200 border border-white/[0.1] py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-sm"
                 >
-                  <Play className="w-4 h-4 fill-white" />
-                  {isSubmittingQueue ? 'Enviando...' : 'Enviar para Fila de Produção'}
+                  <BookmarkPlus className="w-4 h-4 text-sky-400" />
+                  {savingProduct ? 'Salvando...' : 'Salvar no Catálogo'}
                 </button>
+
+                <div className="flex items-center gap-2.5 flex-1">
+                  <div className="flex items-center gap-1.5 bg-[#0A0A0B] border border-white/[0.1] px-3.5 py-2.5 rounded-2xl">
+                    <span className="text-xs text-slate-400">Lote:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={printQuantity}
+                      onChange={(e) => setPrintQuantity(Math.max(1, Number(e.target.value)))}
+                      className="w-10 bg-transparent text-center font-bold text-xs text-white font-mono focus:outline-none"
+                    />
+                    <span className="text-[11px] text-slate-400">un</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSendToProductionQueue}
+                    disabled={isSubmittingQueue}
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white py-3 px-4 rounded-2xl font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-500/20 cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    {isSubmittingQueue ? 'Enviando...' : 'Enviar para Fila'}
+                  </button>
+                </div>
               </div>
+
+              {/* Botão de Envio de Impressão Direta (LAN / Cloud) */}
+              <button
+                type="button"
+                onClick={() => setShowDirectPrintModal(true)}
+                className="w-full bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 hover:from-sky-500 hover:via-indigo-500 hover:to-blue-500 text-white py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition shadow-md shadow-sky-600/25 border border-sky-400/30 cursor-pointer"
+              >
+                <PrinterIcon className="w-4 h-4" />
+                <span>Enviar Impressão Direta para Máquina (LAN / Nuvem)</span>
+                <span className="bg-black/30 text-[10px] px-2 py-0.5 rounded-full font-mono font-normal border border-white/10 hidden sm:inline-block">
+                  Bambu, Creality, Prusa, Anycubic, Stratasys, etc.
+                </span>
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal de Disparo de Impressão Direta */}
+      <DirectPrintModal
+        isOpen={showDirectPrintModal}
+        onClose={() => setShowDirectPrintModal(false)}
+        printers={printers}
+        filaments={filaments}
+        selectedPrinterId={selectedPrinterId}
+        selectedFilamentId={selectedFilamentId}
+        jobData={{
+          job_name: productName || parsedModel?.fileName || 'Peça da Calculadora',
+          modelName: productName || parsedModel?.fileName || 'Peça da Calculadora',
+          product_name: productName,
+          file_name: parsedModel?.fileName,
+          estimated_time_minutes: customTimeMinutes,
+          printTimeMinutes: customTimeMinutes,
+          filament_used_g: customWeightGrams,
+          weightGrams: customWeightGrams,
+          filament_id: selectedFilamentId,
+          filament_name: activeFilament?.name,
+          total_cost: costResult?.totalProductionCost || 0,
+          totalCost: costResult?.totalProductionCost || 0,
+          copies: printQuantity,
+          dimensions: parsedModel ? {
+            x: parsedModel.dimensions.x,
+            y: parsedModel.dimensions.y,
+            z: parsedModel.dimensions.z,
+          } : undefined
+        }}
+        onPrintDispatched={() => {
+          onRefreshData();
+        }}
+      />
     </div>
   );
 };

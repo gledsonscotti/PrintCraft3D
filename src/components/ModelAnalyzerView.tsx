@@ -100,11 +100,15 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
     }
   };
 
-  const handleRequestAiOptimization = async () => {
+  const handleRequestAiOptimization = async (options?: {
+    customImage?: string;
+    userNotes?: string;
+    intentCategory?: string;
+  }) => {
     setLoadingAi(true);
     try {
-      let snapshotDataUrl: string | null = null;
-      if (canvasSnapshotGetterRef.current) {
+      let snapshotDataUrl: string | null = options?.customImage || null;
+      if (!snapshotDataUrl && canvasSnapshotGetterRef.current) {
         snapshotDataUrl = canvasSnapshotGetterRef.current();
       }
 
@@ -118,6 +122,9 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
           volume_cm3: parsedModel.volumeCm3,
           triangles_count: parsedModel.trianglesCount,
           snapshot_data_url: snapshotDataUrl,
+          user_notes: options?.userNotes,
+          intent_category: options?.intentCategory,
+          material: activeFilament?.type || 'PLA',
         }),
       });
 
@@ -132,7 +139,8 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
       }
       setIsAdvisorModalOpen(true);
     } catch (err: any) {
-      // Fallback local smart advisor
+      console.warn('Fallback para assistente de fatiamento:', err);
+      // Fallback local smart advisor with rich profiles
       setAiOptimizationResult({
         diagnostic: {
           pieceType: 'Peça Mecânica / Sólido 3D',
@@ -141,7 +149,83 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
           supportNeeded: 'Suportes mínimos necessários.',
           layerAdhesionTips: 'Manter temperatura estável do bico.',
         },
-        profiles: [],
+        profiles: [
+          {
+            id: 'eco',
+            name: 'Eco Rápido',
+            tier: 1,
+            badge: 'Mais Econômico',
+            badgeColor: 'emerald',
+            description: 'Foco em velocidade de prototipagem e economia máxima de filamento.',
+            summary: 'Ideal para rascunhos rápidos ou peças que não sofrem estresse mecânico.',
+            specs: {
+              layerHeight: '0.28 mm',
+              wallLoops: 2,
+              infillPercent: 12,
+              infillPattern: 'grid',
+              topLayers: 3,
+              bottomLayers: 3,
+              printSpeed: '120 mm/s',
+              nozzleTemp: '210 °C',
+              bedTemp: '60 °C',
+              fanSpeed: '100%',
+            },
+            estimatedWeightGrams: Math.round(parsedModel.estimatedWeightGrams * 0.75),
+            estimatedTimeMinutes: Math.round(parsedModel.estimatedTimeMinutes * 0.7),
+            actionableTips: ['Usar draft/adaptive layers para acelerar ainda mais.'],
+            metrics: { strengthScore: 60, speedScore: 95, economyScore: 90, finishScore: 65 },
+          },
+          {
+            id: 'balanced',
+            name: 'Padrão Balanceado',
+            tier: 2,
+            badge: 'Recomendado',
+            badgeColor: 'sky',
+            description: 'Equilíbrio ideal entre resistência mecânica, acabamento superficial e tempo.',
+            summary: 'Melhor opção para produção padrão de catálogo.',
+            specs: {
+              layerHeight: '0.20 mm',
+              wallLoops: 3,
+              infillPercent: 20,
+              infillPattern: 'gyroid',
+              topLayers: 4,
+              bottomLayers: 4,
+              printSpeed: '80 mm/s',
+              nozzleTemp: '215 °C',
+              bedTemp: '60 °C',
+              fanSpeed: '100%',
+            },
+            estimatedWeightGrams: Math.round(parsedModel.estimatedWeightGrams),
+            estimatedTimeMinutes: Math.round(parsedModel.estimatedTimeMinutes),
+            actionableTips: ['Giroide reduz vibrações nos eixos X e Y.'],
+            metrics: { strengthScore: 82, speedScore: 80, economyScore: 80, finishScore: 85 },
+          },
+          {
+            id: 'strength',
+            name: 'Carga Máxima',
+            tier: 3,
+            badge: 'Alta Resistência',
+            badgeColor: 'purple',
+            description: 'Projetado para resistir a esforços mecânicos, impactos e flexão contínua.',
+            summary: 'Recomendado para suportes funcionais, engrenagens e peças de esforço.',
+            specs: {
+              layerHeight: '0.16 mm',
+              wallLoops: 5,
+              infillPercent: 45,
+              infillPattern: 'honeycomb',
+              topLayers: 5,
+              bottomLayers: 5,
+              printSpeed: '50 mm/s',
+              nozzleTemp: '220 °C',
+              bedTemp: '65 °C',
+              fanSpeed: '80%',
+            },
+            estimatedWeightGrams: Math.round(parsedModel.estimatedWeightGrams * 1.4),
+            estimatedTimeMinutes: Math.round(parsedModel.estimatedTimeMinutes * 1.5),
+            actionableTips: ['Aumentar temperatura em +5°C melhora fusão intercamadas.'],
+            metrics: { strengthScore: 98, speedScore: 50, economyScore: 55, finishScore: 92 },
+          },
+        ],
         tips: [
           'Utilizar 3 perímetros para maior durabilidade.',
           'Ativar resfriamento gradual após a 2ª camada.',
@@ -368,19 +452,31 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
         <SlicingAdvisorModal
           isOpen={isAdvisorModalOpen}
           onClose={() => setIsAdvisorModalOpen(false)}
+          modelName={parsedModel.fileName}
           fileName={parsedModel.fileName}
           dimensions={parsedModel.dimensions}
           volumeCm3={parsedModel.volumeCm3}
           trianglesCount={parsedModel.trianglesCount}
+          currentWeightGrams={parsedModel.estimatedWeightGrams}
+          currentTimeMinutes={parsedModel.estimatedTimeMinutes}
+          material={activeFilament?.name || activeFilament?.type || 'PLA'}
+          printerName={printers[0]?.name || 'Impressora 3D'}
           optimizationResult={aiOptimizationResult}
           snapshotDataUrl={canvasSnapshotGetterRef.current ? canvasSnapshotGetterRef.current() : null}
+          isLoading={loadingAi}
+          onReanalyze={handleRequestAiOptimization}
           onApplyProfile={(profile) => {
+            const layerHeightNum = parseFloat(profile.specs?.layerHeight || '0.2') || (profile as any).layer_height || 0.2;
+            const infillNum = profile.specs?.infillPercent ?? (profile as any).infill_percent ?? parsedModel.infillPercent;
+            const weightNum = profile.estimatedWeightGrams ?? (profile as any).estimated_filament_grams ?? parsedModel.estimatedWeightGrams;
+            const timeNum = profile.estimatedTimeMinutes ?? (profile as any).estimated_time_minutes ?? parsedModel.estimatedTimeMinutes;
+
             setParsedModel((prev) => ({
               ...prev,
-              layerHeightMm: profile.layer_height,
-              infillPercent: profile.infill_percent,
-              estimatedWeightGrams: profile.estimated_filament_grams,
-              estimatedTimeMinutes: profile.estimated_time_minutes,
+              layerHeightMm: layerHeightNum,
+              infillPercent: infillNum,
+              estimatedWeightGrams: weightNum,
+              estimatedTimeMinutes: timeNum,
             }));
             setIsAdvisorModalOpen(false);
           }}

@@ -222,7 +222,7 @@ export const CarriersView: React.FC<CarriersViewProps> = ({ onRefreshData }) => 
                   <MapPin className="w-3.5 h-3.5 text-amber-400" /> {c.delivery_days || 'Prazo padrão'}
                 </span>
                 <span className="font-bold text-emerald-400 text-sm">
-                  R$ {c.default_cost.toFixed(2)}
+                  R$ {Number(c.default_cost || 0).toFixed(2)}
                 </span>
               </div>
             </div>

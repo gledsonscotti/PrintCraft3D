@@ -1,3 +1,77 @@
+export type PrinterBrand =
+  | 'Bambu Lab'
+  | 'Creality'
+  | 'Prusa Research'
+  | 'Anycubic'
+  | 'Elegoo'
+  | 'Flashforge'
+  | 'Stratasys'
+  | '3D Systems'
+  | 'EOS'
+  | 'HP'
+  | 'Outra';
+
+export type PrinterConnectionType = 'lan' | 'cloud' | 'offline';
+
+export type PrinterProtocol =
+  | 'bambu_mqtt'
+  | 'moonraker_klipper'
+  | 'prusalink'
+  | 'prusa_connect'
+  | 'creality_cloud'
+  | 'anycubic_cloud'
+  | 'anycubic_lan'
+  | 'octoprint'
+  | 'flashforge_lan'
+  | 'stratasys_grabcad'
+  | 'threed_systems_api'
+  | 'eosconnect'
+  | 'hp_jetfusion'
+  | 'custom_http';
+
+export interface DiscoveredNetworkPrinter {
+  id: string;
+  brand: PrinterBrand;
+  model: string;
+  ip_address: string;
+  port: number;
+  protocol: PrinterProtocol;
+  mac_address?: string;
+  hostname?: string;
+  ping_ms: number;
+  firmware_version?: string;
+  connection_type: 'lan' | 'cloud';
+  serial_number?: string;
+  bed_size: { x: number; y: number; z: number };
+  detected_ams?: boolean;
+  status: 'available' | 'printing' | 'idle';
+  already_registered?: boolean;
+}
+
+export interface DirectPrintJobRequest {
+  printer_id: string;
+  filament_id?: string;
+  job_name: string;
+  product_name?: string;
+  connection_mode: 'lan' | 'cloud';
+  file_name: string;
+  file_type?: string;
+  estimated_time_minutes: number;
+  filament_used_g: number;
+  layer_height_mm?: number;
+  infill_percent?: number;
+  nozzle_temp?: number;
+  bed_temp?: number;
+  auto_start?: boolean;
+  auto_bed_level?: boolean;
+  flow_calibration?: boolean;
+  timelapse?: boolean;
+  ams_slot?: number;
+  total_cost?: number;
+  copies?: number;
+  notes?: string;
+}
+
 export interface Printer {
   id: string;
   name: string;
@@ -8,6 +82,29 @@ export interface Printer {
   hourly_depreciation: number;
   failure_rate_default: number;
   status: 'available' | 'printing' | 'maintenance';
+  // Network & Cloud attributes
+  brand?: PrinterBrand;
+  model?: string;
+  connection_type?: PrinterConnectionType;
+  protocol?: PrinterProtocol;
+  ip_address?: string;
+  port?: number;
+  api_key?: string; // LAN password / Access Code / API Key
+  device_id?: string; // Serial / Cloud ID
+  cloud_endpoint?: string;
+  camera_stream_url?: string;
+  bed_size_x?: number;
+  bed_size_y?: number;
+  bed_size_z?: number;
+  nozzle_diameter?: number;
+  online_status?: 'online' | 'offline' | 'busy' | 'unreachable';
+  current_temp_nozzle?: number;
+  target_temp_nozzle?: number;
+  current_temp_bed?: number;
+  target_temp_bed?: number;
+  current_job_name?: string;
+  current_progress_percent?: number;
+  last_seen_at?: string;
 }
 
 export interface Filament {
@@ -44,6 +141,7 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   stl_filename?: string;
   gcode_filename?: string;
@@ -66,6 +164,22 @@ export interface Product {
   min_stock_alert?: number;
   image_url?: string;
   created_at: string;
+}
+
+export interface ProductSubcategory {
+  id: string;
+  category_id: string;
+  category_name?: string;
+  name: string;
+  created_at: string;
+}
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+  color?: string;
+  created_at: string;
+  subcategories?: ProductSubcategory[];
 }
 
 export interface Client {
@@ -349,4 +463,106 @@ export interface PrinterMaintenance {
   severity: MaintenanceSeverity;
   technician?: string;
 }
+
+export type BillingCycle = 'mensal' | 'trimestral' | 'semestral' | 'anual' | 'vitalicio';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  billing_cycle: BillingCycle;
+  description: string;
+  max_users: number; // -1 for unlimited
+  max_printers: number; // -1 for unlimited
+  max_products: number; // -1 for unlimited
+  features: string[]; // List of enabled feature keys
+  is_popular: boolean;
+  is_active: boolean;
+  badge?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: 'superadmin' | 'admin' | 'manager';
+  created_at: string;
+  last_login_at?: string;
+}
+
+export interface PlanFeatureDefinition {
+  key: string;
+  category: 'core' | 'production' | 'stock' | 'sales' | 'integrations';
+  title: string;
+  description: string;
+  badge?: string;
+}
+
+export type CompanyDocumentType = 'CNPJ' | 'CPF';
+export type CompanyStatus = 'active' | 'trial' | 'suspended' | 'blocked';
+
+export interface Company {
+  id: string;
+  name: string; // Razão Social ou Nome Completo
+  trade_name?: string; // Nome Fantasia
+  document_type: CompanyDocumentType;
+  document_number: string; // CNPJ (xx.xxx.xxx/xxxx-xx) ou CPF (xxx.xxx.xxx-xx)
+  email: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+  plan_id?: string;
+  plan_name?: string;
+  plan_price?: number;
+  plan_cycle?: BillingCycle;
+  status: CompanyStatus;
+  notes?: string;
+  billing_cycle: BillingCycle;
+  expires_at?: string;
+  max_users_override?: number | null;
+  max_printers_override?: number | null;
+  max_products_override?: number | null;
+  users_count?: number;
+  printers_count?: number;
+  products_count?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export type AppUserRole = 'admin' | 'manager' | 'operator' | 'sales' | 'financial' | 'viewer';
+export type AppUserStatus = 'active' | 'inactive' | 'blocked';
+
+export interface AppUser {
+  id: string;
+  company_id: string;
+  company_name?: string;
+  company_document?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: AppUserRole;
+  status: AppUserStatus;
+  permissions: string[];
+  last_login_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AppAccessLog {
+  id: string;
+  user_id?: string;
+  user_name?: string;
+  user_email?: string;
+  company_id?: string;
+  company_name?: string;
+  action: string;
+  ip_address?: string;
+  status: 'success' | 'warning' | 'danger';
+  details?: string;
+  created_at: string;
+}
+
 

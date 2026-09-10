@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# SQLite Database & Backups (prevents git pull from overwriting client data)
+database.sqlite*
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite.bak
+backups/

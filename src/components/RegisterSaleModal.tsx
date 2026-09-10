@@ -696,8 +696,8 @@ export function RegisterSaleModal({
                       <tr key={idx} className="hover:bg-white/[0.02]">
                         <td className="px-3 py-2 font-medium text-white">{item.product_name}</td>
                         <td className="px-3 py-2 text-center font-bold text-sky-400">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right">R$ {item.unit_price.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right font-bold text-emerald-400">R$ {(item.quantity * item.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right">R$ {Number(item.unit_price || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-bold text-emerald-400">R$ {Number((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</td>
                         <td className="px-3 py-2 text-center">
                           <button
                             type="button"
@@ -745,7 +745,7 @@ export function RegisterSaleModal({
                     <option value="none">Sem Custos com Envio (Retirada / PF Direta)</option>
                     {carriers.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({c.service_type}) - R$ {c.default_cost.toFixed(2)}
+                        {c.name} ({c.service_type}) - R$ {Number(c.default_cost || 0).toFixed(2)}
                       </option>
                     ))}
                     <option value="custom">Outro / Valor Personalizado</option>
@@ -797,12 +797,12 @@ export function RegisterSaleModal({
           <div className="p-3.5 rounded-2xl bg-[#111113] border border-white/[0.08] flex items-center justify-between text-xs">
             <div>
               <span className="text-slate-400 block">Total Geral da Operação</span>
-              <span className="text-base font-extrabold text-emerald-400">R$ {totalRevenue.toFixed(2)}</span>
+              <span className="text-base font-extrabold text-emerald-400">R$ {Number(totalRevenue || 0).toFixed(2)}</span>
             </div>
             {saleMode !== 'consignment' && (
               <div className="text-right">
                 <span className="text-slate-400 block">Lucro Líquido Estimado</span>
-                <span className="text-sm font-bold text-sky-400">R$ {netProfit.toFixed(2)} ({profitMarginPercent.toFixed(0)}%)</span>
+                <span className="text-sm font-bold text-sky-400">R$ {Number(netProfit || 0).toFixed(2)} ({Number(profitMarginPercent || 0).toFixed(0)}%)</span>
               </div>
             )}
           </div>

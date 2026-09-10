@@ -17,47 +17,54 @@ import {
   Flame,
   Gauge,
   Sliders,
-  CheckCircle2
+  CheckCircle2,
+  Box,
+  Compass
 } from 'lucide-react';
 import { AiOptimizationResult, SlicingProfile } from '../types';
 
 interface SlicingAdvisorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  modelName: string;
-  category: string;
-  dimensions: { x: number; y: number; z: number };
-  currentWeightGrams: number;
-  currentTimeMinutes: number;
-  material: string;
-  printerName: string;
-  snapshotDataUrl: string | null;
-  optimizationResult: AiOptimizationResult | null;
-  isLoading: boolean;
-  onReanalyze: (options: {
+  modelName?: string;
+  fileName?: string;
+  category?: string;
+  dimensions?: { x: number; y: number; z: number };
+  currentWeightGrams?: number;
+  currentTimeMinutes?: number;
+  material?: string;
+  printerName?: string;
+  snapshotDataUrl?: string | null;
+  optimizationResult?: AiOptimizationResult | null;
+  isLoading?: boolean;
+  onReanalyze?: (options: {
     customImage?: string;
     userNotes?: string;
     intentCategory?: string;
-  }) => Promise<void>;
-  onApplyProfile: (profile: SlicingProfile) => void;
+  }) => Promise<void> | void;
+  onApplyProfile?: (profile: SlicingProfile) => void;
+  volumeCm3?: number;
+  trianglesCount?: number;
 }
 
 export const SlicingAdvisorModal: React.FC<SlicingAdvisorModalProps> = ({
   isOpen,
   onClose,
   modelName,
-  category,
-  dimensions,
-  currentWeightGrams,
-  currentTimeMinutes,
-  material,
-  printerName,
-  snapshotDataUrl,
-  optimizationResult,
-  isLoading,
+  fileName,
+  category = 'Peça Geral',
+  dimensions = { x: 0, y: 0, z: 0 },
+  currentWeightGrams = 0,
+  currentTimeMinutes = 0,
+  material = 'PLA Standard',
+  printerName = 'Impressora 3D',
+  snapshotDataUrl = null,
+  optimizationResult = null,
+  isLoading = false,
   onReanalyze,
   onApplyProfile,
 }) => {
+  const effectiveModelName = modelName || fileName || 'Modelo 3D';
   const [selectedProfileId, setSelectedProfileId] = useState<'eco' | 'balanced' | 'strength'>('balanced');
   const [selectedSlicer, setSelectedSlicer] = useState<'bambu' | 'orca' | 'prusa' | 'cura' | 'simplify'>('bambu');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -105,7 +112,7 @@ export const SlicingAdvisorModal: React.FC<SlicingAdvisorModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleTriggerReanalyze = () => {
+  const handleTriggerReanalyze = async () => {
     let intentDesc = '';
     if (selectedIntent === 'keychain') intentDesc = 'Peça é um Chaveiro / Brinde fino (foco: economia, sem quebrar anel)';
     if (selectedIntent === 'gear') intentDesc = 'Peça é uma Engrenagem / Mecânica (foco: tração, sem quebrar dentes)';
@@ -114,17 +121,25 @@ export const SlicingAdvisorModal: React.FC<SlicingAdvisorModalProps> = ({
 
     const combinedNotes = [intentDesc, userNotes].filter(Boolean).join(' | ');
 
-    onReanalyze({
-      customImage: activeImage || undefined,
-      userNotes: combinedNotes || undefined,
-      intentCategory: selectedIntent !== 'auto' ? selectedIntent : undefined,
-    });
+    if (typeof onReanalyze === 'function') {
+      try {
+        await onReanalyze({
+          customImage: activeImage || undefined,
+          userNotes: combinedNotes || undefined,
+          intentCategory: selectedIntent !== 'auto' ? selectedIntent : undefined,
+        });
+      } catch (err) {
+        console.error('Erro ao reanalisar modelo:', err);
+      }
+    } else {
+      console.warn('onReanalyze não configurado para este modal');
+    }
   };
 
   const handleCopySlicerParams = () => {
     if (!activeProfile) return;
     const text = `=== PERFIL DE FATIAMENTO RECOMENDADO: ${activeProfile.name.toUpperCase()} ===
-Peça: ${modelName} (${dimensions.x}x${dimensions.y}x${dimensions.z} mm)
+Peça: ${effectiveModelName} (${dimensions.x}x${dimensions.y}x${dimensions.z} mm)
 Material: ${material} | Impressora: ${printerName}
 
 [CONFIGURAÇÕES DE FATIAMENTO (BAMBU / ORCA / CURA / PRUSA)]
@@ -250,7 +265,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                 {activeImage ? (
                   <img
                     src={activeImage}
-                    alt={modelName}
+                    alt={effectiveModelName}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -280,7 +295,7 @@ Estimativa: ~${activeProfile.estimatedWeightGrams}g | ~${activeProfile.estimated
                   Peça em Análise
                 </span>
                 <h3 className="text-sm sm:text-base font-bold text-white truncate max-w-xs sm:max-w-md">
-                  {modelName}
+                  {effectiveModelName}
                 </h3>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400 font-mono">
                   <span className="bg-white/[0.05] px-2 py-0.5 rounded-md border border-white/[0.06]">

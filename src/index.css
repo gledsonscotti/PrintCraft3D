@@ -1873,6 +1873,1279 @@ html[data-theme="high-contrast-light"] .printers-subtab-active {
   color: #FFFFFF !important;
 }
 
+/* Printers Sub-Tabs Theme Adaptation for High-Contrast Dark */
+html[data-theme="high-contrast-dark"] .printers-subtabs-bar {
+  background-color: #000000 !important;
+  border: 2px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .printers-subtabs-inner {
+  background-color: #09090B !important;
+  border: 1.5px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .printers-subtab-btn {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .printers-subtab-btn:hover {
+  background-color: #18181B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printers-subtab-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+}
+
+/* =========================================================================
+   PARQUE DE IMPRESSORAS 3D, VARREDURA DE REDE & CADASTRO DE EQUIPAMENTOS
+   Suporte a Temas: Sage Bento, High-Contrast Light e High-Contrast Dark
+   ========================================================================= */
+
+/* --- SAGE BENTO (Linen / Soft Warm Green Bento) --- */
+html[data-theme="sage-bento"] .printer-scan-btn {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #244636 !important;
+  box-shadow: 0 2px 8px rgba(45, 86, 66, 0.08) !important;
+}
+
+html[data-theme="sage-bento"] .printer-scan-btn:hover {
+  background-color: #E2DBD0 !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-scan-btn svg {
+  color: #446C58 !important;
+}
+
+html[data-theme="sage-bento"] .printer-new-btn,
+html[data-theme="sage-bento"] .printer-modal-btn-submit,
+html[data-theme="sage-bento"] .discovery-btn-scan,
+html[data-theme="sage-bento"] .discovery-register-btn {
+  background-color: #567D6B !important;
+  border: 1.5px solid #456656 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .printer-new-btn:hover,
+html[data-theme="sage-bento"] .printer-modal-btn-submit:hover,
+html[data-theme="sage-bento"] .discovery-btn-scan:hover,
+html[data-theme="sage-bento"] .discovery-register-btn:hover {
+  background-color: #466A5A !important;
+}
+
+html[data-theme="sage-bento"] .printer-card,
+html[data-theme="sage-bento"] .discovery-device-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card:hover,
+html[data-theme="sage-bento"] .discovery-device-card:hover {
+  border-color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-maintenance {
+  background-color: #FFF9F9 !important;
+  border-color: #F3C3C7 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-title,
+html[data-theme="sage-bento"] .discovery-device-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-action-btn,
+html[data-theme="sage-bento"] .printer-modal-close,
+html[data-theme="sage-bento"] .discovery-modal-close {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-action-btn:hover,
+html[data-theme="sage-bento"] .printer-modal-close:hover,
+html[data-theme="sage-bento"] .discovery-modal-close:hover {
+  background-color: #EDE7DC !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-spec,
+html[data-theme="sage-bento"] .printer-card-stat-box,
+html[data-theme="sage-bento"] .discovery-spec-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #EDE8DE !important;
+  border-radius: 0.875rem !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-spec-val,
+html[data-theme="sage-bento"] .printer-card-stat-box strong {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-stat-label {
+  color: #6C8176 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-ping-btn,
+html[data-theme="sage-bento"] .discovery-ping-btn,
+html[data-theme="sage-bento"] .printer-modal-btn-test {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .printer-card-ping-btn:hover,
+html[data-theme="sage-bento"] .discovery-ping-btn:hover,
+html[data-theme="sage-bento"] .printer-modal-btn-test:hover {
+  background-color: #E2DBD0 !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-empty-box,
+html[data-theme="sage-bento"] .discovery-idle-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px dashed #DCD5C6 !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-empty-title {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-empty-desc {
+  color: #6C8176 !important;
+}
+
+/* Modais de Cadastro de Impressora & Varredura em Sage Bento */
+html[data-theme="sage-bento"] .printer-modal-box,
+html[data-theme="sage-bento"] .discovery-modal-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-header,
+html[data-theme="sage-bento"] .discovery-modal-header,
+html[data-theme="sage-bento"] .discovery-modal-footer {
+  background: #F8F6F1 !important;
+  border-color: #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-title,
+html[data-theme="sage-bento"] .discovery-modal-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-subtitle,
+html[data-theme="sage-bento"] .discovery-modal-subtitle {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-section,
+html[data-theme="sage-bento"] .discovery-controls-bar {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  border-radius: 1.25rem !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-section-title {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-label {
+  color: #192C23 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-label-sub {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-brand-btn {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .printer-brand-btn:hover {
+  background-color: #EDE7DC !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-brand-btn-active {
+  background-color: #567D6B !important;
+  border-color: #416252 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .printer-conn-toggle-bar {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-input,
+html[data-theme="sage-bento"] .printer-modal-select,
+html[data-theme="sage-bento"] .discovery-input {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-input:focus,
+html[data-theme="sage-bento"] .printer-modal-select:focus,
+html[data-theme="sage-bento"] .discovery-input:focus {
+  border-color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-btn-cancel,
+html[data-theme="sage-bento"] .discovery-btn-close {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .printer-modal-btn-cancel:hover,
+html[data-theme="sage-bento"] .discovery-btn-close:hover {
+  background-color: #E2DBD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .discovery-subnet-btn {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .discovery-subnet-btn:hover {
+  background-color: #E2DBD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .discovery-brand-pill {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .discovery-brand-pill:hover {
+  background-color: #E2DBD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .discovery-brand-pill-active {
+  background-color: #567D6B !important;
+  border-color: #456656 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .discovery-radar-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #C8DDD0 !important;
+  color: #192C23 !important;
+}
+
+
+/* --- HIGH-CONTRAST LIGHT (Branco Puro / Preto Sólido Alto Contraste) --- */
+html[data-theme="high-contrast-light"] .printer-scan-btn {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-scan-btn:hover {
+  background-color: #F4F4F5 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-scan-btn svg {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-new-btn,
+html[data-theme="high-contrast-light"] .printer-modal-btn-submit,
+html[data-theme="high-contrast-light"] .discovery-btn-scan,
+html[data-theme="high-contrast-light"] .discovery-register-btn {
+  background-color: #0284C7 !important;
+  border: 2px solid #075985 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-new-btn:hover,
+html[data-theme="high-contrast-light"] .printer-modal-btn-submit:hover,
+html[data-theme="high-contrast-light"] .discovery-btn-scan:hover,
+html[data-theme="high-contrast-light"] .discovery-register-btn:hover {
+  background-color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card,
+html[data-theme="high-contrast-light"] .discovery-device-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card:hover,
+html[data-theme="high-contrast-light"] .discovery-device-card:hover {
+  border-color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-maintenance {
+  background-color: #FEF2F2 !important;
+  border-color: #DC2626 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-title,
+html[data-theme="high-contrast-light"] .discovery-device-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-action-btn,
+html[data-theme="high-contrast-light"] .printer-modal-close,
+html[data-theme="high-contrast-light"] .discovery-modal-close {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-action-btn:hover,
+html[data-theme="high-contrast-light"] .printer-modal-close:hover,
+html[data-theme="high-contrast-light"] .discovery-modal-close:hover {
+  background-color: #F4F4F5 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-spec,
+html[data-theme="high-contrast-light"] .printer-card-stat-box,
+html[data-theme="high-contrast-light"] .discovery-spec-box {
+  background-color: #F4F4F5 !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-spec-val,
+html[data-theme="high-contrast-light"] .printer-card-stat-box strong {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-stat-label {
+  color: #52525B !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-ping-btn,
+html[data-theme="high-contrast-light"] .discovery-ping-btn,
+html[data-theme="high-contrast-light"] .printer-modal-btn-test {
+  background-color: #F4F4F5 !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-card-ping-btn:hover,
+html[data-theme="high-contrast-light"] .discovery-ping-btn:hover,
+html[data-theme="high-contrast-light"] .printer-modal-btn-test:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-empty-box,
+html[data-theme="high-contrast-light"] .discovery-idle-box {
+  background-color: #FFFFFF !important;
+  border: 2px dashed #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-empty-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-empty-desc {
+  color: #3F3F46 !important;
+}
+
+/* Modais de Cadastro de Impressora & Varredura em High-Contrast Light */
+html[data-theme="high-contrast-light"] .printer-modal-box,
+html[data-theme="high-contrast-light"] .discovery-modal-box {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-header,
+html[data-theme="high-contrast-light"] .discovery-modal-header,
+html[data-theme="high-contrast-light"] .discovery-modal-footer {
+  background: #F4F4F5 !important;
+  border-color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-title,
+html[data-theme="high-contrast-light"] .discovery-modal-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-subtitle,
+html[data-theme="high-contrast-light"] .discovery-modal-subtitle {
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-section,
+html[data-theme="high-contrast-light"] .discovery-controls-bar {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-section-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-label {
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-label-sub {
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-brand-btn {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-brand-btn:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-brand-btn-active {
+  background-color: #09090B !important;
+  border-color: #09090B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-conn-toggle-bar {
+  background-color: #E4E4E7 !important;
+  border: 1.5px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-input,
+html[data-theme="high-contrast-light"] .printer-modal-select,
+html[data-theme="high-contrast-light"] .discovery-input {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-input:focus,
+html[data-theme="high-contrast-light"] .printer-modal-select:focus,
+html[data-theme="high-contrast-light"] .discovery-input:focus {
+  border-color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-btn-cancel,
+html[data-theme="high-contrast-light"] .discovery-btn-close {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .printer-modal-btn-cancel:hover,
+html[data-theme="high-contrast-light"] .discovery-btn-close:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .discovery-subnet-btn {
+  background-color: #FFFFFF !important;
+  border: 1px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .discovery-brand-pill {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .discovery-brand-pill:hover {
+  background-color: #F4F4F5 !important;
+}
+
+html[data-theme="high-contrast-light"] .discovery-brand-pill-active {
+  background-color: #09090B !important;
+  border-color: #09090B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .discovery-radar-box {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #0284C7 !important;
+  color: #09090B !important;
+}
+
+
+/* --- HIGH-CONTRAST DARK (Preto Absoluto / Bordas Sólidas) --- */
+html[data-theme="high-contrast-dark"] .printer-scan-btn {
+  background-color: #000000 !important;
+  border: 2px solid #38BDF8 !important;
+  color: #38BDF8 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-scan-btn:hover {
+  background-color: #082F49 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-scan-btn svg {
+  color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-new-btn,
+html[data-theme="high-contrast-dark"] .printer-modal-btn-submit,
+html[data-theme="high-contrast-dark"] .discovery-btn-scan,
+html[data-theme="high-contrast-dark"] .discovery-register-btn {
+  background-color: #0284C7 !important;
+  border: 2px solid #38BDF8 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-new-btn:hover,
+html[data-theme="high-contrast-dark"] .printer-modal-btn-submit:hover,
+html[data-theme="high-contrast-dark"] .discovery-btn-scan:hover,
+html[data-theme="high-contrast-dark"] .discovery-register-btn:hover {
+  background-color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card,
+html[data-theme="high-contrast-dark"] .discovery-device-card {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card:hover,
+html[data-theme="high-contrast-dark"] .discovery-device-card:hover {
+  border-color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-maintenance {
+  background-color: #2D0607 !important;
+  border-color: #F43F5E !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-title,
+html[data-theme="high-contrast-dark"] .discovery-device-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-action-btn,
+html[data-theme="high-contrast-dark"] .printer-modal-close,
+html[data-theme="high-contrast-dark"] .discovery-modal-close {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-action-btn:hover,
+html[data-theme="high-contrast-dark"] .printer-modal-close:hover,
+html[data-theme="high-contrast-dark"] .discovery-modal-close:hover {
+  background-color: #18181B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-spec,
+html[data-theme="high-contrast-dark"] .printer-card-stat-box,
+html[data-theme="high-contrast-dark"] .discovery-spec-box {
+  background-color: #18181B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-spec-val,
+html[data-theme="high-contrast-dark"] .printer-card-stat-box strong {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-stat-label {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-ping-btn,
+html[data-theme="high-contrast-dark"] .discovery-ping-btn,
+html[data-theme="high-contrast-dark"] .printer-modal-btn-test {
+  background-color: #18181B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-card-ping-btn:hover,
+html[data-theme="high-contrast-dark"] .discovery-ping-btn:hover,
+html[data-theme="high-contrast-dark"] .printer-modal-btn-test:hover {
+  background-color: #27272A !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-empty-box,
+html[data-theme="high-contrast-dark"] .discovery-idle-box {
+  background-color: #09090B !important;
+  border: 2px dashed #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-empty-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-empty-desc {
+  color: #A1A1AA !important;
+}
+
+/* Modais de Cadastro de Impressora & Varredura em High-Contrast Dark */
+html[data-theme="high-contrast-dark"] .printer-modal-box,
+html[data-theme="high-contrast-dark"] .discovery-modal-box {
+  background-color: #000000 !important;
+  border: 2px solid #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-header,
+html[data-theme="high-contrast-dark"] .discovery-modal-header,
+html[data-theme="high-contrast-dark"] .discovery-modal-footer {
+  background: #09090B !important;
+  border-color: #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-title,
+html[data-theme="high-contrast-dark"] .discovery-modal-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-subtitle,
+html[data-theme="high-contrast-dark"] .discovery-modal-subtitle {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-section,
+html[data-theme="high-contrast-dark"] .discovery-controls-bar {
+  background-color: #09090B !important;
+  border: 1.5px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-section-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-label {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-label-sub {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-brand-btn {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+  color: #D4D4D8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-brand-btn:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-brand-btn-active {
+  background-color: #0284C7 !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-conn-toggle-bar {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-input,
+html[data-theme="high-contrast-dark"] .printer-modal-select,
+html[data-theme="high-contrast-dark"] .discovery-input {
+  background-color: #09090B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-input:focus,
+html[data-theme="high-contrast-dark"] .printer-modal-select:focus,
+html[data-theme="high-contrast-dark"] .discovery-input:focus {
+  border-color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-btn-cancel,
+html[data-theme="high-contrast-dark"] .discovery-btn-close {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+  color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-dark"] .printer-modal-btn-cancel:hover,
+html[data-theme="high-contrast-dark"] .discovery-btn-close:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .discovery-subnet-btn {
+  background-color: #18181B !important;
+  border: 1px solid #27272A !important;
+  color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-dark"] .discovery-brand-pill {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .discovery-brand-pill:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .discovery-brand-pill-active {
+  background-color: #0284C7 !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .discovery-radar-box {
+  background-color: #09090B !important;
+  border: 2px solid #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+
+/* =========================================================================
+   ADMIN CONSOLE THEME ADAPTATIONS (/admin)
+   Planos de Assinatura, Overview, Matriz de Features e Configurações
+   ========================================================================= */
+
+/* --- Sage Bento Theme for Admin --- */
+html[data-theme="sage-bento"] .admin-view-container,
+html[data-theme="sage-bento"] .admin-login-screen {
+  background-color: #F7F3EC !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-header {
+  background-color: #FAF7F2 !important;
+  border-bottom: 1.5px solid #E5DFD4 !important;
+  box-shadow: 0 2px 8px rgba(35, 52, 43, 0.05) !important;
+}
+
+html[data-theme="sage-bento"] .admin-subnav {
+  background-color: #F0EAE0 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .admin-tab-btn {
+  color: #4A6054 !important;
+}
+
+html[data-theme="sage-bento"] .admin-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-tab-btn.admin-tab-active {
+  background-color: #446C58 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(68, 108, 88, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .admin-card {
+  background-color: #FAF7F2 !important;
+  border: 1px solid #E5DFD4 !important;
+  color: #192C23 !important;
+  box-shadow: 0 4px 16px -2px rgba(25, 44, 35, 0.06) !important;
+}
+
+html[data-theme="sage-bento"] .admin-card h1,
+html[data-theme="sage-bento"] .admin-card h2,
+html[data-theme="sage-bento"] .admin-card h3,
+html[data-theme="sage-bento"] .admin-card .text-white {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-modal {
+  background-color: #FAF7F2 !important;
+  border: 1.5px solid #D5E2D9 !important;
+  color: #192C23 !important;
+  box-shadow: 0 20px 40px -10px rgba(25, 44, 35, 0.15) !important;
+}
+
+html[data-theme="sage-bento"] .admin-modal h2,
+html[data-theme="sage-bento"] .admin-modal .text-white {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-table thead tr {
+  background-color: #F0EAE0 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .admin-table th {
+  color: #446C58 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .admin-table td {
+  border-bottom: 1px solid #EFEAE2 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-table tr:hover {
+  background-color: rgba(68, 108, 88, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] .admin-input {
+  background-color: #FFFFFF !important;
+  border: 1px solid #D5E2D9 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-input:focus {
+  border-color: #446C58 !important;
+}
+
+html[data-theme="sage-bento"] .admin-inner-box {
+  background-color: #FAF7F2 !important;
+  border: 1px solid #E5DFD4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-modal-header {
+  background-color: #F0EAE0 !important;
+  border-bottom: 1.5px solid #E2DBD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .admin-subnav-bar {
+  background-color: #F0EAE0 !important;
+  border: 1.5px solid #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-secondary,
+html[data-theme="sage-bento"] button.admin-btn-secondary {
+  background-color: #EDE8DE !important;
+  border: 1.5px solid #BAC8BF !important;
+  color: #192C23 !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.08) !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-secondary:hover,
+html[data-theme="sage-bento"] button.admin-btn-secondary:hover {
+  background-color: #DFD8CB !important;
+  border-color: #567D6B !important;
+  color: #11221A !important;
+  box-shadow: 0 4px 12px -2px rgba(86, 125, 107, 0.2) !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-secondary svg,
+html[data-theme="sage-bento"] button.admin-btn-secondary svg {
+  color: #365B4A !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-primary,
+html[data-theme="sage-bento"] button.admin-btn-primary {
+  background-color: #567D6B !important;
+  border: 1.5px solid #446857 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 12px -2px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-primary:hover,
+html[data-theme="sage-bento"] button.admin-btn-primary:hover {
+  background-color: #446857 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 16px -2px rgba(86, 125, 107, 0.35) !important;
+}
+
+html[data-theme="sage-bento"] .admin-btn-primary svg,
+html[data-theme="sage-bento"] button.admin-btn-primary svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .admin-code-block {
+  background-color: #192C23 !important;
+  border: 1.5px solid #446C58 !important;
+  color: #A3E635 !important;
+}
+
+html[data-theme="sage-bento"] .admin-profile-active {
+  background-color: rgba(68, 108, 88, 0.12) !important;
+  border: 1.5px solid #446C58 !important;
+}
+
+/* --- High Contrast Light (Oficina Clara) for Admin --- */
+html[data-theme="high-contrast-light"] .admin-view-container,
+html[data-theme="high-contrast-light"] .admin-login-screen {
+  background-color: #F1F3F5 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 2px solid #09090B !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-subnav {
+  background-color: #FFFFFF !important;
+  border-bottom: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-tab-btn {
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-tab-btn:hover {
+  background-color: #E4E4E7 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-tab-btn.admin-tab-active {
+  background-color: #16A34A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #14532D !important;
+  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3) !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  box-shadow: 0 4px 0px #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-card h1,
+html[data-theme="high-contrast-light"] .admin-card h2,
+html[data-theme="high-contrast-light"] .admin-card h3,
+html[data-theme="high-contrast-light"] .admin-card .text-white {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-modal {
+  background-color: #FFFFFF !important;
+  border: 2.5px solid #09090B !important;
+  color: #09090B !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-modal h2,
+html[data-theme="high-contrast-light"] .admin-modal .text-white {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-table thead tr {
+  background-color: #E4E4E7 !important;
+  border-bottom: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-table th {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-table td {
+  border-bottom: 1.5px solid #E4E4E7 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-table tr:hover {
+  background-color: #F4F4F5 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-input {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-inner-box {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-modal-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-subnav-bar {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-secondary,
+html[data-theme="high-contrast-light"] button.admin-btn-secondary {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-secondary:hover,
+html[data-theme="high-contrast-light"] button.admin-btn-secondary:hover {
+  background-color: #E4E4E7 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-secondary svg,
+html[data-theme="high-contrast-light"] button.admin-btn-secondary svg {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-primary,
+html[data-theme="high-contrast-light"] button.admin-btn-primary {
+  background-color: #09090B !important;
+  border: 2px solid #09090B !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-primary:hover,
+html[data-theme="high-contrast-light"] button.admin-btn-primary:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-btn-primary svg,
+html[data-theme="high-contrast-light"] button.admin-btn-primary svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-code-block {
+  background-color: #09090B !important;
+  border: 2px solid #09090B !important;
+  color: #22C55E !important;
+}
+
+html[data-theme="high-contrast-light"] .admin-profile-active {
+  background-color: #DCFCE7 !important;
+  border: 2px solid #16A34A !important;
+}
+
+/* --- High Contrast Dark (Preto Puro) for Admin --- */
+html[data-theme="high-contrast-dark"] .admin-view-container,
+html[data-theme="high-contrast-dark"] .admin-login-screen {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-header {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-subnav {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-tab-btn {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-tab-btn:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-tab-btn.admin-tab-active {
+  background-color: #10B981 !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #34D399 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-card {
+  background-color: #050505 !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-modal {
+  background-color: #050505 !important;
+  border: 2px solid #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-table thead tr {
+  background-color: #18181B !important;
+  border-bottom: 2px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-table th {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-table td {
+  border-bottom: 1px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-table tr:hover {
+  background-color: #18181B !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-input {
+  background-color: #09090B !important;
+  border: 1.5px solid #52525B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-input:focus {
+  border-color: #10B981 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-inner-box {
+  background-color: #09090B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-modal-header {
+  background-color: #050505 !important;
+  border-bottom: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-subnav-bar {
+  background-color: #050505 !important;
+  border: 1.5px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-secondary,
+html[data-theme="high-contrast-dark"] button.admin-btn-secondary {
+  background-color: #18181B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-secondary:hover,
+html[data-theme="high-contrast-dark"] button.admin-btn-secondary:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-secondary svg,
+html[data-theme="high-contrast-dark"] button.admin-btn-secondary svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-primary,
+html[data-theme="high-contrast-dark"] button.admin-btn-primary {
+  background-color: #10B981 !important;
+  border: 1.5px solid #059669 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-primary:hover,
+html[data-theme="high-contrast-dark"] button.admin-btn-primary:hover {
+  background-color: #34D399 !important;
+  color: #000000 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-btn-primary svg,
+html[data-theme="high-contrast-dark"] button.admin-btn-primary svg {
+  color: #000000 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-code-block {
+  background-color: #000000 !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #34D399 !important;
+}
+
+html[data-theme="high-contrast-dark"] .admin-profile-active {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border: 1.5px solid #10B981 !important;
+}
+
+/* Base default styling for admin helper classes (Standard Dark Studio) */
+.admin-inner-box {
+  background-color: #0A0A0B;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-modal-header {
+  background-color: #15151A;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-subnav-bar {
+  background-color: #121215;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-btn-secondary {
+  background-color: #1A1A20;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+}
+
+.admin-btn-secondary:hover {
+  background-color: #22222A;
+  color: #FFFFFF;
+}
+
+.admin-code-block {
+  background-color: #0A0A0B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #6EE7B7;
+}
+
 
 
 
