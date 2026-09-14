@@ -62,7 +62,6 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<'iso' | 'top' | 'front'>('iso');
-  const [webglFailed, setWebglFailed] = useState(false);
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
@@ -112,20 +111,6 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
   // Initialize Three.js scene
   useEffect(() => {
     if (!mountRef.current) return;
-
-    // Check WebGL availability first
-    try {
-      const testCanvas = document.createElement('canvas');
-      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-      if (!gl) {
-        setWebglFailed(true);
-        return;
-      }
-    } catch {
-      setWebglFailed(true);
-      return;
-    }
-
     const container = mountRef.current;
     const width = container.clientWidth || 600;
     const height = container.clientHeight || 450;
@@ -145,24 +130,14 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
     cameraRef.current = camera;
     updateCamera();
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
-      if (!renderer.getContext()) {
-        throw new Error('WebGL context returned null');
-      }
-      renderer.setSize(width, height);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      rendererRef.current = renderer;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    rendererRef.current = renderer;
 
-      container.appendChild(renderer.domElement);
-    } catch (e) {
-      console.warn('WebGL context creation failed in PlateViewer3D:', e);
-      setWebglFailed(true);
-      return;
-    }
+    container.appendChild(renderer.domElement);
 
     // Root Group
     const root = new THREE.Group();
@@ -687,33 +662,16 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
         isFullscreen ? 'fixed inset-0 z-50 rounded-none bg-black' : ''
       }`}
     >
-      {/* 3D Canvas Container or WebGL Fallback */}
-      {webglFailed ? (
-        <div className="w-full h-full flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#111115]">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-3 animate-bounce">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <h4 className="text-sm font-bold text-white mb-1">Visualização da Mesa CAD Ativa</h4>
-          <p className="text-xs text-slate-400 max-w-xs mb-3">
-            O contexto WebGL não está disponível neste ambiente. O fatiamento, distribuição de peças e painel de controle operam normalmente.
-          </p>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-            <span>{activePlate.name}</span>
-            <span>•</span>
-            <span>{activePlate.parts.length} peças na mesa</span>
-          </div>
-        </div>
-      ) : (
-        <div
-          ref={mountRef}
-          className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-          onContextMenu={(e) => e.preventDefault()}
-        />
-      )}
+      {/* 3D Canvas Container */}
+      <div
+        ref={mountRef}
+        className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+        onContextMenu={(e) => e.preventDefault()}
+      />
 
       {/* Top Floating Controls Bar */}
       <div className="absolute top-3.5 left-3.5 right-3.5 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-10">

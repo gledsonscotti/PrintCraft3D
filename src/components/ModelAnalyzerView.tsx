@@ -22,10 +22,7 @@ import {
   AlertTriangle,
   Grid,
   Check,
-  ChevronDown,
-  Terminal,
-  Bug,
-  X
+  ChevronDown
 } from 'lucide-react';
 import { AppSettings, AppTheme, Filament, Printer, AiOptimizationResult } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
@@ -123,78 +120,6 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
   const [sentSuccess, setSentSuccess] = useState<boolean>(false);
   const canvasSnapshotGetterRef = useRef<(() => string | null) | null>(null);
 
-  interface DiagnosticLogEntry {
-    timestamp: string;
-    stage: 'LOADING' | 'PARSING' | 'SCENE_INIT' | 'RENDER' | 'ERROR';
-    message: string;
-    details: any;
-  }
-
-  const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
-  const [showDiagnosticsPanel, setShowDiagnosticsPanel] = useState<boolean>(false);
-
-  // Diagnostic logging function to trace loading status, file parsing, and Three.js scene initialization steps
-  const traceModelDiagnostics = useCallback((
-    action: string,
-    stage: 'LOADING' | 'PARSING' | 'SCENE_INIT' | 'RENDER' | 'ERROR',
-    details: Record<string, any>
-  ) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry: DiagnosticLogEntry = {
-      timestamp,
-      stage,
-      message: action,
-      details,
-    };
-
-    setDiagnosticLogs((prev) => [logEntry, ...prev.slice(0, 49)]);
-
-    console.group(`%c[3D-DIAGNOSTIC] [${stage}] ${action} (${timestamp})`, 'background: #0ea5e9; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold;');
-    console.log('• Stage:', stage);
-    console.log('• Action / Message:', action);
-    console.log('• File Name:', details.fileName || parsedModel.fileName);
-    console.log('• File Type:', details.fileType || parsedModel.fileType);
-    if (details.bufferSize !== undefined) {
-      console.log('• Buffer Size (bytes):', details.bufferSize);
-    }
-    if (details.trianglesCount !== undefined) {
-      console.log('• Triangles / Faces Count:', details.trianglesCount);
-    }
-    if (details.dimensions) {
-      console.log('• Geometry Dimensions (mm):', details.dimensions);
-    }
-    console.log('• Has THREE.Object3D:', details.hasObject3D ?? !!modelObject);
-    console.log('• Has ArrayBuffer:', details.hasBuffer ?? !!modelBuffer);
-    if (details.meshCount !== undefined) {
-      console.log('• Mesh Count in Scene:', details.meshCount);
-    }
-    if (details.materialStatus) {
-      console.log('• Material & Shading Status:', details.materialStatus);
-    }
-    if (details.bedFitStatus) {
-      console.log('• Bed Fit & Positioning Status:', details.bedFitStatus);
-    }
-    if (details.error) {
-      console.error('❌ Rendering / Parsing Error Identified:', details.error);
-    } else {
-      console.log('✅ Status: Ready & Rendering Validated');
-    }
-    console.groupEnd();
-  }, [parsedModel.fileName, parsedModel.fileType, modelObject, modelBuffer]);
-
-  useEffect(() => {
-    traceModelDiagnostics('ModelAnalyzerView Initialized', 'SCENE_INIT', {
-      fileName: parsedModel.fileName,
-      fileType: parsedModel.fileType,
-      dimensions: parsedModel.dimensions,
-      trianglesCount: parsedModel.trianglesCount,
-      hasObject3D: !!modelObject,
-      hasBuffer: !!modelBuffer,
-      materialStatus: 'Default sample preset loaded (' + sampleType + ')',
-      bedFitStatus: `Bed: ${bedSize.x}x${bedSize.y}mm`
-    });
-  }, []);
-
   const handleSnapshotReady = useCallback((getter: () => string | null) => {
     canvasSnapshotGetterRef.current = getter;
   }, []);
@@ -204,43 +129,16 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
     buffer?: ArrayBuffer,
     object3D?: THREE.Object3D
   ) => {
-    traceModelDiagnostics(`File Upload Parsed: ${result.fileName}`, 'PARSING', {
-      fileName: result.fileName,
-      fileType: result.fileType,
-      bufferSize: buffer?.byteLength,
-      trianglesCount: result.trianglesCount,
-      dimensions: result.dimensions,
-      hasObject3D: !!object3D || !!result.threeObject,
-      hasBuffer: !!buffer,
-      materialStatus: 'Universal 3D parser successful',
-      bedFitStatus: (result.dimensions?.x ?? 0) <= bedSize.x && (result.dimensions?.y ?? 0) <= bedSize.y ? 'Fits bed' : 'Exceeds bed'
-    });
-
     setParsedModel(result);
     if (object3D) {
       setModelObject(object3D);
       setModelBuffer(buffer || null);
-      traceModelDiagnostics('Three.js Scene Initialization (Object3D)', 'SCENE_INIT', {
-        fileName: result.fileName,
-        hasObject3D: true,
-        materialStatus: 'MeshStandardMaterial assigned with filament color',
-      });
     } else if (result.threeObject) {
       setModelObject(result.threeObject);
       setModelBuffer(buffer || null);
-      traceModelDiagnostics('Three.js Scene Initialization (Result.threeObject)', 'SCENE_INIT', {
-        fileName: result.fileName,
-        hasObject3D: true,
-        materialStatus: 'MeshStandardMaterial assigned',
-      });
     } else if (buffer) {
       setModelBuffer(buffer);
       setModelObject(null);
-      traceModelDiagnostics('Three.js Scene Initialization (Buffer STL)', 'SCENE_INIT', {
-        fileName: result.fileName,
-        bufferSize: buffer.byteLength,
-        materialStatus: 'Buffer geometry parsed to mesh',
-      });
     } else {
       setModelBuffer(null);
       setModelObject(null);
@@ -255,11 +153,10 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
     ) => {
       setPartsCount((prev) => (prev !== detectedCount ? detectedCount : prev));
       setParsedModel((prev) => {
-        const prevDims = prev?.dimensions || { x: 0, y: 0, z: 0 };
         const dimsUnchanged =
-          Math.abs(prevDims.x - newDims.x) < 0.1 &&
-          Math.abs(prevDims.y - newDims.y) < 0.1 &&
-          Math.abs(prevDims.z - newDims.z) < 0.1;
+          Math.abs(prev.dimensions.x - newDims.x) < 0.1 &&
+          Math.abs(prev.dimensions.y - newDims.y) < 0.1 &&
+          Math.abs(prev.dimensions.z - newDims.z) < 0.1;
         const scaleUnchanged = Math.abs(scaleApplied - 1) <= 0.01;
 
         if (dimsUnchanged && scaleUnchanged) {
@@ -368,15 +265,6 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
   ];
 
   const handleSelectSamplePreset = (preset: typeof samplePresets[0]) => {
-    traceModelDiagnostics(`Preset Selected: ${preset.name}`, 'LOADING', {
-      fileName: preset.fileName,
-      fileType: preset.fileName.split('.').pop()?.toLowerCase() || 'stl',
-      trianglesCount: preset.parts * 4200,
-      dimensions: preset.dims,
-      hasObject3D: false,
-      hasBuffer: false,
-      bedFitStatus: preset.dims.x <= bedSize.x && preset.dims.y <= bedSize.y ? 'Fits bed' : 'Exceeds bed'
-    });
     setSampleType(preset.id);
     setModelObject(null);
     setModelBuffer(null);
@@ -400,7 +288,7 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
 
   // Bed fit verification
   const isExceedingBed =
-    (parsedModel?.dimensions?.x ?? 0) > bedSize.x || (parsedModel?.dimensions?.y ?? 0) > bedSize.y;
+    parsedModel.dimensions.x > bedSize.x || parsedModel.dimensions.y > bedSize.y;
 
   const handleRequestAiOptimization = async (options?: {
     customImage?: string;
@@ -557,7 +445,7 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col gap-4">
+      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-sm shrink-0">
             <Box className="w-6 h-6" />
@@ -580,17 +468,7 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/[0.06]">
-          <button
-            type="button"
-            onClick={() => setShowDiagnosticsPanel(!showDiagnosticsPanel)}
-            className="px-3.5 py-2.5 rounded-2xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-sm"
-            title="Abrir console de diagnóstico 3D (Tracing de carregamento e parsing)"
-          >
-            <Terminal className="w-4 h-4 text-sky-400" />
-            <span>Diagnóstico 3D</span>
-          </button>
-
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={handleRequestAiOptimization}
@@ -643,97 +521,6 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
         <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold shadow-sm animate-fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>Parâmetros enviados com sucesso para a Calculadora de Custos! Redirecionando...</span>
-        </div>
-      )}
-
-      {/* 3D Diagnostic Console Drawer / Panel */}
-      {showDiagnosticsPanel && (
-        <div className="bg-[#121215] border border-sky-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-fade-in relative">
-          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
-                <Bug className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Console Diagnóstico 3D (Tracing de Renderização & Parsing)
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  Rastreia status de carregamento, parsing de arquivos (STL/3MF/CAD) e inicialização da cena Three.js.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  traceModelDiagnostics('Manual Diagnostic Trigger', 'RENDER', {
-                    fileName: parsedModel.fileName,
-                    fileType: parsedModel.fileType,
-                    dimensions: parsedModel.dimensions,
-                    trianglesCount: parsedModel.trianglesCount,
-                    hasObject3D: !!modelObject,
-                    hasBuffer: !!modelBuffer,
-                    materialStatus: 'Active filament: ' + activeFilament?.name,
-                    bedFitStatus: `Bed: ${bedSize.x}x${bedSize.y}mm`
-                  });
-                }}
-                className="px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs transition cursor-pointer"
-              >
-                Rodar Teste Trace
-              </button>
-              <button
-                type="button"
-                onClick={() => setDiagnosticLogs([])}
-                className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/[0.1] font-medium text-xs transition cursor-pointer"
-              >
-                Limpar Logs
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDiagnosticsPanel(false)}
-                className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-[#0A0A0B] rounded-2xl p-4 border border-white/[0.06] font-mono text-xs max-h-80 overflow-y-auto space-y-2.5">
-            {diagnosticLogs.length === 0 ? (
-              <p className="text-slate-500 text-center py-4">Nenhum evento de diagnóstico registrado ainda. Selecione um arquivo ou preset.</p>
-            ) : (
-              diagnosticLogs.map((log, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-[#121216] border border-white/[0.06] space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                        log.stage === 'LOADING' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                        log.stage === 'PARSING' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' :
-                        log.stage === 'SCENE_INIT' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' :
-                        log.stage === 'RENDER' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-                        'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                      }`}>
-                        [{log.stage}]
-                      </span>
-                      <span className="text-white font-bold">{log.message}</span>
-                    </span>
-                    <span className="text-slate-500 text-[10px]">{log.timestamp}</span>
-                  </div>
-                  <div className="text-slate-300 text-[11px] grid grid-cols-2 sm:grid-cols-3 gap-1 pt-1 border-t border-white/[0.04]">
-                    <div><span className="text-slate-500">Arquivo:</span> {log.details.fileName || 'N/A'}</div>
-                    <div><span className="text-slate-500">Tipo:</span> {log.details.fileType || 'N/A'}</div>
-                    <div><span className="text-slate-500">Triângulos:</span> {log.details.trianglesCount?.toLocaleString() || 'N/A'}</div>
-                    {log.details?.dimensions && (
-                      <div><span className="text-slate-500">Dimensões:</span> {log.details.dimensions.x ?? 0}×{log.details.dimensions.y ?? 0}×{log.details.dimensions.z ?? 0}mm</div>
-                    )}
-                    <div><span className="text-slate-500">Object3D:</span> {log.details.hasObject3D ? 'Sim' : 'Não'}</div>
-                    <div><span className="text-slate-500">Buffer:</span> {log.details.hasBuffer ? 'Sim' : 'Não'}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         </div>
       )}
 
@@ -801,14 +588,14 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-semibold">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>
-                Excede a mesa ({parsedModel?.dimensions?.x ?? 0} × {parsedModel?.dimensions?.y ?? 0} mm vs {bedSize.x} × {bedSize.y} mm)
+                Excede a mesa ({parsedModel.dimensions.x} × {parsedModel.dimensions.y} mm vs {bedSize.x} × {bedSize.y} mm)
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>
-                Encaixa perfeitamente na mesa ({parsedModel?.dimensions?.x ?? 0} × {parsedModel?.dimensions?.y ?? 0} mm)
+                Encaixa perfeitamente na mesa ({parsedModel.dimensions.x} × {parsedModel.dimensions.y} mm)
               </span>
             </div>
           )}
@@ -938,7 +725,7 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
               <div className="flex justify-between items-center bg-[#0A0A0B] p-3 rounded-2xl border border-white/[0.06]">
                 <span className="text-slate-400 font-sans">Dimensões na Mesa (X × Y × Z):</span>
                 <span className="text-white font-bold">
-                  {parsedModel?.dimensions?.x ?? 0} × {parsedModel?.dimensions?.y ?? 0} × {parsedModel?.dimensions?.z ?? 0} mm
+                  {parsedModel.dimensions.x} × {parsedModel.dimensions.y} × {parsedModel.dimensions.z} mm
                 </span>
               </div>
               <div className="flex justify-between items-center bg-[#0A0A0B] p-3 rounded-2xl border border-white/[0.06]">

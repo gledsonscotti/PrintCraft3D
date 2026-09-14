@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Check,
@@ -62,41 +62,6 @@ export const PlanFormModal: React.FC<PlanFormModalProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (plan) {
-      setName(plan.name || '');
-      setPrice(plan.price !== undefined ? plan.price.toString() : '49.90');
-      setBillingCycle(plan.billing_cycle || 'mensal');
-      setDescription(plan.description || '');
-      setBadge(plan.badge || '');
-      setIsPopular(plan.is_popular ?? false);
-      setIsActive(plan.is_active ?? true);
-      setUnlimitedUsers(plan.max_users === -1);
-      setMaxUsers(plan.max_users && plan.max_users > 0 ? plan.max_users.toString() : '3');
-      setUnlimitedPrinters(plan.max_printers === -1);
-      setMaxPrinters(plan.max_printers && plan.max_printers > 0 ? plan.max_printers.toString() : '5');
-      setUnlimitedProducts(plan.max_products === -1);
-      setMaxProducts(plan.max_products && plan.max_products > 0 ? plan.max_products.toString() : '150');
-      setSelectedFeatures(Array.isArray(plan.features) ? [...plan.features] : ['cost_calculator', 'model_analyzer', 'stock_filaments', 'workshop_themes']);
-    } else {
-      setName('');
-      setPrice('49.90');
-      setBillingCycle('mensal');
-      setDescription('');
-      setBadge('');
-      setIsPopular(false);
-      setIsActive(true);
-      setUnlimitedUsers(false);
-      setMaxUsers('3');
-      setUnlimitedPrinters(false);
-      setMaxPrinters('5');
-      setUnlimitedProducts(false);
-      setMaxProducts('150');
-      setSelectedFeatures(['cost_calculator', 'model_analyzer', 'stock_filaments', 'workshop_themes']);
-    }
-    setErrorMsg(null);
-  }, [plan, isOpen]);
 
   if (!isOpen) return null;
 

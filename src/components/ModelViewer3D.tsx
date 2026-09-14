@@ -82,28 +82,12 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Check WebGL availability first without triggering Three.js internal errors
-    try {
-      const testCanvas = document.createElement('canvas');
-      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-      if (!gl) {
-        setWebglFailed(true);
-        return;
-      }
-    } catch {
-      setWebglFailed(true);
-      return;
-    }
-
     const width = containerRef.current.clientWidth || 400;
     const height = containerRef.current.clientHeight || 320;
 
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
-      if (!renderer.getContext()) {
-        throw new Error('WebGL context returned null');
-      }
     } catch (e) {
       console.warn('WebGL context creation failed or was blocked:', e);
       setWebglFailed(true);

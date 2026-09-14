@@ -60,7 +60,6 @@ import { PlateViewer3D } from './PlateViewer3D';
 import { DirectPrintModal } from './DirectPrintModal';
 import {
   extractPartsFromObject,
-  detectMeshColor,
   autoArrangePartsOnBed,
   geometricPackPartsIntoPlates,
   GeometricPackOptions,
@@ -308,8 +307,12 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
       }
       const weight = Math.round(approxVolumeCm3 * 1.24 * 10) / 10;
 
-      // Extract color from userData, material, or keyword name detection
-      const assignedColor = detectMeshColor(mesh, index);
+      // Extract color from userData, material, or fallback to default palette
+      const assignedColor =
+        mesh.userData?.color_hex ||
+        ((mesh.material as any)?.color?.getHexString
+          ? '#' + (mesh.material as any).color.getHexString()
+          : defaultColors[index % defaultColors.length]);
 
       return {
         id: `part-${index + 1}-${Date.now()}`,
