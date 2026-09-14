@@ -583,7 +583,7 @@ export default function App() {
                 }`}
               >
                 <Layers className="w-4 h-4" />
-                <span>Editor de Mesas</span>
+                <span>Editor</span>
                 {!canAccess('plates') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
@@ -814,32 +814,13 @@ export default function App() {
               {/* User Profile & Logoff */}
               {currentUser ? (
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* User / Superadmin Profile Badge */}
-                  <div
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs shrink-0 cursor-default"
-                    title={`Usuário: ${currentUser.name} • Perfil: ${isSuperadmin || currentUser.role === 'superadmin' ? 'Superadmin' : currentUser.role === 'admin' ? 'Administrador' : 'Usuário / Operador'}`}
-                  >
-                    <div className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-[11px] shrink-0">
-                      {isSuperadmin || currentUser.role === 'superadmin' ? (
-                        'S'
-                      ) : (
-                        currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'
-                      )}
-                    </div>
-                    <span className="font-semibold text-slate-200 text-xs whitespace-nowrap">
-                      {isSuperadmin || currentUser.role === 'superadmin'
-                        ? 'Superadmin'
-                        : currentUser.name.trim().split(/\s+/)[0]}
-                    </span>
-                  </div>
-
-                  {/* Functional Logout Button - Icon Only */}
+                  {/* Functional Logout Button - Icon Only with Hover Info */}
                   <button
                     type="button"
                     id="btn-logout"
                     onClick={handleLogout}
                     className="p-2 rounded-lg text-xs font-semibold flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
-                    title="Sair da conta (Logoff)"
+                    title={`Sair do usuário ${currentUser.name}`}
                   >
                     <LogOut className="w-3.5 h-3.5 shrink-0" />
                   </button>

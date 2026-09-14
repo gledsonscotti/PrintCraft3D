@@ -25,6 +25,7 @@ import {
   Scale,
   DollarSign,
   Maximize2,
+  Minimize2,
   Upload,
   RefreshCw,
   X,
@@ -60,6 +61,7 @@ import { PlateViewer3D } from './PlateViewer3D';
 import { DirectPrintModal } from './DirectPrintModal';
 import {
   extractPartsFromObject,
+  detectMeshColor,
   autoArrangePartsOnBed,
   geometricPackPartsIntoPlates,
   GeometricPackOptions,
@@ -98,6 +100,7 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
   // Project metadata
   const [projectName, setProjectName] = useState<string>('Meu Projeto Multipartes');
   const [sourceFileName, setSourceFileName] = useState<string>('modelo_multipartes.stl');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Mesh cache: stores the original Three.js meshes by index
   const [meshCache, setMeshCache] = useState<Map<number, THREE.Mesh>>(new Map());
@@ -307,12 +310,8 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
       }
       const weight = Math.round(approxVolumeCm3 * 1.24 * 10) / 10;
 
-      // Extract color from userData, material, or fallback to default palette
-      const assignedColor =
-        mesh.userData?.color_hex ||
-        ((mesh.material as any)?.color?.getHexString
-          ? '#' + (mesh.material as any).color.getHexString()
-          : defaultColors[index % defaultColors.length]);
+      // Extract color from userData, material, or keyword name detection
+      const assignedColor = detectMeshColor(mesh, index);
 
       return {
         id: `part-${index + 1}-${Date.now()}`,
@@ -1785,7 +1784,7 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
+    <div className={isFullscreen ? "fixed inset-0 z-50 bg-[#0A0A0C] p-4 sm:p-6 overflow-y-auto space-y-5" : "space-y-5"}>
       {/* Top Notification Banner */}
       {notification && (
         <div
@@ -1825,7 +1824,7 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="bg-sky-500/15 text-sky-400 border border-sky-500/30 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5" />
-                Editor 3D de Mesas
+                Editor 3D de Mesas (OrcaSlicer Style)
               </span>
               <input
                 type="text"
@@ -1843,6 +1842,26 @@ export const PlateEditorView: React.FC<PlateEditorViewProps> = ({
 
           {/* Quick Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Fullscreen Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsFullscreen((prev) => !prev)}
+              className="bg-white/[0.08] hover:bg-white/[0.15] text-white font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-xs cursor-pointer border border-white/[0.1]"
+              title={isFullscreen ? "Sair da Tela Inteira" : "Modo Tela Inteira de Editoração (OrcaSlicer)"}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-4 h-4 text-sky-400" />
+                  <span>Restaurar Tela</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-4 h-4 text-sky-400" />
+                  <span>Tela Inteira</span>
+                </>
+              )}
+            </button>
+
             {/* Direct Print Modal Trigger */}
             <button
               type="button"

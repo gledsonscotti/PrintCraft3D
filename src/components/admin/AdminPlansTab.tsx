@@ -565,6 +565,7 @@ export const AdminPlansTab: React.FC = () => {
 
       {/* Plan Form Modal */}
       <PlanFormModal
+        key={editingPlan?.id || 'new'}
         isOpen={isModalOpen}
         plan={editingPlan}
         onClose={() => {

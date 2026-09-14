@@ -39,6 +39,185 @@ export interface ModelViewer3DProps {
   onModelDimensionsChanged?: (newDims: { x: number; y: number; z: number }, scaleApplied: number, partsCount: number) => void;
 }
 
+const InteractiveCanvas2DModelViewer: React.FC<{
+  dimensions?: { x: number; y: number; z: number };
+  detectedPartsCount: number;
+  formatLabel?: string;
+  fileType: string;
+  trianglesCount?: number;
+  bedSize: { x: number; y: number; z?: number };
+  filamentColor?: string;
+}> = ({ dimensions, detectedPartsCount, formatLabel, fileType, trianglesCount, bedSize, filamentColor = '#10B981' }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [rot, setRot] = useState({ x: 0.5, y: 0.8 });
+  const [zoom, setZoom] = useState(1);
+  const isDragging = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
+
+  const dimX = dimensions?.x || 100;
+  const dimY = dimensions?.y || 100;
+  const dimZ = dimensions?.z || 50;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+
+    const render = () => {
+      const width = canvas.clientWidth || 400;
+      const height = canvas.clientHeight || 300;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      ctx.fillStyle = '#0A0A0B';
+      ctx.fillRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2 + 20;
+
+      // Draw grid floor (isometric)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      const gridSize = 8;
+      const spacing = 20 * zoom;
+      for (let i = -gridSize; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + i * spacing * 0.7 - 100, cy + 80);
+        ctx.lineTo(cx + i * spacing * 0.7 + 100, cy - 40);
+        ctx.stroke();
+      }
+
+      // Draw 3D Box representing the 3D model with rotation
+      const sX = (dimX / 100) * 80 * zoom;
+      const sY = (dimZ / 100) * 80 * zoom;
+      const sZ = (dimY / 100) * 80 * zoom;
+
+      const cosX = Math.cos(rot.x);
+      const sinX = Math.sin(rot.x);
+      const cosY = Math.cos(rot.y);
+      const sinY = Math.sin(rot.y);
+
+      const corners = [
+        [-sX/2, -sY/2, -sZ/2],
+        [sX/2, -sY/2, -sZ/2],
+        [sX/2, sY/2, -sZ/2],
+        [-sX/2, sY/2, -sZ/2],
+        [-sX/2, -sY/2, sZ/2],
+        [sX/2, -sY/2, sZ/2],
+        [sX/2, sY/2, sZ/2],
+        [-sX/2, sY/2, sZ/2],
+      ];
+
+      const projected = corners.map(([x, y, z]) => {
+        const x1 = x * cosY + z * sinY;
+        const z1 = -x * sinY + z * cosY;
+        const y2 = y * cosX - z1 * sinX;
+        const z2 = y * sinX + z1 * cosX;
+
+        const scale = 300 / (300 + z2);
+        return {
+          x: cx + x1 * scale,
+          y: cy + y2 * scale,
+          z: z2
+        };
+      });
+
+      const faces = [
+        { indices: [0, 1, 2, 3], color: filamentColor },
+        { indices: [4, 5, 6, 7], color: filamentColor },
+        { indices: [0, 1, 5, 4], color: filamentColor },
+        { indices: [2, 3, 7, 6], color: filamentColor },
+        { indices: [1, 2, 6, 5], color: filamentColor },
+        { indices: [0, 3, 7, 4], color: filamentColor },
+      ];
+
+      faces.sort((a, b) => {
+        const avgZa = a.indices.reduce((sum, idx) => sum + projected[idx].z, 0) / a.indices.length;
+        const avgZb = b.indices.reduce((sum, idx) => sum + projected[idx].z, 0) / b.indices.length;
+        return avgZa - avgZb;
+      });
+
+      faces.forEach(face => {
+        ctx.beginPath();
+        face.indices.forEach((idx, i) => {
+          const pt = projected[idx];
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.closePath();
+
+        ctx.fillStyle = face.color;
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '11px sans-serif';
+      ctx.fillText(`X: ${dimX.toFixed(1)} mm  •  Y: ${dimY.toFixed(1)} mm  •  Z: ${dimZ.toFixed(1)} mm`, 16, 28);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animId);
+  }, [rot, zoom, dimX, dimY, dimZ, filamentColor]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    setRot(prev => ({
+      x: prev.x + dy * 0.01,
+      y: prev.y + dx * 0.01,
+    }));
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom(prev => Math.max(0.5, Math.min(2.5, prev - e.deltaY * 0.001)));
+  };
+
+  return (
+    <div
+      className="w-full h-full relative cursor-grab active:cursor-grabbing"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+    >
+      <canvas ref={canvasRef} className="w-full h-full block" />
+      <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="font-semibold">{formatLabel || fileType.toUpperCase()}</span>
+        <span className="text-slate-400">•</span>
+        <span className="text-slate-300">{trianglesCount ? `${trianglesCount.toLocaleString()} faces` : `${detectedPartsCount} peças`}</span>
+      </div>
+    </div>
+  );
+};
+
 export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   modelObject,
   modelBuffer,
@@ -87,7 +266,16 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: true,
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false,
+        powerPreference: 'default'
+      });
+      if (!renderer.getContext()) {
+        throw new Error('WebGL context returned null');
+      }
     } catch (e) {
       console.warn('WebGL context creation failed or was blocked:', e);
       setWebglFailed(true);
@@ -595,18 +783,15 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   return (
     <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-84 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
       {webglFailed ? (
-        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#111115]">
-          <Box className="w-10 h-10 text-emerald-400 mb-2 animate-bounce" />
-          <h4 className="text-sm font-bold text-white mb-1">Visualização CAD 2D Ativa</h4>
-          <p className="text-xs text-slate-400 max-w-xs mb-3">
-            O hardware WebGL não pôde ser inicializado neste navegador. O modelo está pronto para fabricação e fatiamento.
-          </p>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-            <span>{formatLabel || fileType.toUpperCase()}</span>
-            <span>•</span>
-            <span>{trianglesCount ? `${trianglesCount.toLocaleString()} faces` : 'Pronto'}</span>
-          </div>
-        </div>
+        <InteractiveCanvas2DModelViewer
+          dimensions={dimensions}
+          detectedPartsCount={detectedPartsCount}
+          formatLabel={formatLabel}
+          fileType={fileType}
+          trianglesCount={trianglesCount}
+          bedSize={bedSize}
+          filamentColor={filamentColor}
+        />
       ) : (
         <div className="w-full h-full relative">
           {/* 3D Canvas Mount */}

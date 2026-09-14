@@ -36,6 +36,182 @@ interface PlateViewer3DProps {
   onSnapshotReady?: (getter: () => string | null) => void;
 }
 
+const InteractiveCanvas2DPlateViewer: React.FC<{
+  activePlate: BuildPlate;
+}> = ({ activePlate }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [rot, setRot] = useState({ x: 0.6, y: -0.5 });
+  const [zoom, setZoom] = useState(1);
+  const isDragging = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
+
+  const bedX = 250;
+  const bedY = 250;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+
+    const render = () => {
+      const width = canvas.clientWidth || 600;
+      const height = canvas.clientHeight || 450;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      ctx.fillStyle = '#0A0A0B';
+      ctx.fillRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2 + 40;
+
+      const scale = (Math.min(width, height) / Math.max(bedX, bedY)) * 0.9 * zoom;
+
+      const cosX = Math.cos(rot.x);
+      const sinX = Math.sin(rot.x);
+      const cosY = Math.cos(rot.y);
+      const sinY = Math.sin(rot.y);
+
+      const project = (bx: number, by: number, bz: number) => {
+        const x = (bx - bedX / 2) * scale;
+        const z = (by - bedY / 2) * scale;
+        const y = -bz * scale;
+
+        const x1 = x * cosY + z * sinY;
+        const z1 = -x * sinY + z * cosY;
+        const y2 = y * cosX - z1 * sinX;
+        const z2 = y * sinX + z1 * cosX;
+
+        return { x: cx + x1, y: cy + y2, z: z2 };
+      };
+
+      const bedCorners = [
+        project(0, 0, 0),
+        project(bedX, 0, 0),
+        project(bedX, bedY, 0),
+        project(0, bedY, 0),
+      ];
+
+      ctx.beginPath();
+      bedCorners.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = '#16161A';
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let gx = 0; gx <= bedX; gx += 50) {
+        const p1 = project(gx, 0, 0);
+        const p2 = project(gx, bedY, 0);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+      for (let gy = 0; gy <= bedY; gy += 50) {
+        const p1 = project(0, gy, 0);
+        const p2 = project(bedX, gy, 0);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+      const parts = activePlate?.parts || [];
+      parts.forEach((part: any) => {
+        const px = part.position?.x || 0;
+        const py = part.position?.z || part.position?.y || 0;
+        const pW = part.dimensions?.x || 30;
+        const pD = part.dimensions?.y || part.dimensions?.z || 30;
+        const pH = part.dimensions?.z || 20;
+
+        const wx = bedX / 2 + px;
+        const wy = bedY / 2 + py;
+
+        const t1 = project(wx - pW/2, wy - pD/2, pH);
+        const t2 = project(wx + pW/2, wy - pD/2, pH);
+        const t3 = project(wx + pW/2, wy + pD/2, pH);
+        const t4 = project(wx - pW/2, wy + pD/2, pH);
+
+        const color = part.color || activePlate.filament_color_hex || '#3b82f6';
+
+        ctx.beginPath();
+        ctx.moveTo(t1.x, t1.y);
+        ctx.lineTo(t2.x, t2.y);
+        ctx.lineTo(t3.x, t3.y);
+        ctx.lineTo(t4.x, t4.y);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animId);
+  }, [rot, zoom, activePlate]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    setRot(prev => ({
+      x: Math.max(0.2, Math.min(1.3, prev.x + dy * 0.01)),
+      y: prev.y + dx * 0.01,
+    }));
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom(prev => Math.max(0.5, Math.min(2.5, prev - e.deltaY * 0.001)));
+  };
+
+  return (
+    <div
+      className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+    >
+      <canvas ref={canvasRef} className="w-full h-full block" />
+      <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="font-semibold">{activePlate.name}</span>
+        <span className="text-slate-400">•</span>
+        <span className="text-slate-300">{activePlate.parts.length} peças na mesa</span>
+      </div>
+    </div>
+  );
+};
+
 export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
   activePlate,
   allPlates = [],
@@ -62,6 +238,7 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<'iso' | 'top' | 'front'>('iso');
+  const [webglFailed, setWebglFailed] = useState(false);
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
@@ -111,6 +288,7 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
   // Initialize Three.js scene
   useEffect(() => {
     if (!mountRef.current) return;
+
     const container = mountRef.current;
     const width = container.clientWidth || 600;
     const height = container.clientHeight || 450;
@@ -130,14 +308,29 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
     cameraRef.current = camera;
     updateCamera();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    rendererRef.current = renderer;
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false,
+        powerPreference: 'default'
+      });
+      if (!renderer.getContext()) {
+        throw new Error('WebGL context returned null');
+      }
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      rendererRef.current = renderer;
 
-    container.appendChild(renderer.domElement);
+      container.appendChild(renderer.domElement);
+    } catch (e) {
+      console.warn('WebGL context creation failed in PlateViewer3D:', e);
+      setWebglFailed(true);
+      return;
+    }
 
     // Root Group
     const root = new THREE.Group();
@@ -662,16 +855,20 @@ export const PlateViewer3D: React.FC<PlateViewer3DProps> = ({
         isFullscreen ? 'fixed inset-0 z-50 rounded-none bg-black' : ''
       }`}
     >
-      {/* 3D Canvas Container */}
-      <div
-        ref={mountRef}
-        className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
-        onContextMenu={(e) => e.preventDefault()}
-      />
+      {/* 3D Canvas Container or WebGL Fallback */}
+      {webglFailed ? (
+        <InteractiveCanvas2DPlateViewer activePlate={activePlate} />
+      ) : (
+        <div
+          ref={mountRef}
+          className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+      )}
 
       {/* Top Floating Controls Bar */}
       <div className="absolute top-3.5 left-3.5 right-3.5 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-10">

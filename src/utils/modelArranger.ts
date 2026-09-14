@@ -66,6 +66,50 @@ interface FreeRect {
 }
 
 /**
+ * Detects color for a mesh based on userData, material color, or part name keywords (red, white, black, skin, etc.)
+ */
+export function detectMeshColor(mesh: THREE.Mesh, index: number): string {
+  if (mesh.userData?.color_hex) {
+    return mesh.userData.color_hex;
+  }
+  const matColor = (mesh.material as any)?.color;
+  if (matColor && typeof matColor.getHexString === 'function') {
+    const hex = '#' + matColor.getHexString();
+    if (hex !== '#ffffff' && hex !== '#cccccc' && hex !== '#38bdf8' && hex !== '#000000') {
+      return hex;
+    }
+  }
+
+  const name = (mesh.name || '').toLowerCase();
+  if (name.includes('red') || name.includes('vermelho') || name.includes('hat') || name.includes('gorro') || name.includes('coat') || name.includes('casaco') || name.includes('shirt') || name.includes('suit')) {
+    return '#ef4444'; // Red
+  }
+  if (name.includes('white') || name.includes('branco') || name.includes('beard') || name.includes('barba') || name.includes('hair') || name.includes('cabelo') || name.includes('trim') || name.includes('pompon') || name.includes('mustache')) {
+    return '#ffffff'; // White
+  }
+  if (name.includes('black') || name.includes('preto') || name.includes('eye') || name.includes('olho') || name.includes('boot') || name.includes('bota') || name.includes('belt') || name.includes('cinto') || name.includes('button') || name.includes('glove')) {
+    return '#111827'; // Black
+  }
+  if (name.includes('skin') || name.includes('pele') || name.includes('face') || name.includes('rosto') || name.includes('nose') || name.includes('nariz') || name.includes('hand') || name.includes('mao') || name.includes('head')) {
+    return '#ffd1b3'; // Skin / Face
+  }
+  if (name.includes('gold') || name.includes('amarelo') || name.includes('yellow') || name.includes('bell') || name.includes('sino') || name.includes('star')) {
+    return '#f59e0b';
+  }
+  if (name.includes('green') || name.includes('verde') || name.includes('tree')) {
+    return '#10b981';
+  }
+
+  if (matColor && typeof matColor.getHexString === 'function') {
+    const hex = '#' + matColor.getHexString();
+    if (hex !== '#38bdf8') return hex;
+  }
+
+  const defaultColors = ['#ef4444', '#ffffff', '#111827', '#ffd1b3', '#f59e0b', '#10b981', '#8b5cf6', '#06b6d4'];
+  return defaultColors[index % defaultColors.length];
+}
+
+/**
  * Extracts individual distinct parts/meshes from a Three.js Object3D.
  * If the object contains multiple meshes, it returns each mesh.
  * If it has a single mesh with disconnected triangle islands (e.g. multi-part STL),

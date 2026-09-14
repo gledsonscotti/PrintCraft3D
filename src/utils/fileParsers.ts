@@ -10,6 +10,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GCodeLoader } from 'three/examples/jsm/loaders/GCodeLoader.js';
 import JSZip from 'jszip';
 import { parseCadBuffer } from './cadParsers';
+import { detectMeshColor } from './modelArranger';
 
 export type Supported3DFormat =
   | 'stl'
@@ -281,22 +282,152 @@ async function parse3MFBuffer(buffer: ArrayBuffer, fileName: string): Promise<{ 
   const metadata: Record<string, any> = {};
 
   try {
-    const loader = new ThreeMFLoader();
-    const parsed = loader.parse(buffer);
-    parsed.rotation.set(-Math.PI / 2, 0, 0); // Convert Z-up to Y-up
-    group.add(parsed);
-  } catch (err) {
-    console.warn('ThreeMFLoader parse error, trying JSZip fallback:', err);
-    // JSZip extraction fallback
     const zip = await JSZip.loadAsync(buffer);
     const modelFile = zip.file('3D/3dmodel.model') || zip.file(/.*\.model/i)[0];
     if (modelFile) {
       const xmlText = await modelFile.async('text');
-      const xmlGeom = parse3MFXmlGeometry(xmlText);
-      const mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.35 });
-      const mesh = new THREE.Mesh(xmlGeom, mat);
-      group.add(mesh);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, 'application/xml');
+
+      // Extract base materials / color groups
+      const colorMap = new Map<string, string>();
+      const baseMaterialsEls = doc.getElementsByTagName('basematerials');
+      for (let i = 0; i < baseMaterialsEls.length; i++) {
+        const bm = baseMaterialsEls[i];
+        const bmId = bm.getAttribute('id') || `${i}`;
+        const bases = bm.getElementsByTagName('base');
+        for (let b = 0; b < bases.length; b++) {
+          const base = bases[b];
+          const displayColor = base.getAttribute('displaycolor') || base.getAttribute('color');
+          if (displayColor) {
+            let hex = displayColor.trim();
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            colorMap.set(`${bmId}_${b}`, hex);
+            colorMap.set(`${bmId}`, hex);
+          }
+        }
+      }
+
+      const colorGroupEls = doc.getElementsByTagName('colorgroup');
+      for (let i = 0; i < colorGroupEls.length; i++) {
+        const cg = colorGroupEls[i];
+        const cgId = cg.getAttribute('id') || `${i}`;
+        const colors = cg.getElementsByTagName('color');
+        for (let c = 0; c < colors.length; c++) {
+          const col = colors[c];
+          const colVal = col.getAttribute('color') || col.getAttribute('displaycolor');
+          if (colVal) {
+            let hex = colVal.trim();
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            colorMap.set(`${cgId}_${c}`, hex);
+            colorMap.set(`${cgId}`, hex);
+          }
+        }
+      }
+
+      const objects = doc.getElementsByTagName('object');
+      let parsedCount = 0;
+
+      for (let o = 0; o < objects.length; o++) {
+        const objEl = objects[o];
+        const meshEl = objEl.getElementsByTagName('mesh')[0];
+        if (!meshEl) continue;
+
+        const objName = objEl.getAttribute('name') || `Parte_${o + 1}`;
+        const pid = meshEl.getAttribute('pid') || objEl.getAttribute('pid');
+        const p1 = meshEl.getAttribute('p1');
+
+        const verticesEl = meshEl.getElementsByTagName('vertex');
+        const trianglesEl = meshEl.getElementsByTagName('triangle');
+        if (verticesEl.length === 0 || trianglesEl.length === 0) continue;
+
+        const vertices: [number, number, number][] = [];
+        for (let v = 0; v < verticesEl.length; v++) {
+          const el = verticesEl[v];
+          const x = parseFloat(el.getAttribute('x') || '0');
+          const y = parseFloat(el.getAttribute('y') || '0');
+          const z = parseFloat(el.getAttribute('z') || '0');
+          vertices.push([x, z, -y]);
+        }
+
+        const positions: number[] = [];
+        for (let t = 0; t < trianglesEl.length; t++) {
+          const el = trianglesEl[t];
+          const v1 = parseInt(el.getAttribute('v1') || '0', 10);
+          const v2 = parseInt(el.getAttribute('v2') || '0', 10);
+          const v3 = parseInt(el.getAttribute('v3') || '0', 10);
+
+          const pt1 = vertices[v1];
+          const pt2 = vertices[v2];
+          const pt3 = vertices[v3];
+          if (pt1 && pt2 && pt3) {
+            positions.push(
+              pt1[0], pt1[1], pt1[2],
+              pt2[0], pt2[1], pt2[2],
+              pt3[0], pt3[1], pt3[2]
+            );
+          }
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+        geom.computeVertexNormals();
+
+        // Determine color using xml metadata, colorMap, or name keywords
+        let colorHex = '#2563eb';
+        const triPid = trianglesEl[0]?.getAttribute('pid') || pid;
+        const triP1 = trianglesEl[0]?.getAttribute('p1') || p1;
+
+        if (triPid && colorMap.has(`${triPid}_${triP1}`)) {
+          colorHex = colorMap.get(`${triPid}_${triP1}`)!;
+        } else if (triPid && colorMap.has(triPid)) {
+          colorHex = colorMap.get(triPid)!;
+        } else {
+          // Fallback via detectMeshColor logic on temporary mesh with name
+          const tempMesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial());
+          tempMesh.name = objName;
+          colorHex = detectMeshColor(tempMesh, parsedCount);
+        }
+
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(colorHex),
+          roughness: 0.35,
+        });
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.name = objName;
+        mesh.userData.color_hex = colorHex;
+        group.add(mesh);
+        parsedCount++;
+      }
+
+      if (parsedCount > 0) {
+        group.rotation.set(-Math.PI / 2, 0, 0);
+        return { group, metadata };
+      }
     }
+  } catch (err) {
+    console.warn('Advanced 3MF XML parsing failed:', err);
+  }
+
+  // Fallback to ThreeMFLoader
+  try {
+    const loader = new ThreeMFLoader();
+    const parsed = loader.parse(buffer);
+    parsed.rotation.set(-Math.PI / 2, 0, 0);
+    parsed.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const m = child as THREE.Mesh;
+        const assigned = detectMeshColor(m, 0);
+        m.userData.color_hex = assigned;
+        if (m.material && (m.material as any).color) {
+          (m.material as any).color.set(assigned);
+        }
+      }
+    });
+    group.add(parsed);
+  } catch (err) {
+    console.warn('ThreeMFLoader parse error:', err);
   }
 
   // Inspect slicer metadata if from Bambu / Prusa / Orca
