@@ -25,7 +25,13 @@ export type Supported3DFormat =
   | 'amf'
   | 'gltf'
   | 'glb'
-  | 'cad';
+  | 'cad'
+  | 'png'
+  | 'jpg'
+  | 'jpeg'
+  | 'webp'
+  | 'gif'
+  | 'bmp';
 
 export interface ParsedModelResult {
   fileName: string;
@@ -48,6 +54,7 @@ export interface ParsedModelResult {
   verticesCount?: number;
   trianglesCount?: number;
   partsCount?: number;
+  imageUrl?: string;
   rawGcodeDetails?: {
     slicer?: string;
     nozzleTemp?: number;
@@ -107,6 +114,31 @@ export async function parseUniversal3DFile(
         threeObject: gcodeObject,
       },
       object3D: gcodeObject,
+    };
+  }
+
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(ext)) {
+    const imageUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.readAsDataURL(file);
+    });
+
+    const fallbackObj = new THREE.Group();
+    return {
+      result: {
+        fileName,
+        fileType: ext as any,
+        formatLabel: 'Imagem / Foto de Referência',
+        category: 'mesh',
+        dimensions: { x: 100, y: 100, z: 50 },
+        volumeCm3: 50,
+        estimatedWeightGrams: 50 * density,
+        estimatedTimeMinutes: 120,
+        infillPercent,
+        imageUrl,
+      },
+      object3D: fallbackObj,
     };
   }
 

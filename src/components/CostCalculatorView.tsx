@@ -23,14 +23,15 @@ import {
   Boxes,
   Shield,
   Sliders,
-  Truck
+  Truck,
+  Upload,
+  X
 } from 'lucide-react';
 import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier, AmsHeater, ProductCategory } from '../types';
 import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
 import { FileUploadZone } from './FileUploadZone';
-import { DirectPrintModal } from './DirectPrintModal';
 import { safeFetchJson } from '../utils/api';
 
 interface CostCalculatorViewProps {
@@ -125,12 +126,34 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
       .catch(() => {});
   }, []);
 
-  // Apply initialParams when coming from ModelAnalyzerView
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  // Apply initialParams when coming from ModelAnalyzerView or ProductsView (Edit/Copy)
   useEffect(() => {
     if (initialParams) {
-      if (initialParams.weightG !== undefined) setCustomWeightGrams(initialParams.weightG);
-      if (initialParams.printTimeMinutes !== undefined) setCustomTimeMinutes(initialParams.printTimeMinutes);
-      if (initialParams.modelName) setProductName(initialParams.modelName);
+      if ((initialParams as any).editMode && (initialParams as any).productId) {
+        setEditingProductId((initialParams as any).productId);
+        if ((initialParams as any).name) setProductName((initialParams as any).name);
+        if ((initialParams as any).category) setProductCategory((initialParams as any).category);
+        if ((initialParams as any).subcategory) setProductSubcategory((initialParams as any).subcategory);
+        if ((initialParams as any).image_url) setProductImageUrl((initialParams as any).image_url);
+        if ((initialParams as any).filament_weight_g !== undefined) setCustomWeightGrams((initialParams as any).filament_weight_g);
+        if ((initialParams as any).print_time_minutes !== undefined) setCustomTimeMinutes((initialParams as any).print_time_minutes);
+        if ((initialParams as any).markup_percent !== undefined) setMarkupPercent((initialParams as any).markup_percent);
+        if ((initialParams as any).printer_id) setSelectedPrinterId((initialParams as any).printer_id);
+        if ((initialParams as any).filament_id) setSelectedFilamentId((initialParams as any).filament_id);
+        if ((initialParams as any).loss_margin_percent !== undefined) setLossMarginPercent((initialParams as any).loss_margin_percent);
+        if ((initialParams as any).extra_supplies_json) {
+          try {
+            const parsed = JSON.parse((initialParams as any).extra_supplies_json);
+            if (Array.isArray(parsed)) setProductSupplies(parsed);
+          } catch {}
+        }
+      } else {
+        if (initialParams.weightG !== undefined) setCustomWeightGrams(initialParams.weightG);
+        if (initialParams.printTimeMinutes !== undefined) setCustomTimeMinutes(initialParams.printTimeMinutes);
+        if (initialParams.modelName) setProductName(initialParams.modelName);
+      }
     }
   }, [initialParams]);
 
@@ -411,14 +434,27 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         sale_price: costResult.suggestedSalePrice,
       };
 
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      let res: Response;
+      if (editingProductId) {
+        res = await fetch(`/api/products/${editingProductId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (res.ok) {
-        setSaveSuccessMessage(`"${productName}" salvo com sucesso no catálogo!`);
+        setSaveSuccessMessage(
+          editingProductId
+            ? `"${productName}" atualizado com sucesso no catálogo!`
+            : `"${productName}" salvo com sucesso no catálogo!`
+        );
         await onRefreshData();
         setTimeout(() => setSaveSuccessMessage(null), 4000);
       }
@@ -904,16 +940,70 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </div>
 
-            {/* Product Image URL Input */}
+            {/* Product Image URL or File Upload */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">URL da Imagem do Produto (Opcional)</label>
-              <input
-                type="url"
-                value={productImageUrl}
-                onChange={(e) => setProductImageUrl(e.target.value)}
-                className="w-full bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/20 transition font-mono text-xs"
-                placeholder="https://exemplo.com/foto-produto.jpg"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300">Foto do Produto (URL ou Upload de Arquivo)</label>
+                {editingProductId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                      Editando Produto Existente
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProductId(null);
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-white underline"
+                    >
+                      Criar Novo
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={productImageUrl}
+                  onChange={(e) => setProductImageUrl(e.target.value)}
+                  className="flex-1 bg-[#0A0A0B] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/20 transition font-mono text-xs"
+                  placeholder="https://exemplo.com/foto.jpg ou selecione arquivo"
+                />
+                <label className="bg-[#141418] hover:bg-[#1E1E24] text-sky-400 border border-white/[0.1] px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition shrink-0">
+                  <Upload className="w-4 h-4" />
+                  <span>Enviar Arquivo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          if (event.target?.result) {
+                            setProductImageUrl(event.target.result as string);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+              {productImageUrl && (
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 bg-black/40 mt-2">
+                  <img src={productImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setProductImageUrl('')}
+                    className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-0.5 hover:bg-rose-600 transition"
+                    title="Remover foto"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Equipment and Material Selection - Bento Sub-cells */}
@@ -1486,7 +1576,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons: Save, Queue & Direct Print */}
+            {/* Action Buttons: Save & Queue */}
             <div className="flex flex-col gap-2.5 pt-2">
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
@@ -1524,59 +1614,9 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
                   </button>
                 </div>
               </div>
-
-              {/* Botão de Envio de Impressão Direta (LAN / Cloud) */}
-              <button
-                type="button"
-                id="btn-trigger-direct-print"
-                onClick={() => setShowDirectPrintModal(true)}
-                className="direct-print-trigger-btn w-full py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition shadow-md cursor-pointer border border-sky-400/30 text-white bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 hover:from-sky-500 hover:via-indigo-500 hover:to-blue-500"
-              >
-                <PrinterIcon className="w-4 h-4 shrink-0" />
-                <span>Enviar Impressão Direta para Máquina (LAN / Nuvem)</span>
-                <span className="direct-print-trigger-pill bg-black/30 text-[10px] px-2 py-0.5 rounded-full font-mono font-normal border border-white/10 hidden sm:inline-block">
-                  Bambu, Creality, Prusa, Anycubic, Stratasys, etc.
-                </span>
-              </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Modal de Disparo de Impressão Direta */}
-      {showDirectPrintModal && (
-        <DirectPrintModal
-          isOpen={showDirectPrintModal}
-          onClose={() => setShowDirectPrintModal(false)}
-          printers={printers}
-          filaments={filaments}
-          selectedPrinterId={selectedPrinterId}
-          selectedFilamentId={selectedFilamentId}
-          theme={theme}
-          jobData={{
-            job_name: productName || parsedModel?.fileName || 'Peça da Calculadora',
-            modelName: productName || parsedModel?.fileName || 'Peça da Calculadora',
-            product_name: productName,
-            file_name: parsedModel?.fileName,
-            estimated_time_minutes: customTimeMinutes,
-            printTimeMinutes: customTimeMinutes,
-            filament_used_g: customWeightGrams,
-            weightGrams: customWeightGrams,
-            filament_id: selectedFilamentId,
-            filament_name: activeFilament?.name,
-            total_cost: costResult?.totalProductionCost || 0,
-            totalCost: costResult?.totalProductionCost || 0,
-            copies: printQuantity,
-            dimensions: parsedModel ? {
-              x: parsedModel.dimensions.x,
-              y: parsedModel.dimensions.y,
-              z: parsedModel.dimensions.z,
-            } : undefined
-          }}
-          onPrintDispatched={() => {
-            onRefreshData();
-          }}
-        />
       )}
     </div>
   );

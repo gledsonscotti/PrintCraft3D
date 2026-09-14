@@ -34,7 +34,6 @@ interface ProductsViewProps {
   onRefreshData: () => void | Promise<void>;
   onSelectProductForCalculator?: (product: Product, mode: 'edit' | 'copy') => void;
   onOpenSaleModal?: (product: Product) => void;
-  onOpenInPlateEditor?: (product: Product) => void;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
@@ -44,7 +43,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   onRefreshData,
   onSelectProductForCalculator,
   onOpenSaleModal,
-  onOpenInPlateEditor,
 }) => {
   const [printModalProduct, setPrintModalProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
@@ -516,18 +514,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {/* Open in Plate Editor Button */}
-                      {onOpenInPlateEditor && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenInPlateEditor(prod)}
-                          className="text-slate-400 hover:text-sky-400 p-1.5 rounded-xl hover:bg-white/[0.06] transition"
-                          title="Abrir no Editor 3D de Mesas"
-                        >
-                          <Layers className="w-4 h-4 text-sky-400" />
-                        </button>
-                      )}
-
                       {/* Quick stock adjustment buttons */}
                       <div className="flex items-center bg-[#0A0A0B] border border-white/[0.08] rounded-xl p-0.5 text-xs text-slate-400">
                         <button

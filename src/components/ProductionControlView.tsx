@@ -40,6 +40,7 @@ import {
   PrintJob
 } from '../types';
 import { PrintHistoryView } from './PrintHistoryView';
+import { DirectPrintModal } from './DirectPrintModal';
 
 interface ProductionControlViewProps {
   orders: ProductionOrder[];
@@ -78,6 +79,7 @@ export function ProductionControlView({
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState<boolean>(Boolean(preselectedSaleForOP));
   const [showFailModal, setShowFailModal] = useState<boolean>(false);
+  const [selectedOpForDirectPrint, setSelectedOpForDirectPrint] = useState<ProductionOrder | null>(null);
   const [orderToFail, setOrderToFail] = useState<ProductionOrder | null>(null);
   const [failReason, setFailReason] = useState('Descolamento da mesa de impressão (warping)');
   const [wastedGrams, setWastedGrams] = useState<number>(0);
@@ -767,6 +769,15 @@ export function ProductionControlView({
                     <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                       <button
                         type="button"
+                        onClick={() => handleUpdateStatus(op.id, 'pending', undefined, 0)}
+                        className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition cursor-pointer"
+                        title="Voltar um passo atrás (Para Pendente)"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           setOrderToFail(op);
                           setWastedGrams(Math.round((op.filament_weight_g * (op.progress_percent || 50)) / 100));
@@ -781,20 +792,23 @@ export function ProductionControlView({
                       <button
                         type="button"
                         onClick={() => handleUpdateStatus(op.id, 'post_processing', undefined, 90)}
-                        className="kanban-btn-postprocess flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-                        title="Liberar impressora e mover para acabamento na bancada"
+                        className="kanban-btn-postprocess flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white text-[11px] font-bold transition shadow-sm cursor-pointer"
+                        title="Pós-Processar"
                       >
-                        <Wrench className="w-3.5 h-3.5" />
-                        <span>Pós-Processar</span>
+                        <Wrench className="w-3 h-3" />
+                        <span>Pós-Proc.</span>
                       </button>
 
+                      {/* Botão de Impressão Direta no Kanban */}
                       <button
                         type="button"
-                        onClick={() => handleUpdateStatus(op.id, 'completed', undefined, 100)}
-                        className="kanban-btn-direct-done p-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition cursor-pointer"
-                        title="Concluir Direto"
+                        onClick={() => {
+                          setSelectedOpForDirectPrint(op);
+                        }}
+                        className="p-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition cursor-pointer"
+                        title="Impressão Direta na Máquina (LAN / Nuvem)"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <PrinterIcon className="w-3.5 h-3.5 text-sky-400" />
                       </button>
                     </div>
                   </div>
@@ -855,6 +869,15 @@ export function ProductionControlView({
                     <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                       <button
                         type="button"
+                        onClick={() => handleUpdateStatus(op.id, 'in_progress', op.printer_id, 50)}
+                        className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition cursor-pointer"
+                        title="Voltar um passo atrás (Para Em Impressão)"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           setOrderToFail(op);
                           setWastedGrams(op.filament_weight_g);
@@ -872,7 +895,7 @@ export function ProductionControlView({
                         className="kanban-btn-finish flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-sm cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Concluir e Dar Entrada</span>
+                        <span>Concluir</span>
                       </button>
                     </div>
                   </div>
@@ -1498,6 +1521,35 @@ export function ProductionControlView({
             </div>
           </div>
         </div>
+      )}
+
+      {selectedOpForDirectPrint && (
+        <DirectPrintModal
+          isOpen={Boolean(selectedOpForDirectPrint)}
+          onClose={() => setSelectedOpForDirectPrint(null)}
+          printers={printers}
+          filaments={filaments}
+          selectedPrinterId={selectedOpForDirectPrint.printer_id}
+          selectedFilamentId={selectedOpForDirectPrint.filament_id}
+          theme={theme}
+          jobData={{
+            job_name: selectedOpForDirectPrint.product_name,
+            modelName: selectedOpForDirectPrint.product_name,
+            product_name: selectedOpForDirectPrint.product_name,
+            file_name: `${selectedOpForDirectPrint.op_number}.gcode`,
+            estimated_time_minutes: selectedOpForDirectPrint.print_time_minutes,
+            printTimeMinutes: selectedOpForDirectPrint.print_time_minutes,
+            filament_used_g: selectedOpForDirectPrint.filament_weight_g,
+            weightGrams: selectedOpForDirectPrint.filament_weight_g,
+            filament_id: selectedOpForDirectPrint.filament_id,
+            filament_name: selectedOpForDirectPrint.filament_name,
+            totalCost: 0,
+            copies: selectedOpForDirectPrint.quantity,
+          }}
+          onPrintDispatched={() => {
+            onRefreshData();
+          }}
+        />
       )}
     </div>
   );

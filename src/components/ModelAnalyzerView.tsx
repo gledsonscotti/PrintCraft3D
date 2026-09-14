@@ -46,10 +46,6 @@ interface ModelAnalyzerViewProps {
     volumeCm3: number;
     dimensions: { x: number; y: number; z: number };
   }) => void;
-  onNavigateToPlateEditor?: (params: {
-    modelObject: THREE.Object3D | null;
-    parsedModel: ParsedModelResult;
-  }) => void;
 }
 
 export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
@@ -58,7 +54,6 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
   settings,
   theme = 'standard',
   onNavigateToCalculator,
-  onNavigateToPlateEditor,
 }) => {
   const [modelBuffer, setModelBuffer] = useState<ArrayBuffer | null>(null);
   const [modelObject, setModelObject] = useState<THREE.Object3D | null>(null);
@@ -488,21 +483,7 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
             <span>{loadingAi ? 'Analisando Malha...' : 'Otimizador IA'}</span>
           </button>
 
-          {/* Botão Organizar / Editar em Mesas 3D */}
-          {onNavigateToPlateEditor && (
-            <button
-              type="button"
-              id="btn-analyzer-open-plates"
-              onClick={() => {
-                onNavigateToPlateEditor({ modelObject, parsedModel });
-              }}
-              className="px-4 py-2.5 rounded-2xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-sm"
-              title="Abrir no Editor de Mesas para organizar peças por cor única"
-            >
-              <Layers className="w-4 h-4 text-sky-400" />
-              <span>Editar em Mesas</span>
-            </button>
-          )}
+
 
           {/* Botão Disparar Impressão Direta (com classe e ID padronizados ao tema) */}
           <button
@@ -724,20 +705,32 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
             </div>
           </div>
 
-          <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B] p-8 flex flex-col items-center justify-center text-center gap-4 min-h-[220px]">
-            <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-inner">
-              <Box className="w-8 h-8" />
-            </div>
-            <div className="space-y-1 max-w-md">
-              <div className="text-sm font-bold text-white font-mono truncate">{parsedModel.fileName}</div>
+          <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B] min-h-[360px]">
+          <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0A0A0B] min-h-[320px] p-6 flex flex-col items-center justify-center text-center gap-4">
+            {(parsedModel as any).imageUrl ? (
+              <div className="relative max-w-full max-h-[260px] rounded-2xl overflow-hidden border border-white/[0.12] shadow-2xl bg-black/50 flex items-center justify-center p-2">
+                <img
+                  src={(parsedModel as any).imageUrl}
+                  alt={parsedModel.fileName}
+                  className="max-h-[240px] max-w-full object-contain rounded-xl shadow-lg"
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-3xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-inner">
+                <Box className="w-10 h-10" />
+              </div>
+            )}
+            <div className="space-y-1.5 max-w-md">
+              <div className="text-sm sm:text-base font-bold text-white font-mono truncate">{parsedModel.fileName}</div>
               <div className="text-xs text-slate-400">
-                {parsedModel.formatLabel || 'Modelo 3D'} • {parsedModel.dimensions.x} × {parsedModel.dimensions.y} × {parsedModel.dimensions.z} mm • {parsedModel.trianglesCount?.toLocaleString() || 4200} faces
+                {parsedModel.formatLabel} • Dimensões: {parsedModel.dimensions.x} × {parsedModel.dimensions.y} × {parsedModel.dimensions.z} mm
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Pronto para análise e fatiamento</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Modelo carregado e pronto para otimização</span>
             </div>
+          </div>
           </div>
         </div>
 

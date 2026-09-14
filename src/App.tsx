@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder, Client } from './types';
 import { ModelAnalyzerView } from './components/ModelAnalyzerView';
-import { PlateEditorView } from './components/PlateEditorView';
 import { CostCalculatorView } from './components/CostCalculatorView';
 import { StockManagementView } from './components/StockManagementView';
 import { PrintersView } from './components/PrintersView';
@@ -47,10 +46,8 @@ import { CompanyTeamModal } from './components/auth/CompanyTeamModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analyzer' | 'plates' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'history' | 'settings'>('analyzer');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'history' | 'settings'>('analyzer');
   const [calculatorInitialParams, setCalculatorInitialParams] = useState<any>(null);
-  const [platesInitialObject, setPlatesInitialObject] = useState<any>(null);
-  const [platesInitialResult, setPlatesInitialResult] = useState<any>(null);
   const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'integrations'>('costs');
   const [loading, setLoading] = useState(true);
 
@@ -96,8 +93,8 @@ export default function App() {
   // Auto-switch to first authorized tab if user doesn't have access to active tab
   useEffect(() => {
     if (currentUser && !canAccess(activeTab)) {
-      const validTabs: Array<'analyzer' | 'plates' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'settings'> = [
-        'analyzer', 'plates', 'calculator', 'stock', 'products', 'production', 'sales', 'clients', 'settings'
+      const validTabs: Array<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'clients' | 'settings'> = [
+        'analyzer', 'calculator', 'stock', 'products', 'production', 'sales', 'clients', 'settings'
       ];
       const firstAllowed = validTabs.find((t) => canAccess(t));
       if (firstAllowed) {
@@ -568,24 +565,7 @@ export default function App() {
                 {!canAccess('analyzer') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
-              {/* Editor de Mesas (Divisor de Arquivos por Cor Única) */}
-              <button
-                type="button"
-                disabled={!canAccess('plates')}
-                onClick={() => canAccess('plates') && setActiveTab('plates')}
-                title={canAccess('plates') ? 'Editor 3D de Mesas (Organizar partes por cor única para envio)' : 'Módulo restrito'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
-                  !canAccess('plates')
-                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
-                    : activeTab === 'plates'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Editor</span>
-                {!canAccess('plates') && <Lock className="w-3 h-3 text-slate-500/80" />}
-              </button>
+
 
               {/* Calculadora */}
               <button
@@ -860,24 +840,7 @@ export default function App() {
               {!canAccess('analyzer') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
-            {/* Editor de Mesas */}
-            <button
-              type="button"
-              disabled={!canAccess('plates')}
-              onClick={() => canAccess('plates') && setActiveTab('plates')}
-              title={canAccess('plates') ? 'Editor de Mesas' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                !canAccess('plates')
-                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
-                  : activeTab === 'plates'
-                  ? 'bg-sky-500 text-white font-bold'
-                  : 'text-slate-400 bg-white/[0.03]'
-              }`}
-            >
-              <Layers className="w-3 h-3 shrink-0" />
-              <span>Editor Mesas</span>
-              {!canAccess('plates') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
-            </button>
+
 
             {/* Calculadora */}
             <button
@@ -1040,31 +1003,10 @@ export default function App() {
                   setCalculatorInitialParams(params);
                   setActiveTab('calculator');
                 }}
-                onNavigateToPlateEditor={(params) => {
-                  setPlatesInitialObject(params.modelObject);
-                  setPlatesInitialResult(params.parsedModel);
-                  setActiveTab('plates');
-                }}
               />
             )}
 
-            {activeTab === 'plates' && (
-              <PlateEditorView
-                printers={printers}
-                filaments={filaments}
-                products={products}
-                settings={settings}
-                theme={companyTheme}
-                initialObject3D={platesInitialObject}
-                initialModelResult={platesInitialResult}
-                onRefreshProducts={fetchData}
-                onNavigateToCalculator={(params) => {
-                  setCalculatorInitialParams(params);
-                  setActiveTab('calculator');
-                }}
-                onNavigateToProducts={() => setActiveTab('products')}
-              />
-            )}
+
 
             <div className={activeTab === 'calculator' ? 'block' : 'hidden'}>
               <CostCalculatorView
@@ -1107,8 +1049,14 @@ export default function App() {
                 printers={printers}
                 filaments={filaments}
                 onRefreshData={fetchData}
-                onSelectProductForCalculator={() => setActiveTab('calculator')}
-                onOpenInPlateEditor={() => setActiveTab('plates')}
+                onSelectProductForCalculator={(product, mode) => {
+                  setCalculatorInitialParams({
+                    ...product,
+                    editMode: mode === 'edit',
+                    productId: mode === 'edit' ? product.id : undefined,
+                  });
+                  setActiveTab('calculator');
+                }}
                 onOpenSaleModal={(product) => {
                   setSelectedProductForSale(product);
                   setIsSaleModalOpen(true);

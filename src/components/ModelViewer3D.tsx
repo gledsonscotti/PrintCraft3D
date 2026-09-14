@@ -35,6 +35,7 @@ export interface ModelViewer3DProps {
   layerCount?: number;
   theme?: AppTheme;
   bedSize?: { x: number; y: number; z?: number };
+  imageUrl?: string;
   onSnapshotReady?: (captureSnapshot: () => string | null) => void;
   onModelDimensionsChanged?: (newDims: { x: number; y: number; z: number }, scaleApplied: number, partsCount: number) => void;
 }
@@ -230,6 +231,7 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   layerCount,
   theme = 'standard',
   bedSize = { x: 250, y: 250, z: 260 },
+  imageUrl,
   onSnapshotReady,
   onModelDimensionsChanged,
 }) => {
@@ -260,6 +262,18 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    try {
+      const testCanvas = document.createElement('canvas');
+      const testGl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!testGl) {
+        setWebglFailed(true);
+        return;
+      }
+    } catch {
+      setWebglFailed(true);
+      return;
+    }
 
     const width = containerRef.current.clientWidth || 400;
     const height = containerRef.current.clientHeight || 320;
@@ -782,7 +796,23 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
   return (
     <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-84 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
-      {webglFailed ? (
+      {imageUrl ? (
+        <div className="w-full h-full flex flex-col items-center justify-center p-4">
+          <div className="relative max-w-full max-h-[220px] rounded-2xl overflow-hidden border border-white/[0.12] shadow-2xl bg-black/50 flex items-center justify-center p-2">
+            <img
+              src={imageUrl}
+              alt={formatLabel || 'Imagem / Foto de Referência'}
+              className="max-h-[200px] max-w-full object-contain rounded-xl shadow-lg"
+            />
+          </div>
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs z-10">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold">{formatLabel || 'Imagem de Referência'}</span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-300">Foto carregada com sucesso</span>
+          </div>
+        </div>
+      ) : webglFailed ? (
         <InteractiveCanvas2DModelViewer
           dimensions={dimensions}
           detectedPartsCount={detectedPartsCount}

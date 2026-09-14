@@ -58,12 +58,12 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
     const ext = getFileExtension(fileName);
 
     const validExtensions = [
-      'stl', 'gcode', 'gco', 'g', 'nc', '3mf', 'step', 'stp', 'iges', 'igs', 'obj', 'ply', 'amf', 'gltf', 'glb'
+      'stl', 'gcode', 'gco', 'g', 'nc', '3mf', 'step', 'stp', 'iges', 'igs', 'obj', 'ply', 'amf', 'gltf', 'glb', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'
     ];
 
     if (!validExtensions.includes(ext)) {
       alert(
-        `Formato não suportado (.${ext}). Por favor, envie arquivos de impressora 3D ou CAD: STL, G-Code, 3MF, STEP, STP, IGES, OBJ, PLY, AMF ou GLTF.`
+        `Formato não suportado (.${ext}). Por favor, envie arquivos 3D, CAD ou Imagens de referência: STL, G-Code, 3MF, STEP, OBJ, PNG, JPG, WEBP.`
       );
       setLoading(false);
       setStatusMessage(null);
@@ -130,7 +130,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".stl,.gcode,.gco,.g,.nc,.3mf,.step,.stp,.iges,.igs,.obj,.ply,.amf,.gltf,.glb"
+          accept=".stl,.gcode,.gco,.g,.nc,.3mf,.step,.stp,.iges,.igs,.obj,.ply,.amf,.gltf,.glb,image/*"
           className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFileProcess(e.target.files[0])}
         />
