@@ -1528,12 +1528,13 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               {/* Botão de Envio de Impressão Direta (LAN / Cloud) */}
               <button
                 type="button"
+                id="btn-trigger-direct-print"
                 onClick={() => setShowDirectPrintModal(true)}
-                className="w-full bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 hover:from-sky-500 hover:via-indigo-500 hover:to-blue-500 text-white py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition shadow-md shadow-sky-600/25 border border-sky-400/30 cursor-pointer"
+                className="direct-print-trigger-btn w-full py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition shadow-md cursor-pointer border border-sky-400/30 text-white bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 hover:from-sky-500 hover:via-indigo-500 hover:to-blue-500"
               >
-                <PrinterIcon className="w-4 h-4" />
+                <PrinterIcon className="w-4 h-4 shrink-0" />
                 <span>Enviar Impressão Direta para Máquina (LAN / Nuvem)</span>
-                <span className="bg-black/30 text-[10px] px-2 py-0.5 rounded-full font-mono font-normal border border-white/10 hidden sm:inline-block">
+                <span className="direct-print-trigger-pill bg-black/30 text-[10px] px-2 py-0.5 rounded-full font-mono font-normal border border-white/10 hidden sm:inline-block">
                   Bambu, Creality, Prusa, Anycubic, Stratasys, etc.
                 </span>
               </button>
@@ -1543,37 +1544,40 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
       )}
 
       {/* Modal de Disparo de Impressão Direta */}
-      <DirectPrintModal
-        isOpen={showDirectPrintModal}
-        onClose={() => setShowDirectPrintModal(false)}
-        printers={printers}
-        filaments={filaments}
-        selectedPrinterId={selectedPrinterId}
-        selectedFilamentId={selectedFilamentId}
-        jobData={{
-          job_name: productName || parsedModel?.fileName || 'Peça da Calculadora',
-          modelName: productName || parsedModel?.fileName || 'Peça da Calculadora',
-          product_name: productName,
-          file_name: parsedModel?.fileName,
-          estimated_time_minutes: customTimeMinutes,
-          printTimeMinutes: customTimeMinutes,
-          filament_used_g: customWeightGrams,
-          weightGrams: customWeightGrams,
-          filament_id: selectedFilamentId,
-          filament_name: activeFilament?.name,
-          total_cost: costResult?.totalProductionCost || 0,
-          totalCost: costResult?.totalProductionCost || 0,
-          copies: printQuantity,
-          dimensions: parsedModel ? {
-            x: parsedModel.dimensions.x,
-            y: parsedModel.dimensions.y,
-            z: parsedModel.dimensions.z,
-          } : undefined
-        }}
-        onPrintDispatched={() => {
-          onRefreshData();
-        }}
-      />
+      {showDirectPrintModal && (
+        <DirectPrintModal
+          isOpen={showDirectPrintModal}
+          onClose={() => setShowDirectPrintModal(false)}
+          printers={printers}
+          filaments={filaments}
+          selectedPrinterId={selectedPrinterId}
+          selectedFilamentId={selectedFilamentId}
+          theme={theme}
+          jobData={{
+            job_name: productName || parsedModel?.fileName || 'Peça da Calculadora',
+            modelName: productName || parsedModel?.fileName || 'Peça da Calculadora',
+            product_name: productName,
+            file_name: parsedModel?.fileName,
+            estimated_time_minutes: customTimeMinutes,
+            printTimeMinutes: customTimeMinutes,
+            filament_used_g: customWeightGrams,
+            weightGrams: customWeightGrams,
+            filament_id: selectedFilamentId,
+            filament_name: activeFilament?.name,
+            total_cost: costResult?.totalProductionCost || 0,
+            totalCost: costResult?.totalProductionCost || 0,
+            copies: printQuantity,
+            dimensions: parsedModel ? {
+              x: parsedModel.dimensions.x,
+              y: parsedModel.dimensions.y,
+              z: parsedModel.dimensions.z,
+            } : undefined
+          }}
+          onPrintDispatched={() => {
+            onRefreshData();
+          }}
+        />
+      )}
     </div>
   );
 };

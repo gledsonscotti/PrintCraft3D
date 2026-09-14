@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Database,
   Download,
+  Upload,
   RefreshCw,
   Building2,
   HardDrive,
@@ -11,7 +12,8 @@ import {
   Search,
   ExternalLink,
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  AlertCircle
 } from 'lucide-react';
 import { TenantSqliteInfo } from './types';
 
@@ -29,6 +31,8 @@ export const TenantSqliteDatabases: React.FC<TenantSqliteDatabasesProps> = ({
   isSyncing,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [uploadingCompanyId, setUploadingCompanyId] = useState<string | null>(null);
+  const [tenantMsg, setTenantMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const filteredTenants = tenants.filter(t => {
     const term = searchTerm.toLowerCase();
@@ -49,8 +53,61 @@ export const TenantSqliteDatabases: React.FC<TenantSqliteDatabasesProps> = ({
     document.body.removeChild(a);
   };
 
+  const handleUploadTenantDb = (companyId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.sqlite,.db,.json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploadingCompanyId(companyId);
+      setTenantMsg(null);
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const resText = reader.result as string;
+          const base64String = resText.includes(',') ? resText.split(',')[1] : resText;
+
+          const res = await fetch(`/api/admin/database/tenants/${companyId}/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data: base64String, fileName: file.name })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setTenantMsg({ type: 'success', text: data.message || 'Banco SQLite importado e restaurado com sucesso!' });
+            await onSyncTenants();
+          } else {
+            setTenantMsg({ type: 'error', text: data.error || 'Erro ao importar banco SQLite.' });
+          }
+        } catch (err: any) {
+          setTenantMsg({ type: 'error', text: 'Erro de comunicação: ' + err.message });
+        } finally {
+          setUploadingCompanyId(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Feedback Banner */}
+      {tenantMsg && (
+        <div className={`p-4 rounded-2xl border text-xs flex items-center gap-3 ${
+          tenantMsg.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+        }`}>
+          {tenantMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" /> : <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />}
+          <span className="flex-1">{tenantMsg.text}</span>
+          <button onClick={() => setTenantMsg(null)} className="text-[11px] underline opacity-80 hover:opacity-100 cursor-pointer">Fechar</button>
+        </div>
+      )}
+
       {/* Top Banner with Architecture Explanation */}
       <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-4 admin-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
@@ -195,6 +252,17 @@ export const TenantSqliteDatabases: React.FC<TenantSqliteDatabasesProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleUploadTenantDb(t.company_id)}
+                    disabled={uploadingCompanyId === t.company_id}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                    title="Importar e restaurar arquivo .sqlite ou backup .json para esta empresa"
+                  >
+                    <Upload className={`w-3.5 h-3.5 ${uploadingCompanyId === t.company_id ? 'animate-bounce' : ''}`} />
+                    {uploadingCompanyId === t.company_id ? 'Importando...' : 'Importar Banco / Backup'}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleDownloadTenantDb(t.company_id, t.db_file_name)}

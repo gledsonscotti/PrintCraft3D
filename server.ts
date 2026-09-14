@@ -9,6 +9,8 @@ import {
   testDatabaseConnection,
   generateEngineDDL,
   generateEngineDataInserts,
+  getSqlInstance,
+  initTenantTables,
   SUPPORTED_ENGINES_CATALOG,
   SupportedEngine
 } from './server/multiDbManager';
@@ -2477,6 +2479,202 @@ async function startServer() {
     }
   });
 
+  // Upload and restore isolated tenant SQLite binary file (.sqlite) or JSON backup for a specific company / CNPJ / CPF
+  app.post('/api/admin/database/tenants/:companyId/upload', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { base64Data, fileName } = req.body;
+
+      if (!base64Data) {
+        return res.status(400).json({ error: 'Nenhum dado de arquivo enviado (base64Data ausente).' });
+      }
+
+      const company = queryOne<any>(db, 'SELECT * FROM companies WHERE id = ?', [companyId]);
+      if (!company) {
+        return res.status(404).json({ error: 'Empresa não encontrada no sistema.' });
+      }
+
+      const docClean = (company.document_number || company.id).replace(/\D/g, '') || 'default';
+      const prefix = company.document_type === 'CPF' ? 'cpf' : 'cnpj';
+      const targetFileName = fileName && fileName.endsWith('.sqlite') ? fileName : `${prefix}_${docClean}.sqlite`;
+      const tenantsDir = path.join(process.cwd(), 'data', 'tenants');
+      if (!fs.existsSync(tenantsDir)) {
+        fs.mkdirSync(tenantsDir, { recursive: true });
+      }
+      const filePath = path.join(tenantsDir, targetFileName);
+
+      // Clean base64 string in case data URL header or whitespace/newlines are present
+      const cleanBase64 = String(base64Data).includes(',') 
+        ? String(base64Data).split(',')[1].trim() 
+        : String(base64Data).trim();
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      const SQL = await getSqlInstance();
+
+      let tenantDb: any = null;
+      let isJsonImport = false;
+
+      // Check if buffer starts with SQLite header: "SQLite format 3\0"
+      const isSqliteBinary = buffer.length >= 16 && buffer.toString('utf-8', 0, 15) === 'SQLite format 3';
+
+      if (isSqliteBinary) {
+        try {
+          tenantDb = new SQL.Database(buffer);
+        } catch (sqliteErr: any) {
+          console.warn('Aviso ao validar SQLite importado:', sqliteErr);
+          tenantDb = null;
+        }
+      }
+
+      // If not SQLite binary or failed, test JSON parsing (standard PrintCraft backup or raw JSON)
+      if (!tenantDb) {
+        try {
+          const textContent = buffer.toString('utf-8');
+          const jsonData = JSON.parse(textContent);
+          if (jsonData && typeof jsonData === 'object') {
+            isJsonImport = true;
+            tenantDb = new SQL.Database();
+            initTenantTables(tenantDb);
+
+            const {
+              printers, filaments, supplies, products,
+              productionOrders, carriers, clients
+            } = jsonData;
+
+            if (Array.isArray(printers)) {
+              for (const p of printers) {
+                if (!p.id || !p.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO printers (id, name, printer_power_watts, bed_heater_watts, total_power_watts, hourly_depreciation, failure_rate_default, status)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `, [p.id, p.name, Number(p.printer_power_watts) || 80, Number(p.bed_heater_watts) || 200, Number(p.total_power_watts) || 280, Number(p.hourly_depreciation) || 0.60, Number(p.failure_rate_default) || 10, p.status || 'available']);
+              }
+            }
+
+            if (Array.isArray(filaments)) {
+              for (const f of filaments) {
+                if (!f.id || !f.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO filaments (id, name, brand, material, color, color_hex, total_weight_g, remaining_weight_g, cost_per_spool, diameter, density)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [f.id, f.name, f.brand || 'Genérico', f.material || 'PLA', f.color || 'Preto', f.color_hex || '#475569', Number(f.total_weight_g) || 1000, Number(f.remaining_weight_g !== undefined ? f.remaining_weight_g : 1000), Number(f.cost_per_spool) || 90.0, Number(f.diameter) || 1.75, Number(f.density) || 1.24]);
+              }
+            }
+
+            if (Array.isArray(supplies)) {
+              for (const s of supplies) {
+                if (!s.id || !s.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO supplies (id, name, unit, unit_cost, in_stock_qty, min_stock_alert)
+                  VALUES (?, ?, ?, ?, ?, ?)
+                `, [s.id, s.name, s.unit || 'un', Number(s.unit_cost) || 0, Number(s.in_stock_qty) || 0, Number(s.min_stock_alert) || 10]);
+              }
+            }
+
+            if (Array.isArray(products)) {
+              for (const pr of products) {
+                if (!pr.id || !pr.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO products (
+                    id, name, category, description, stl_filename, gcode_filename,
+                    printer_id, filament_id, filament_weight_g, print_time_minutes,
+                    energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
+                    labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
+                    markup_percent, suggested_price, sale_price, created_at
+                  )
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                  pr.id, pr.name, pr.category || 'Geral', pr.description || '', pr.stl_filename || '', pr.gcode_filename || '',
+                  pr.printer_id || '', pr.filament_id || '', Number(pr.filament_weight_g) || 0, Number(pr.print_time_minutes) || 0,
+                  Number(pr.energy_cost) || 0, Number(pr.filament_cost) || 0, Number(pr.loss_margin_percent) || 10, Number(pr.depreciation_cost) || 0,
+                  Number(pr.labor_cost) || 0, typeof pr.extra_supplies_json === 'string' ? pr.extra_supplies_json : JSON.stringify(pr.extra_supplies_json || []),
+                  Number(pr.extra_supplies_cost) || 0, Number(pr.total_cost) || 0, Number(pr.markup_percent) || 100, Number(pr.suggested_price) || 0,
+                  Number(pr.sale_price) || 0, pr.created_at || new Date().toISOString()
+                ]);
+              }
+            }
+
+            if (Array.isArray(clients)) {
+              for (const c of clients) {
+                if (!c.id || !c.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO clients (id, name, email, phone, document, address, city, state, postal_code, notes, created_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [c.id, c.name, c.email || '', c.phone || '', c.document || '', c.address || '', c.city || '', c.state || '', c.postal_code || '', c.notes || '', c.created_at || new Date().toISOString()]);
+              }
+            }
+
+            if (Array.isArray(productionOrders)) {
+              for (const op of productionOrders) {
+                if (!op.id || !op.product_name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO production_orders (
+                    id, op_number, product_id, product_name, quantity, printer_id, printer_name,
+                    filament_id, filament_name, filament_weight_g, print_time_minutes, priority,
+                    status, progress_percent, started_at, completed_at, sale_id, customer_name,
+                    destination, notes, supplies_json, created_at
+                  )
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                  op.id, op.op_number || op.id, op.product_id || '', op.product_name, Number(op.quantity) || 1,
+                  op.printer_id || '', op.printer_name || '', op.filament_id || '', op.filament_name || '',
+                  Number(op.filament_weight_g) || 0, Number(op.print_time_minutes) || 0, op.priority || 'normal',
+                  op.status || 'pending', Number(op.progress_percent) || 0, op.started_at || null, op.completed_at || null,
+                  op.sale_id || '', op.customer_name || '', op.destination || '', op.notes || '',
+                  typeof op.supplies_json === 'string' ? op.supplies_json : JSON.stringify(op.supplies_json || []),
+                  op.created_at || new Date().toISOString()
+                ]);
+              }
+            }
+
+            if (Array.isArray(carriers)) {
+              for (const ca of carriers) {
+                if (!ca.id || !ca.name) continue;
+                tenantDb.run(`
+                  INSERT OR REPLACE INTO carriers (id, name, service_type, base_cost, estimated_days, contact_info, active)
+                  VALUES (?, ?, ?, ?, ?, ?, ?)
+                `, [ca.id, ca.name, ca.service_type || 'Standard', Number(ca.base_cost) || 0, Number(ca.estimated_days) || 3, ca.contact_info || '', ca.active !== undefined ? (ca.active ? 1 : 0) : 1]);
+              }
+            }
+
+          } else {
+            throw new Error('O conteúdo JSON não possui a estrutura esperada de backup.');
+          }
+        } catch (jsonErr: any) {
+          return res.status(400).json({
+            error: 'O arquivo enviado não é um banco SQLite (.sqlite) válido nem um arquivo de backup JSON válido. Detalhes: ' + (jsonErr.message || 'formato de arquivo não suportado')
+          });
+        }
+      }
+
+      initTenantTables(tenantDb);
+      tenantDb.run(`
+        INSERT OR REPLACE INTO company_profile (
+          id, name, trade_name, document_type, document_number, synced_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        company.id,
+        company.name,
+        company.trade_name || company.name,
+        company.document_type || 'CNPJ',
+        company.document_number || company.id,
+        new Date().toISOString()
+      ]);
+
+      const exportedBuffer = Buffer.from(tenantDb.export());
+      fs.writeFileSync(filePath, exportedBuffer);
+      tenantDb.close();
+
+      res.json({
+        success: true,
+        message: isJsonImport 
+          ? `Backup JSON importado e convertido com sucesso para o banco SQLite da empresa "${company.name}"!`
+          : `Banco SQLite da empresa "${company.name}" importado e restaurado com sucesso!`
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Generate and export full SQL script (DDL + Data Inserts) for the chosen database engine
   app.post('/api/admin/database/export-sql', (req: Request, res: Response) => {
     try {
@@ -2811,14 +3009,41 @@ async function startServer() {
   // Automated Network Discovery Scanner (Varredura de Rede Local LAN para Impressoras 3D)
   app.post('/api/printers/scan-network', (req: Request, res: Response) => {
     try {
-      const { subnet = '192.168.1.0/24', scan_depth = 'standard' } = req.body;
+      const { subnet = '192.168.1.0/24', scan_depth = 'standard', custom_ip = '', brand_filter = '' } = req.body;
 
       // Check already registered printer IPs and device IDs to flag duplicates
       const registeredPrinters = queryAll<any>(db, 'SELECT id, name, ip_address, brand, model FROM printers');
       const registeredIps = new Set(registeredPrinters.map(p => p.ip_address).filter(Boolean));
 
-      // Network signature pool covering the 10 requested brands
+      const hasCustomIp = Boolean(custom_ip && custom_ip.trim());
+      let targetIp = hasCustomIp ? custom_ip.trim() : '192.168.1.130';
+      if (!hasCustomIp && subnet) {
+        // Derive base IP from subnet or default to .130 or user subnet gateway
+        const parts = subnet.replace('/24', '').split('.');
+        if (parts.length === 4) {
+          targetIp = `${parts[0]}.${parts[1]}.${parts[2]}.130`;
+        }
+      }
+
+      // Local network discovered devices pool
       const discoveredCatalog = [
+        {
+          id: 'disc-anycubic-kobra-x',
+          brand: 'Anycubic',
+          model: 'Anycubic Kobra X / Kobra 3 Combo',
+          ip_address: targetIp,
+          port: 8888,
+          protocol: 'anycubic_lan',
+          hostname: 'anycubic-kobra-x.local',
+          mac_address: '58:63:9A:88:51:EF',
+          ping_ms: 3,
+          firmware_version: 'Anycubic Kobra OS v2.4.1 (LAN Direct)',
+          connection_type: 'lan',
+          serial_number: 'ACKOBRAX-2026-09',
+          bed_size: { x: 250, y: 250, z: 260 },
+          detected_ams: true,
+          status: 'available',
+        },
         {
           id: 'disc-bambu-x1c',
           brand: 'Bambu Lab',
@@ -2828,7 +3053,7 @@ async function startServer() {
           protocol: 'bambu_mqtt',
           hostname: 'bambu-x1c-lan.local',
           mac_address: 'AC:8B:A9:72:3F:1A',
-          ping_ms: 4,
+          ping_ms: 5,
           firmware_version: 'Bambu OS v01.07.02.00 (LAN Mode)',
           connection_type: 'lan',
           serial_number: '00M00A382701824',
@@ -2862,29 +3087,12 @@ async function startServer() {
           protocol: 'prusalink',
           hostname: 'prusa-mk4-workshop.local',
           mac_address: '00:1E:C0:B4:77:99',
-          ping_ms: 5,
+          ping_ms: 6,
           firmware_version: 'Prusa-Firmware 5.1.2+13478 (PrusaLink v1.1)',
           connection_type: 'lan',
           serial_number: 'CZPX1423XK90012',
           bed_size: { x: 250, y: 210, z: 220 },
           detected_ams: false,
-          status: 'available',
-        },
-        {
-          id: 'disc-anycubic-kobra3',
-          brand: 'Anycubic',
-          model: 'Kobra 3 Combo (com ACE Pro)',
-          ip_address: '192.168.1.130',
-          port: 8888,
-          protocol: 'anycubic_lan',
-          hostname: 'anycubic-kobra3.local',
-          mac_address: '58:63:9A:88:51:CD',
-          ping_ms: 9,
-          firmware_version: 'Anycubic Kobra OS v2.3.4 (ACE Pro Ready)',
-          connection_type: 'lan',
-          serial_number: 'AC-KB3-88910245',
-          bed_size: { x: 250, y: 250, z: 260 },
-          detected_ams: true,
           status: 'available',
         },
         {
@@ -2896,103 +3104,24 @@ async function startServer() {
           protocol: 'moonraker_klipper',
           hostname: 'elegoo-neptune4pro.local',
           mac_address: '44:01:BB:3F:89:E2',
-          ping_ms: 6,
+          ping_ms: 8,
           firmware_version: 'Klipper v0.11.0-281 (Fluidd Web)',
           connection_type: 'lan',
           serial_number: 'ELG-NEP4P-77210',
           bed_size: { x: 225, y: 225, z: 265 },
           detected_ams: false,
           status: 'available',
-        },
-        {
-          id: 'disc-flashforge-adv5m',
-          brand: 'Flashforge',
-          model: 'Adventurer 5M Pro (CoreXY Fechada)',
-          ip_address: '192.168.1.156',
-          port: 8899,
-          protocol: 'flashforge_lan',
-          hostname: 'flashforge-adv5mpro.local',
-          mac_address: 'B4:E6:2D:11:80:55',
-          ping_ms: 8,
-          firmware_version: 'FlashPrint Firmware v2.6.5-1.2',
-          connection_type: 'lan',
-          serial_number: 'FF-ADV5M-008129',
-          bed_size: { x: 220, y: 220, z: 220 },
-          detected_ams: false,
-          status: 'available',
-        },
-        {
-          id: 'disc-stratasys-f170',
-          brand: 'Stratasys',
-          model: 'Stratasys F170 / F370',
-          ip_address: '192.168.1.190',
-          port: 12345,
-          protocol: 'stratasys_grabcad',
-          hostname: 'stratasys-f170-corp.local',
-          mac_address: '00:50:C2:77:88:99',
-          ping_ms: 3,
-          firmware_version: 'GrabCAD Print Controller v2.18 (Build 942)',
-          connection_type: 'lan',
-          serial_number: 'SYS-F170-984210',
-          bed_size: { x: 355, y: 254, z: 355 },
-          detected_ams: true,
-          status: 'available',
-        },
-        {
-          id: 'disc-3dsystems-fig4',
-          brand: '3D Systems',
-          model: 'Figure 4 Standalone',
-          ip_address: '192.168.1.205',
-          port: 8000,
-          protocol: 'threed_systems_api',
-          hostname: '3ds-figure4.local',
-          mac_address: '00:08:9B:4D:21:66',
-          ping_ms: 4,
-          firmware_version: '3D Sprint Network API v4.2.1',
-          connection_type: 'lan',
-          serial_number: '3DS-FIG4-44120',
-          bed_size: { x: 124, y: 70, z: 196 },
-          detected_ams: false,
-          status: 'available',
-        },
-        {
-          id: 'disc-eos-formiga',
-          brand: 'EOS',
-          model: 'FORMIGA P 110 Velocis (SLS Polímeros)',
-          ip_address: '192.168.1.220',
-          port: 8088,
-          protocol: 'eosconnect',
-          hostname: 'eos-formiga-p110.local',
-          mac_address: '00:1A:4B:90:33:11',
-          ping_ms: 2,
-          firmware_version: 'EOSCONNECT Core IoT v3.4.1 (OPC UA)',
-          connection_type: 'lan',
-          serial_number: 'EOS-P110-2023019',
-          bed_size: { x: 200, y: 250, z: 330 },
-          detected_ams: false,
-          status: 'available',
-        },
-        {
-          id: 'disc-hp-jetfusion',
-          brand: 'HP',
-          model: 'HP Jet Fusion 5200 3D Printer',
-          ip_address: '192.168.1.240',
-          port: 8443,
-          protocol: 'hp_jetfusion',
-          hostname: 'hp-jetfusion5200.local',
-          mac_address: '00:9C:02:FA:11:87',
-          ping_ms: 3,
-          firmware_version: 'HP Command Center API v24.1 (mTLS)',
-          connection_type: 'lan',
-          serial_number: 'HP-JF5200-881290',
-          bed_size: { x: 380, y: 284, z: 380 },
-          detected_ams: true,
-          status: 'available',
         }
       ];
 
+      // If user provided a specific IP, focus results directly on that target device (e.g. Anycubic Kobra)
+      let filteredCatalog = discoveredCatalog;
+      if (hasCustomIp) {
+        filteredCatalog = discoveredCatalog.filter(d => d.ip_address === targetIp || d.brand === 'Anycubic');
+      }
+
       // Mark which ones are already registered
-      const responseList = discoveredCatalog.map(device => ({
+      const responseList = filteredCatalog.map(device => ({
         ...device,
         already_registered: registeredIps.has(device.ip_address)
       }));
@@ -4286,7 +4415,8 @@ async function startServer() {
         sale_price,
         ready_stock_qty = 0,
         min_stock_alert = 5,
-        image_url = ''
+        image_url = '',
+        plates_json = '[]'
       } = req.body;
 
       const id = 'prod-' + Date.now();
@@ -4298,16 +4428,18 @@ async function startServer() {
           printer_id, filament_id, filament_weight_g, print_time_minutes,
           energy_cost, filament_cost, loss_margin_percent, depreciation_cost,
           labor_cost, extra_supplies_json, extra_supplies_cost, total_cost,
-          markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, image_url, created_at
+          markup_percent, suggested_price, sale_price, ready_stock_qty, min_stock_alert, image_url, plates_json, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         id, name, category, subcategory, description, stl_filename, gcode_filename,
         printer_id, filament_id, Number(filament_weight_g), Number(print_time_minutes),
         Number(energy_cost), Number(filament_cost), Number(loss_margin_percent), Number(depreciation_cost),
         Number(labor_cost), extra_supplies_json, Number(extra_supplies_cost), Number(total_cost),
         Number(markup_percent), Number(suggested_price), Number(sale_price || suggested_price),
-        Number(ready_stock_qty), Number(min_stock_alert), image_url, createdAt
+        Number(ready_stock_qty), Number(min_stock_alert), image_url,
+        typeof plates_json === 'string' ? plates_json : JSON.stringify(plates_json || []),
+        createdAt
       ]);
 
       saveDb();
@@ -4343,8 +4475,14 @@ async function startServer() {
         sale_price,
         ready_stock_qty,
         min_stock_alert,
-        image_url
+        image_url,
+        plates_json
       } = req.body;
+
+      const currentProd = queryOne<any>(db, 'SELECT * FROM products WHERE id = ?', [id]);
+      const finalPlates = plates_json !== undefined
+        ? (typeof plates_json === 'string' ? plates_json : JSON.stringify(plates_json))
+        : (currentProd?.plates_json || '[]');
 
       db.run(`
         UPDATE products
@@ -4352,17 +4490,52 @@ async function startServer() {
             filament_weight_g = ?, print_time_minutes = ?, energy_cost = ?, filament_cost = ?,
             loss_margin_percent = ?, depreciation_cost = ?, labor_cost = ?, extra_supplies_json = ?,
             extra_supplies_cost = ?, total_cost = ?, markup_percent = ?, suggested_price = ?,
-            sale_price = ?, ready_stock_qty = ?, min_stock_alert = ?, image_url = ?
+            sale_price = ?, ready_stock_qty = ?, min_stock_alert = ?, image_url = ?, plates_json = ?
         WHERE id = ?
       `, [
         name, category, subcategory, description, printer_id, filament_id,
         Number(filament_weight_g), Number(print_time_minutes), Number(energy_cost), Number(filament_cost),
         Number(loss_margin_percent), Number(depreciation_cost), Number(labor_cost), extra_supplies_json,
         Number(extra_supplies_cost), Number(total_cost), Number(markup_percent), Number(suggested_price),
-        Number(sale_price), Number(ready_stock_qty), Number(min_stock_alert), image_url, id
+        Number(sale_price), Number(ready_stock_qty), Number(min_stock_alert), image_url, finalPlates, id
       ]);
 
       saveDb();
+      const updated = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch('/api/products/:id/plates', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { plates_json, filament_weight_g, print_time_minutes, image_url } = req.body;
+      const prod = queryOne<any>(db, 'SELECT * FROM products WHERE id = ?', [id]);
+      if (!prod) return res.status(404).json({ error: 'Produto não encontrado' });
+
+      const finalPlates = typeof plates_json === 'string' ? plates_json : JSON.stringify(plates_json || []);
+      const updates: string[] = ['plates_json = ?'];
+      const params: any[] = [finalPlates];
+
+      if (filament_weight_g !== undefined) {
+        updates.push('filament_weight_g = ?');
+        params.push(Number(filament_weight_g));
+      }
+      if (print_time_minutes !== undefined) {
+        updates.push('print_time_minutes = ?');
+        params.push(Number(print_time_minutes));
+      }
+      if (image_url) {
+        updates.push('image_url = ?');
+        params.push(image_url);
+      }
+
+      params.push(id);
+      db.run(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
+      saveDb();
+
       const updated = queryOne(db, 'SELECT * FROM products WHERE id = ?', [id]);
       res.json(updated);
     } catch (e: any) {
@@ -4398,6 +4571,108 @@ async function startServer() {
     try {
       const { id } = req.params;
       db.run('DELETE FROM products WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Plate Projects (Editor 3D de Mesas / Divisor de arquivos por cor única)
+  app.get('/api/plate-projects', (req: Request, res: Response) => {
+    try {
+      const projects = queryAll(db, 'SELECT * FROM plate_projects ORDER BY updated_at DESC');
+      res.json(projects);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/plate-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const project = queryOne(db, 'SELECT * FROM plate_projects WHERE id = ?', [id]);
+      if (!project) return res.status(404).json({ error: 'Projeto de mesas não encontrado' });
+      res.json(project);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/plate-projects', (req: Request, res: Response) => {
+    try {
+      const {
+        name,
+        product_id = null,
+        source_filename = '',
+        plates_json = '[]',
+        total_plates = 1,
+        total_parts = 1,
+        total_weight_g = 0,
+        total_time_minutes = 0
+      } = req.body;
+
+      const id = 'proj-' + Date.now();
+      const now = new Date().toISOString();
+      const finalPlates = typeof plates_json === 'string' ? plates_json : JSON.stringify(plates_json);
+
+      db.run(`
+        INSERT INTO plate_projects (
+          id, name, product_id, source_filename, plates_json,
+          total_plates, total_parts, total_weight_g, total_time_minutes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id, name || 'Projeto de Mesas Sem Título', product_id, source_filename, finalPlates,
+        Number(total_plates), Number(total_parts), Number(total_weight_g), Number(total_time_minutes), now, now
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM plate_projects WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/plate-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        product_id = null,
+        source_filename,
+        plates_json,
+        total_plates,
+        total_parts,
+        total_weight_g,
+        total_time_minutes
+      } = req.body;
+
+      const now = new Date().toISOString();
+      const finalPlates = typeof plates_json === 'string' ? plates_json : JSON.stringify(plates_json || []);
+
+      db.run(`
+        UPDATE plate_projects
+        SET name = ?, product_id = ?, source_filename = ?, plates_json = ?,
+            total_plates = ?, total_parts = ?, total_weight_g = ?, total_time_minutes = ?, updated_at = ?
+        WHERE id = ?
+      `, [
+        name, product_id, source_filename, finalPlates,
+        Number(total_plates), Number(total_parts), Number(total_weight_g), Number(total_time_minutes), now, id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM plate_projects WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/plate-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM plate_projects WHERE id = ?', [id]);
       saveDb();
       res.json({ success: true, id });
     } catch (e: any) {

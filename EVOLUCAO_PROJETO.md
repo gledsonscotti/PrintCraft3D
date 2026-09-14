@@ -155,6 +155,23 @@ Este documento consolida o histórico integral de desenvolvimento, decisões de 
   - **Blindagem Defensiva Numérica Global**:
     - Auditoria minuciosa em todos os componentes da aplicação, substituindo chamadas vulneráveis a valores nulos/indefinidos pelo padrão seguro `Number(valor || 0).toFixed(x)`.
 
+### Fase 13: Importação Híbrida de Backups (SQLite & JSON), Calibração Anycubic Kobra e Tematização Direct Print
+- **Demandas**:
+  1. Corrigir erro ao importar backups existentes no painel de bancos de dados da empresa (`Error: file is not a database`).
+  2. Ajustar a varredura de rede local para encontrar com precisão impressoras domésticas e industriais (ex: Anycubic Kobra X) e filtrar ruídos de rede.
+  3. Garantir consistência visual temática estrita no botão e no modal de "Disparar Impressão Direta" (Direct Print).
+- **Implementações**:
+  - **Pipeline Híbrido de Importação de Backups (`server.ts` & `TenantSqliteDatabases.tsx`)**:
+    - Verificação antecipada do cabeçalho binário canônico do SQLite (`SQLite format 3\0`) no buffer decodificado antes de invocar `new SQL.Database(buffer)`.
+    - Sanitização robusta da string base64 enviada pelo cliente (remoção de cabeçalhos Data URL `data:...;base64,` e quebras de linha).
+    - Mecanismo automático de fallback para JSON: caso o arquivo não seja um binário SQLite, o backend converte o buffer em string UTF-8, decodifica a estrutura de backup do PrintCraft e hidrata de forma atômica o banco SQLite dedicado da empresa.
+    - Suporte a extensões `.sqlite`, `.db` e `.json` diretamente no diálogo de seleção de arquivo do painel de administração de bancos de dados.
+  - **Varredura Inteligente e Anycubic Kobra X (`/api/printers/scan-network` & `NetworkDiscoveryModal.tsx`)**:
+    - Adição do preset dedicado da **Anycubic Kobra X (Direct LAN)** em `src/data/printerBrands.ts` com potências térmicas calibradas (Hotend 90W, Bed 250W, bico 0.4mm, porta 8888 e suporte nativo ao sistema multi-cor ACE Pro).
+    - Ajuste no scanner de sub-rede para focar o retorno e isolar a máquina quando o usuário informa um IP específico/fixo ou quando busca modelos Anycubic, eliminando respostas randômicas da rede.
+  - **Padronização Temática da Impressão Direta**:
+    - Aplicação de classes semânticas `.direct-print-modal-box`, `.direct-print-header`, `.direct-print-btn` e `.direct-print-display` garantindo fidelidade visual total sob os temas **Sage Bento**, **Oficina Clara (High-Contrast Light)** e **Dark Studio**.
+
 ---
 
 ## 🗄️ Mapeamento Consolidado de Endpoints REST da Aplicação

@@ -125,7 +125,7 @@ export function getDbStats(database: Database) {
     'printers', 'filaments', 'supplies', 'products', 'product_sales',
     'production_orders', 'carriers', 'categories', 'subcategories',
     'clients', 'consignments', 'print_jobs', 'integrations', 'setup_templates',
-    'subscription_plans', 'admin_users', 'companies', 'app_users', 'app_access_logs'
+    'subscription_plans', 'admin_users', 'companies', 'app_users', 'app_access_logs', 'plate_projects'
   ];
 
   for (const t of tables) {
@@ -325,6 +325,26 @@ function initTables(database: Database) {
   try {
     database.run("ALTER TABLE products ADD COLUMN subcategory TEXT DEFAULT '';");
   } catch {}
+  try {
+    database.run("ALTER TABLE products ADD COLUMN plates_json TEXT DEFAULT '[]';");
+  } catch {}
+
+  // Plate Projects table (Editor 3D de Mesas / Divisor de arquivos)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS plate_projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      product_id TEXT,
+      source_filename TEXT,
+      plates_json TEXT NOT NULL DEFAULT '[]',
+      total_plates INTEGER NOT NULL DEFAULT 1,
+      total_parts INTEGER NOT NULL DEFAULT 1,
+      total_weight_g REAL NOT NULL DEFAULT 0,
+      total_time_minutes REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
 
   // Product Categories & Subcategories tables
   database.run(`

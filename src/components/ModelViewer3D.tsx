@@ -9,15 +9,24 @@ import {
   Compass,
   Layers,
   Sparkles,
-  Maximize2
+  Maximize2,
+  Minimize2,
+  Grid,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
 import { AppTheme } from '../types';
+import {
+  extractPartsFromObject,
+  autoArrangePartsOnBed,
+  fitObjectToBed,
+} from '../utils/modelArranger';
 
 export interface ModelViewer3DProps {
   modelObject?: THREE.Object3D | null;
   modelBuffer?: ArrayBuffer | null;
-  sampleType?: 'keychain' | 'phone_stand' | 'gear' | 'vase' | 'bambu_3mf' | 'cad_bracket';
+  sampleType?: 'keychain' | 'phone_stand' | 'gear' | 'vase' | 'bambu_3mf' | 'cad_bracket' | 'multi_box' | 'multi_batch';
   filamentColor?: string;
   dimensions?: { x: number; y: number; z: number };
   fileType?: string;
@@ -25,7 +34,9 @@ export interface ModelViewer3DProps {
   trianglesCount?: number;
   layerCount?: number;
   theme?: AppTheme;
+  bedSize?: { x: number; y: number; z?: number };
   onSnapshotReady?: (captureSnapshot: () => string | null) => void;
+  onModelDimensionsChanged?: (newDims: { x: number; y: number; z: number }, scaleApplied: number, partsCount: number) => void;
 }
 
 export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
@@ -39,29 +50,50 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
   trianglesCount,
   layerCount,
   theme = 'standard',
+  bedSize = { x: 250, y: 250, z: 260 },
   onSnapshotReady,
+  onModelDimensionsChanged,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const activeRootGroupRef = useRef<THREE.Group | null>(null);
-  const bedMeshRef = useRef<THREE.Mesh | null>(null);
+  const bedGroupRef = useRef<THREE.Group | null>(null);
   const animFrameRef = useRef<number>(0);
 
   const [isWireframe, setIsWireframe] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [cameraView, setCameraView] = useState<'iso' | 'top' | 'front'>('iso');
   const [webglFailed, setWebglFailed] = useState(false);
+  const [detectedPartsCount, setDetectedPartsCount] = useState<number>(1);
+  const [currentScale, setCurrentScale] = useState<number>(1);
+
+  const onModelDimensionsChangedRef = useRef(onModelDimensionsChanged);
+  onModelDimensionsChangedRef.current = onModelDimensionsChanged;
+  const lastReportedDimsRef = useRef<string>('');
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const rotationRef = useRef({ x: 0.45, y: -0.65 });
-  const zoomRef = useRef(85);
+  const zoomRef = useRef(110);
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    // Check WebGL availability first without triggering Three.js internal errors
+    try {
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!gl) {
+        setWebglFailed(true);
+        return;
+      }
+    } catch {
+      setWebglFailed(true);
+      return;
+    }
 
     const width = containerRef.current.clientWidth || 400;
     const height = containerRef.current.clientHeight || 320;
@@ -69,6 +101,9 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
+      if (!renderer.getContext()) {
+        throw new Error('WebGL context returned null');
+      }
     } catch (e) {
       console.warn('WebGL context creation failed or was blocked:', e);
       setWebglFailed(true);
@@ -132,24 +167,10 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     containerRef.current.innerHTML = '';
     containerRef.current.appendChild(renderer.domElement);
 
-    // Build plate / Heated bed grid (e.g. 220x220mm standard Ender-3 / Bambu Lab build volume)
-    const bedSize = 160;
-    const gridHelper = new THREE.GridHelper(bedSize, 32, 0x38bdf8, 0x1f293d);
-    gridHelper.position.y = -0.05;
-    scene.add(gridHelper);
-
-    // Heated bed surface plate
-    const bedGeo = new THREE.BoxGeometry(bedSize, 1.2, bedSize);
-    const bedMat = new THREE.MeshStandardMaterial({
-      color: theme === 'high-contrast-light' ? 0xE2E8F0 : theme === 'high-contrast-dark' ? 0x050505 : 0x111827,
-      roughness: 0.85,
-      metalness: 0.15,
-    });
-    const bedMesh = new THREE.Mesh(bedGeo, bedMat);
-    bedMesh.position.y = -0.65;
-    bedMesh.receiveShadow = true;
-    bedMeshRef.current = bedMesh;
-    scene.add(bedMesh);
+    // Dynamic Build Plate Group
+    const bedGroup = new THREE.Group();
+    scene.add(bedGroup);
+    bedGroupRef.current = bedGroup;
 
     // Lighting setup
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
@@ -212,6 +233,67 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
       renderer.dispose();
     };
   }, []);
+
+  // Update Bed Plate dynamically whenever bedSize or theme changes
+  useEffect(() => {
+    if (!bedGroupRef.current) return;
+    const group = bedGroupRef.current;
+
+    // Clear previous bed elements
+    while (group.children.length > 0) {
+      const child = group.children[0];
+      group.remove(child);
+      disposeObject(child);
+    }
+
+    const bedW = bedSize.x || 250;
+    const bedD = bedSize.y || 250;
+
+    // 1. Heated Bed Surface Plate
+    const bedGeo = new THREE.BoxGeometry(bedW, 1.2, bedD);
+    const plateColor = theme === 'high-contrast-light' ? 0xE2E8F0 : theme === 'high-contrast-dark' ? 0x050505 : theme === 'sage-bento' ? 0xEDE8DC : 0x111827;
+    const bedMat = new THREE.MeshStandardMaterial({
+      color: plateColor,
+      roughness: 0.85,
+      metalness: 0.15,
+    });
+    const bedMesh = new THREE.Mesh(bedGeo, bedMat);
+    bedMesh.position.y = -0.65;
+    bedMesh.receiveShadow = true;
+    group.add(bedMesh);
+
+    // 2. Millimeter Grid Helper (10mm divisions)
+    const maxDimension = Math.max(bedW, bedD);
+    const divisions = Math.max(10, Math.round(maxDimension / 10));
+    const gridColorPrimary = theme === 'high-contrast-light' ? 0x0284C7 : theme === 'sage-bento' ? 0x567D6B : 0x38BDF8;
+    const gridColorSecondary = theme === 'high-contrast-light' ? 0xCBD5E1 : theme === 'sage-bento' ? 0xD5CCBD : 0x1E293B;
+
+    const gridHelper = new THREE.GridHelper(maxDimension, divisions, gridColorPrimary, gridColorSecondary);
+    gridHelper.position.y = -0.04;
+    group.add(gridHelper);
+
+    // 3. Printable Area Safety Border (5mm margin from edges)
+    const margin = 5;
+    const safeW = Math.max(10, bedW - margin * 2);
+    const safeD = Math.max(10, bedD - margin * 2);
+
+    const borderPoints = [
+      new THREE.Vector3(-safeW / 2, 0.05, -safeD / 2),
+      new THREE.Vector3(safeW / 2, 0.05, -safeD / 2),
+      new THREE.Vector3(safeW / 2, 0.05, safeD / 2),
+      new THREE.Vector3(-safeW / 2, 0.05, safeD / 2),
+      new THREE.Vector3(-safeW / 2, 0.05, -safeD / 2),
+    ];
+    const borderGeom = new THREE.BufferGeometry().setFromPoints(borderPoints);
+    const borderMat = new THREE.LineBasicMaterial({
+      color: theme === 'sage-bento' ? 0x3E6251 : 0x0EA5E9,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.8,
+    });
+    const borderLine = new THREE.Line(borderGeom, borderMat);
+    group.add(borderLine);
+  }, [bedSize.x, bedSize.y, theme]);
 
   // Update Geometry whenever modelObject, modelBuffer, sampleType or filamentColor changes
   useEffect(() => {
@@ -290,11 +372,64 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
 
     root.add(displayObject);
 
-    // Adjust zoom smoothly based on object size
-    const maxDim = Math.max(size.x, size.y, size.z, 20);
-    const idealZoom = Math.min(180, Math.max(45, maxDim * 1.55));
+    // Count and detect parts
+    const detectedParts = extractPartsFromObject(displayObject);
+    const count = detectedParts.length > 0 ? detectedParts.length : 1;
+
+    // If multiple parts, or if model exceeds print bed boundaries, auto-arrange and fit cleanly
+    const safeBedX = bedSize.x || 250;
+    const safeBedY = bedSize.y || 250;
+    let finalObjectToDisplay = displayObject;
+    let appliedScale = 1;
+
+    if (count > 1) {
+      if (size.x > (safeBedX - 10) || size.z > (safeBedY - 10)) {
+        const arrangeResult = autoArrangePartsOnBed(displayObject, safeBedX, safeBedY, 260, 8);
+        root.remove(displayObject);
+        disposeObject(displayObject);
+        finalObjectToDisplay = arrangeResult.group;
+        root.add(finalObjectToDisplay);
+
+        if (!arrangeResult.fitsBed) {
+          const fitted = fitObjectToBed(finalObjectToDisplay, safeBedX, safeBedY, 260, 0.90);
+          appliedScale = fitted.scale;
+        }
+      }
+    } else if (size.x > safeBedX || size.z > safeBedY) {
+      const fitted = fitObjectToBed(finalObjectToDisplay, safeBedX, safeBedY, 260, 0.92);
+      appliedScale = fitted.scale;
+    }
+
+    setDetectedPartsCount((prev) => (prev !== count ? count : prev));
+    setCurrentScale((prev) => (prev !== appliedScale ? appliedScale : prev));
+
+    // Measure final dimensions after positioning/arranging
+    const finalBox = new THREE.Box3().setFromObject(finalObjectToDisplay);
+    const finalSize = new THREE.Vector3();
+    finalBox.getSize(finalSize);
+
+    const dimsKey = `${Math.round(finalSize.x * 10) / 10}_${Math.round(finalSize.z * 10) / 10}_${Math.round(finalSize.y * 10) / 10}_${count}_${appliedScale}`;
+    if (lastReportedDimsRef.current !== dimsKey) {
+      lastReportedDimsRef.current = dimsKey;
+      if (onModelDimensionsChangedRef.current) {
+        onModelDimensionsChangedRef.current(
+          {
+            x: Math.round(finalSize.x * 10) / 10,
+            y: Math.round(finalSize.z * 10) / 10,
+            z: Math.round(finalSize.y * 10) / 10,
+          },
+          appliedScale,
+          count
+        );
+      }
+    }
+
+    // Adjust zoom smoothly based on bed & object size
+    const bedMax = Math.max(safeBedX, safeBedY);
+    const maxDim = Math.max(finalSize.x, finalSize.y, finalSize.z, 20);
+    const idealZoom = Math.min(320, Math.max(70, Math.max(maxDim, bedMax * 0.7) * 1.45));
     zoomRef.current = idealZoom;
-  }, [modelObject, modelBuffer, sampleType, filamentColor, isWireframe, fileType]);
+  }, [modelObject, modelBuffer, sampleType, fileType, bedSize.x, bedSize.y]);
 
   // Update wireframe & color dynamically on existing mesh
   useEffect(() => {
@@ -381,24 +516,100 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
     if (!sceneRef.current) return;
     if (theme === 'high-contrast-light') {
       sceneRef.current.background = new THREE.Color('#F1F5F9');
-      if (bedMeshRef.current) {
-        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0xE2E8F0);
-      }
     } else if (theme === 'high-contrast-dark') {
       sceneRef.current.background = new THREE.Color('#000000');
-      if (bedMeshRef.current) {
-        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0x050505);
-      }
+    } else if (theme === 'sage-bento') {
+      sceneRef.current.background = new THREE.Color('#F5F2EB');
     } else {
       sceneRef.current.background = new THREE.Color('#0A0A0B');
-      if (bedMeshRef.current) {
-        (bedMeshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0x111827);
-      }
     }
   }, [theme]);
 
+  const handleAutoArrange = () => {
+    if (!activeRootGroupRef.current) return;
+    const root = activeRootGroupRef.current;
+    if (root.children.length === 0) return;
+
+    const currentObj = root.children[0];
+    const bedW = bedSize.x || 250;
+    const bedD = bedSize.y || 250;
+    const bedH = bedSize.z || 260;
+
+    const result = autoArrangePartsOnBed(currentObj, bedW, bedD, bedH, 8);
+
+    root.remove(currentObj);
+    disposeObject(currentObj);
+    root.add(result.group);
+
+    setDetectedPartsCount(result.partsCount);
+    setCurrentScale(1);
+
+    if (onModelDimensionsChanged) {
+      onModelDimensionsChanged(result.dimensions, 1, result.partsCount);
+    }
+  };
+
+  const handleFitToBed = () => {
+    if (!activeRootGroupRef.current) return;
+    const root = activeRootGroupRef.current;
+    if (root.children.length === 0) return;
+
+    const currentObj = root.children[0];
+    const bedW = bedSize.x || 250;
+    const bedD = bedSize.y || 250;
+    const bedH = bedSize.z || 260;
+
+    const result = fitObjectToBed(currentObj, bedW, bedD, bedH, 0.92);
+
+    setCurrentScale((prev) => Number((prev * result.scale).toFixed(3)));
+
+    if (onModelDimensionsChanged) {
+      onModelDimensionsChanged(result.dimensions, result.scale, detectedPartsCount);
+    }
+  };
+
+  const handleResetScale = () => {
+    if (!activeRootGroupRef.current) return;
+    const root = activeRootGroupRef.current;
+    if (root.children.length === 0) return;
+
+    const currentObj = root.children[0];
+    currentObj.scale.set(1, 1, 1);
+
+    const box = new THREE.Box3().setFromObject(currentObj);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    currentObj.position.x = -center.x;
+    currentObj.position.z = -center.z;
+    currentObj.position.y = -box.min.y;
+
+    setCurrentScale(1);
+
+    if (onModelDimensionsChanged) {
+      onModelDimensionsChanged(
+        {
+          x: Number(size.x.toFixed(1)),
+          y: Number(size.z.toFixed(1)),
+          z: Number(size.y.toFixed(1)),
+        },
+        1,
+        detectedPartsCount
+      );
+    }
+  };
+
+  const effectiveDimX = dimensions?.x || 0;
+  const effectiveDimY = dimensions?.y || 0;
+  const bedLimitX = bedSize.x || 250;
+  const bedLimitY = bedSize.y || 250;
+  const isOverflowing = effectiveDimX > bedLimitX || effectiveDimY > bedLimitY;
+  const overflowMm = Math.max(0, effectiveDimX - bedLimitX, effectiveDimY - bedLimitY);
+
   return (
-    <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-80 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
+    <div id="v3d-canvas-wrap" className="relative w-full h-72 md:h-84 rounded-3xl overflow-hidden bg-[#0A0A0B] border border-white/[0.08] select-none shadow-inner group">
       {webglFailed ? (
         <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#111115]">
           <Box className="w-10 h-10 text-emerald-400 mb-2 animate-bounce" />
@@ -425,124 +636,169 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({
             onWheel={handleWheel}
           />
 
-          {/* Floating Header Overlay: Mesa 3D Status & Geometry Badges */}
-          <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1 pointer-events-none z-10">
-        {/* Mesa 3D Status Pill - Compact */}
-        <div className="v3d-badge flex items-center gap-1.5 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          <span className="v3d-title text-[11px] tracking-wide">Mesa 3D</span>
-        </div>
-
-        {/* Faces and Layers Badges - Compact & subtle */}
-        <div className="flex items-center gap-1">
-          {trianglesCount && trianglesCount > 0 ? (
-            <div className="v3d-sub-badge flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono shadow-sm backdrop-blur-md">
-              <Sparkles className="w-2.5 h-2.5 text-sky-400 shrink-0" />
-              <span className="v3d-dim">{trianglesCount.toLocaleString()} faces</span>
+          {/* Floating Header Overlay: Bed Info & Fit Status */}
+          <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 pointer-events-auto z-10">
+            {/* Mesa Dimensions Pill */}
+            <div className="v3d-badge flex items-center gap-1.5 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md bg-black/60 border border-white/10 text-white text-[11px] font-mono">
+              <Grid className="w-3.5 h-3.5 text-sky-400" />
+              <span>Mesa: {bedLimitX}×{bedLimitY} mm</span>
             </div>
-          ) : null}
 
-          {layerCount && layerCount > 0 ? (
-            <div className="v3d-sub-badge flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono shadow-sm backdrop-blur-md">
-              <Layers className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
-              <span className="v3d-dim">{layerCount} cam</span>
+            {/* Multi-part count badge */}
+            {detectedPartsCount > 1 && (
+              <div className="v3d-badge flex items-center gap-1 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[11px] font-mono">
+                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                <span>{detectedPartsCount} Peças</span>
+              </div>
+            )}
+
+            {/* Bed Fit Status */}
+            {isOverflowing ? (
+              <div
+                title={`O modelo excede os limites da mesa em ${overflowMm.toFixed(1)}mm. Clique em 'Organizar' ou 'Encaixar'.`}
+                className="v3d-badge flex items-center gap-1 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <span>Excede Mesa (+{overflowMm.toFixed(0)}mm)</span>
+              </div>
+            ) : (
+              <div className="v3d-badge flex items-center gap-1 px-2.5 py-1 rounded-xl shadow-md backdrop-blur-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline">Encaixa na Mesa</span>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Action Controls - Compact & Non-overlapping */}
+          <div className="v3d-toolbar absolute top-2.5 right-2.5 flex items-center gap-1 backdrop-blur-md p-1 rounded-xl shadow-md z-10 bg-black/60 border border-white/10">
+            {/* Auto-Arrange Button for Multi-Part / Multiple Pieces */}
+            <button
+              type="button"
+              id="btn-v3d-auto-arrange"
+              onClick={handleAutoArrange}
+              title="Auto-organizar peças desmontadas lado a lado na mesa de impressão"
+              className="v3d-tool-btn px-2 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] font-bold text-sky-300 hover:text-white bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30"
+            >
+              <Layers className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline">Organizar</span>
+            </button>
+
+            {/* Fit to Bed Button */}
+            <button
+              type="button"
+              id="btn-v3d-fit-to-bed"
+              onClick={handleFitToBed}
+              title="Escalonar proporcionalmente para caber 100% na mesa de impressão"
+              className="v3d-tool-btn px-2 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Encaixar</span>
+            </button>
+
+            {/* Reset to 100% scale button */}
+            {currentScale < 0.999 && (
+              <button
+                type="button"
+                id="btn-v3d-reset-scale"
+                onClick={handleResetScale}
+                title={`Restaurar tamanho original (100%). Escala atual: ${(currentScale * 100).toFixed(0)}%`}
+                className="v3d-tool-btn px-2 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:text-white bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30"
+              >
+                <RefreshCw className="w-3 h-3 text-amber-400" />
+                <span className="hidden sm:inline">100%</span>
+              </button>
+            )}
+
+            {/* Camera View Presets */}
+            <div className="flex items-center gap-0.5 border-l border-white/[0.15] pl-1 ml-0.5">
+              <button
+                type="button"
+                onClick={() => setViewAngle('iso')}
+                title="Vista Isométrica (3D)"
+                className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+                  cameraView === 'iso' ? 'v3d-active bg-white/20 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                ISO
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewAngle('top')}
+                title="Vista Superior (Planta 2D da Mesa)"
+                className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+                  cameraView === 'top' ? 'v3d-active bg-white/20 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                TOP
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewAngle('front')}
+                title="Vista Frontal"
+                className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
+                  cameraView === 'front' ? 'v3d-active bg-white/20 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                FRT
+              </button>
             </div>
-          ) : null}
-        </div>
-      </div>
 
-      {/* Floating Action Controls - Compact & Non-overlapping */}
-      <div className="v3d-toolbar absolute top-2.5 right-2.5 flex items-center gap-0.5 backdrop-blur-md p-1 rounded-xl shadow-md z-10">
-        {/* Camera View Presets */}
-        <div className="flex items-center gap-0.5 border-r border-white/[0.15] pr-1 mr-0.5">
-          <button
-            type="button"
-            onClick={() => setViewAngle('iso')}
-            title="Vista Isométrica (3D)"
-            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
-              cameraView === 'iso' ? 'v3d-active' : ''
-            }`}
-          >
-            ISO
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewAngle('top')}
-            title="Vista Superior (Planta 2D)"
-            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
-              cameraView === 'top' ? 'v3d-active' : ''
-            }`}
-          >
-            TOP
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewAngle('front')}
-            title="Vista Frontal"
-            className={`v3d-cam-btn text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition cursor-pointer ${
-              cameraView === 'front' ? 'v3d-active' : ''
-            }`}
-          >
-            FRT
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setIsWireframe(!isWireframe)}
+              title="Alternar Modo Aramado (Wireframe)"
+              className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
+                isWireframe ? 'v3d-active bg-sky-500/30 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Box className="w-3.5 h-3.5" />
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setIsWireframe(!isWireframe)}
-          title="Alternar Modo Aramado (Wireframe)"
-          className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
-            isWireframe ? 'v3d-active bg-sky-500/30' : ''
-          }`}
-        >
-          <Box className="w-3 h-3" />
-        </button>
+            <button
+              type="button"
+              onClick={() => setAutoRotate(!autoRotate)}
+              title="Alternar Giro Automático"
+              className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
+                autoRotate ? 'v3d-active bg-indigo-500/30 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setAutoRotate(!autoRotate)}
-          title="Alternar Giro Automático"
-          className={`v3d-tool-btn p-1 rounded-lg transition cursor-pointer ${
-            autoRotate ? 'v3d-active bg-indigo-500/30' : ''
-          }`}
-        >
-          <RotateCw className="w-3 h-3" />
-        </button>
+            <button
+              type="button"
+              onClick={() => (zoomRef.current = Math.max(25, zoomRef.current - 15))}
+              title="Aproximar Zoom"
+              className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer text-slate-400 hover:text-white"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
 
-        <button
-          type="button"
-          onClick={() => (zoomRef.current = Math.max(25, zoomRef.current - 12))}
-          title="Aproximar Zoom"
-          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
-        >
-          <ZoomIn className="w-3 h-3" />
-        </button>
+            <button
+              type="button"
+              onClick={() => (zoomRef.current = Math.min(350, zoomRef.current + 15))}
+              title="Afastar Zoom"
+              className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer text-slate-400 hover:text-white"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
 
-        <button
-          type="button"
-          onClick={() => (zoomRef.current = Math.min(220, zoomRef.current + 12))}
-          title="Afastar Zoom"
-          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
-        >
-          <ZoomOut className="w-3 h-3" />
-        </button>
+            <button
+              type="button"
+              onClick={handleResetCamera}
+              title="Resetar Vista 3D"
+              className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer text-slate-400 hover:text-white"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={handleResetCamera}
-          title="Resetar Vista 3D"
-          className="v3d-tool-btn p-1 rounded-lg transition cursor-pointer"
-        >
-          <RefreshCw className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Helper footer */}
-      <div className="v3d-footer absolute bottom-2.5 right-2.5 text-[10px] font-mono px-2 py-0.5 rounded-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 shadow-sm">
-        <Compass className="w-3 h-3 text-sky-400 shrink-0" />
-        <span className="v3d-dim hidden sm:inline">Arraste para rotacionar • Scroll para zoom</span>
-        <span className="v3d-dim sm:hidden">Girar • Zoom</span>
-      </div>
+          {/* Helper footer */}
+          <div className="v3d-footer absolute bottom-2.5 right-2.5 text-[10px] font-mono px-2 py-0.5 rounded-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 shadow-sm bg-black/50 text-slate-300 border border-white/10">
+            <Compass className="w-3 h-3 text-sky-400 shrink-0" />
+            <span className="v3d-dim hidden sm:inline">Arraste para rotacionar • Scroll para zoom</span>
+            <span className="v3d-dim sm:hidden">Girar • Zoom</span>
+          </div>
         </div>
       )}
     </div>
@@ -571,8 +827,60 @@ function createSampleObject(
 ): THREE.Object3D {
   const group = new THREE.Group();
 
+  if (sampleType === 'multi_box') {
+    // Multi-part Caixa + Tampa desmontadas e dispostas na mesa
+    // Peça 1: Corpo da caixa (60 x 60 x 26 mm)
+    const boxGeom = new THREE.BoxGeometry(60, 26, 60);
+    const boxMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor),
+      roughness: 0.35,
+      metalness: 0.15,
+      wireframe: isWireframe,
+    });
+    const boxMesh = new THREE.Mesh(boxGeom, boxMat);
+    boxMesh.position.set(-38, 13, 0);
+    group.add(boxMesh);
+
+    // Peça 2: Tampa da caixa (64 x 9 x 64 mm) posicionada ao lado
+    const lidGeom = new THREE.BoxGeometry(64, 9, 64);
+    const lidMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(filamentColor).offsetHSL(0, 0, 0.09),
+      roughness: 0.28,
+      metalness: 0.2,
+      wireframe: isWireframe,
+    });
+    const lidMesh = new THREE.Mesh(lidGeom, lidMat);
+    lidMesh.position.set(40, 4.5, 0);
+    group.add(lidMesh);
+
+    return group;
+  }
+
+  if (sampleType === 'multi_batch') {
+    // Lote de 4 peças distribuídas sobre a mesa de impressão
+    const coords = [
+      { x: -38, z: -38 },
+      { x: 38, z: -38 },
+      { x: -38, z: 38 },
+      { x: 38, z: 38 },
+    ];
+    coords.forEach((coord, idx) => {
+      const knobGeom = new THREE.CylinderGeometry(16, 20, 24, 28);
+      const knobMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(filamentColor).offsetHSL(0, 0, (idx % 2 === 0 ? 0.06 : -0.04)),
+        roughness: 0.35,
+        metalness: 0.15,
+        wireframe: isWireframe,
+      });
+      const knobMesh = new THREE.Mesh(knobGeom, knobMat);
+      knobMesh.position.set(coord.x, 12, coord.z);
+      group.add(knobMesh);
+    });
+    return group;
+  }
+
   if (sampleType === 'bambu_3mf') {
-    // A modern 3MF multi-component assembly: threaded container body + lid
+    // A modern 3MF multi-component assembly: threaded container body + knurled lid
     const bodyGeom = new THREE.CylinderGeometry(24, 24, 32, 36);
     const bodyMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(filamentColor),
@@ -581,10 +889,10 @@ function createSampleObject(
       wireframe: isWireframe,
     });
     const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
-    bodyMesh.position.y = 16;
+    bodyMesh.position.set(-32, 16, 0);
     group.add(bodyMesh);
 
-    // Knurled lid on top
+    // Knurled lid side by side flat on the bed plate
     const lidGeom = new THREE.CylinderGeometry(25.5, 25.5, 8, 48);
     const lidMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(filamentColor).offsetHSL(0, 0, 0.08),
@@ -593,7 +901,7 @@ function createSampleObject(
       wireframe: isWireframe,
     });
     const lidMesh = new THREE.Mesh(lidGeom, lidMat);
-    lidMesh.position.y = 36;
+    lidMesh.position.set(32, 4, 0);
     group.add(lidMesh);
 
     return group;

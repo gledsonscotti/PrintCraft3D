@@ -32,6 +32,7 @@ export const NetworkDiscoveryModal: React.FC<NetworkDiscoveryModalProps> = ({
   onSelectForManualConfig,
 }) => {
   const [subnet, setSubnet] = useState('192.168.1.0/24');
+  const [customIp, setCustomIp] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [devices, setDevices] = useState<DiscoveredNetworkPrinter[]>([]);
@@ -53,7 +54,7 @@ export const NetworkDiscoveryModal: React.FC<NetworkDiscoveryModalProps> = ({
       const res = await fetch('/api/printers/scan-network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subnet, scan_depth: 'standard' }),
+        body: JSON.stringify({ subnet, scan_depth: 'standard', custom_ip: customIp }),
       });
 
       if (!res.ok) throw new Error('Falha ao comunicar com o scanner de rede');
@@ -209,11 +210,11 @@ export const NetworkDiscoveryModal: React.FC<NetworkDiscoveryModalProps> = ({
 
         <div className="p-5 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Controls Bar */}
-          <div className="discovery-controls-bar bg-[#15151B] border border-white/[0.07] p-4 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="flex-1 max-w-xs">
+          <div className="discovery-controls-bar bg-[#15151B] border border-white/[0.07] p-4 rounded-2xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+              <div>
                 <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1 block">
-                  Faixa de IP da Rede Local
+                  Faixa de IP da Rede (Subnet)
                 </label>
                 <div className="relative">
                   <input
@@ -226,32 +227,24 @@ export const NetworkDiscoveryModal: React.FC<NetworkDiscoveryModalProps> = ({
                 </div>
               </div>
 
-              <div className="hidden sm:flex gap-1.5 pt-5 text-[11px] text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => setSubnet('192.168.1.0/24')}
-                  className="discovery-subnet-btn px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 transition cursor-pointer"
-                >
-                  192.168.1.x
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubnet('192.168.0.0/24')}
-                  className="discovery-subnet-btn px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 transition cursor-pointer"
-                >
-                  192.168.0.x
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubnet('10.0.0.0/24')}
-                  className="discovery-subnet-btn px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 transition cursor-pointer"
-                >
-                  10.0.0.x
-                </button>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-wider text-sky-400 mb-1 block flex items-center justify-between">
+                  <span>IP Específico / Fixo (Opcional)</span>
+                  <span className="text-[9px] text-slate-400 font-normal">Ex: Anycubic Kobra X</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={customIp}
+                    onChange={(e) => setCustomIp(e.target.value)}
+                    placeholder="Deixe em branco para escanear toda a rede ou digite o IP fixo"
+                    className="discovery-input w-full bg-[#0E0E12] border border-sky-500/30 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="pt-2 sm:pt-4">
+            <div className="pt-2 sm:pt-4 flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleStartScan}
@@ -261,12 +254,12 @@ export const NetworkDiscoveryModal: React.FC<NetworkDiscoveryModalProps> = ({
                 {isScanning ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                    <span>Verificando portas & mDNS...</span>
+                    <span>Buscando Kobra & Rede...</span>
                   </>
                 ) : (
                   <>
                     <Search className="w-4 h-4 text-white" />
-                    <span>{hasScanned ? 'Escanear Novamente' : 'Iniciar Varredura na Rede'}</span>
+                    <span>{hasScanned ? 'Escanear Novamente' : 'Iniciar Varredura'}</span>
                   </>
                 )}
               </button>

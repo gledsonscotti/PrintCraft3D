@@ -90,6 +90,9 @@ html[data-theme="high-contrast-light"] footer {
 
 /* Main Bento Grid Cards - Pure White with Sharp Solid Borders */
 html[data-theme="high-contrast-light"] .bg-\[\#121215\],
+html[data-theme="high-contrast-light"] .bg-\[\#121215\]\/85,
+html[data-theme="high-contrast-light"] .bg-\[\#121215\]\/75,
+html[data-theme="high-contrast-light"] .bg-\[\#121215\]\/90,
 html[data-theme="high-contrast-light"] .bg-\[\#131316\],
 html[data-theme="high-contrast-light"] .bg-\[\#141416\],
 html[data-theme="high-contrast-light"] .bg-\[\#141417\],
@@ -117,6 +120,8 @@ html[data-theme="high-contrast-light"] .bg-\[\#22222C\] {
 /* Inner Bento Sub-cells - High Contrast Slate-50 Background & Defined Edges */
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/80,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/70,
+html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/60,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\]\/40,
 html[data-theme="high-contrast-light"] .bg-\[\#0A0A0B\],
@@ -124,6 +129,14 @@ html[data-theme="high-contrast-light"] .bg-\[\#101012\],
 html[data-theme="high-contrast-light"] .bg-\[\#0D0D11\] {
   background-color: #F8FAFC !important;
   border: 1.5px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-white\/\[0\.02\],
+html[data-theme="high-contrast-light"] .bg-white\/\[0\.03\],
+html[data-theme="high-contrast-light"] .bg-white\/\[0\.04\],
+html[data-theme="high-contrast-light"] .bg-white\/\[0\.06\] {
+  background-color: #E2E8F0 !important;
+  color: #09090B !important;
 }
 
 /* Solid Borders for all Bento elements */
@@ -334,6 +347,9 @@ html[data-theme="high-contrast-dark"] footer {
 
 /* Cards with Bright Solid White Borders */
 html[data-theme="high-contrast-dark"] .bg-\[\#121215\],
+html[data-theme="high-contrast-dark"] .bg-\[\#121215\]\/85,
+html[data-theme="high-contrast-dark"] .bg-\[\#121215\]\/75,
+html[data-theme="high-contrast-dark"] .bg-\[\#121215\]\/90,
 html[data-theme="high-contrast-dark"] .bg-\[\#131316\],
 html[data-theme="high-contrast-dark"] .bg-\[\#141418\],
 html[data-theme="high-contrast-dark"] .bg-\[\#16161A\],
@@ -347,6 +363,8 @@ html[data-theme="high-contrast-dark"] .bg-\[\#1F1F24\] {
 
 html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/80,
 html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/70,
+html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/60,
 html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\]\/40,
 html[data-theme="high-contrast-dark"] .bg-\[\#0A0A0B\] {
@@ -427,6 +445,9 @@ html[data-theme="sage-bento"] footer {
 /* Bento Grid Cards - Pure White Surface, Organic Rounded Curves & Soft Shadows */
 html[data-theme="sage-bento"] .bg-\[\#121214\],
 html[data-theme="sage-bento"] .bg-\[\#121215\],
+html[data-theme="sage-bento"] .bg-\[\#121215\]\/85,
+html[data-theme="sage-bento"] .bg-\[\#121215\]\/75,
+html[data-theme="sage-bento"] .bg-\[\#121215\]\/90,
 html[data-theme="sage-bento"] .bg-\[\#121216\],
 html[data-theme="sage-bento"] .bg-\[\#131316\],
 html[data-theme="sage-bento"] .bg-\[\#141416\],
@@ -469,6 +490,8 @@ html[data-theme="sage-bento"] .bg-\[\#22222C\] {
 /* Inner Bento Sub-cells - Gentle Sand / Warm Milk background */
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/80,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/85,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/70,
+html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/60,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/40,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\],
@@ -481,6 +504,14 @@ html[data-theme="sage-bento"] .bg-\[\#111113\] {
   background-color: #F8F6F1 !important;
   border: 1.5px solid #E8E2D6 !important;
   border-radius: 1.125rem !important;
+}
+
+html[data-theme="sage-bento"] .bg-white\/\[0\.02\],
+html[data-theme="sage-bento"] .bg-white\/\[0\.03\],
+html[data-theme="sage-bento"] .bg-white\/\[0\.04\],
+html[data-theme="sage-bento"] .bg-white\/\[0\.06\] {
+  background-color: rgba(86, 125, 107, 0.08) !important;
+  color: #192C23 !important;
 }
 
 /* Thin border adjustments */
@@ -2160,6 +2191,203 @@ html[data-theme="sage-bento"] .discovery-radar-box {
   color: #192C23 !important;
 }
 
+/* --- Direct Print Trigger Button & Modal (Sage Bento) --- */
+html[data-theme="sage-bento"] .direct-print-trigger-btn {
+  background: #567D6B !important;
+  border: 1.5px solid #456656 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-trigger-btn:hover {
+  background: #466A5A !important;
+  border-color: #385547 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-trigger-pill {
+  background-color: rgba(25, 44, 35, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #EAF2EC !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-header,
+html[data-theme="sage-bento"] .direct-print-modal-footer {
+  background: #F8F6F1 !important;
+  border-color: #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-icon-badge {
+  background-color: #EAF2EC !important;
+  border-color: #C8DDD0 !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-badge-protocol {
+  background-color: #EAF2EC !important;
+  border-color: #C8DDD0 !important;
+  color: #2D5642 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-subtitle,
+html[data-theme="sage-bento"] .direct-print-muted-label {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-close {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-modal-close:hover {
+  background-color: #EDE7DC !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-job-card,
+html[data-theme="sage-bento"] .direct-print-channel-box,
+html[data-theme="sage-bento"] .direct-print-params-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-job-title,
+html[data-theme="sage-bento"] .direct-print-section-title,
+html[data-theme="sage-bento"] .direct-print-channel-title,
+html[data-theme="sage-bento"] .direct-print-params-title,
+html[data-theme="sage-bento"] .direct-print-param-label {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-cost-val {
+  color: #244636 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-discovery-link {
+  color: #446C58 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-discovery-link:hover {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-empty-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px dashed #DFD9CB !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-target-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-target-card:hover {
+  border-color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-target-card-selected {
+  background-color: #F0F6F2 !important;
+  border: 2px solid #567D6B !important;
+  box-shadow: 0 4px 14px rgba(86, 125, 107, 0.15) !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-target-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-card-footer {
+  border-top-color: #EDE8DE !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-mode-toggle {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-mode-btn {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-mode-btn:hover {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-channel-details {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-channel-details strong {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-input,
+html[data-theme="sage-bento"] .direct-print-select {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-input:focus,
+html[data-theme="sage-bento"] .direct-print-select:focus {
+  border-color: #567D6B !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-checkbox-label,
+html[data-theme="sage-bento"] .direct-print-toggle-label {
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-btn-cancel {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-btn-cancel:hover {
+  background-color: #E2DBD0 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-submit-btn {
+  background-color: #567D6B !important;
+  border: 1.5px solid #456656 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-submit-btn:hover {
+  background-color: #466A5A !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-success-box {
+  background-color: #EAF2EC !important;
+  border: 1.5px solid #C8DDD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .direct-print-log-box {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #E4DDD2 !important;
+  color: #244636 !important;
+}
+
 
 /* --- HIGH-CONTRAST LIGHT (Branco Puro / Preto Sólido Alto Contraste) --- */
 html[data-theme="high-contrast-light"] .printer-scan-btn {
@@ -2401,6 +2629,203 @@ html[data-theme="high-contrast-light"] .discovery-brand-pill-active {
 html[data-theme="high-contrast-light"] .discovery-radar-box {
   background-color: #F4F4F5 !important;
   border: 2px solid #0284C7 !important;
+  color: #09090B !important;
+}
+
+/* --- Direct Print Trigger Button & Modal (High-Contrast Light) --- */
+html[data-theme="high-contrast-light"] .direct-print-trigger-btn {
+  background: #0284C7 !important;
+  border: 2px solid #075985 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-trigger-btn:hover {
+  background: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-trigger-pill {
+  background-color: #075985 !important;
+  border: 1px solid #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-box {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-header,
+html[data-theme="high-contrast-light"] .direct-print-modal-footer {
+  background: #F4F4F5 !important;
+  border-color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-icon-badge {
+  background-color: #E0F2FE !important;
+  border: 2px solid #0284C7 !important;
+  color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-badge-protocol {
+  background-color: #E0F2FE !important;
+  border: 1.5px solid #0284C7 !important;
+  color: #0369A1 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-subtitle,
+html[data-theme="high-contrast-light"] .direct-print-muted-label {
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-close {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-modal-close:hover {
+  background-color: #E4E4E7 !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-job-card,
+html[data-theme="high-contrast-light"] .direct-print-channel-box,
+html[data-theme="high-contrast-light"] .direct-print-params-box {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-job-title,
+html[data-theme="high-contrast-light"] .direct-print-section-title,
+html[data-theme="high-contrast-light"] .direct-print-channel-title,
+html[data-theme="high-contrast-light"] .direct-print-params-title,
+html[data-theme="high-contrast-light"] .direct-print-param-label {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-cost-val {
+  color: #15803D !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-discovery-link {
+  color: #0284C7 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-discovery-link:hover {
+  color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-empty-box {
+  background-color: #F4F4F5 !important;
+  border: 2px dashed #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-target-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-target-card:hover {
+  border-color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-target-card-selected {
+  background-color: #F0F9FF !important;
+  border: 2.5px solid #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-target-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-card-footer {
+  border-top: 1.5px solid #E4E4E7 !important;
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-mode-toggle {
+  background-color: #E4E4E7 !important;
+  border: 1.5px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-mode-btn {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-channel-details {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-channel-details strong {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-input,
+html[data-theme="high-contrast-light"] .direct-print-select {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-input:focus,
+html[data-theme="high-contrast-light"] .direct-print-select:focus {
+  border-color: #0284C7 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-checkbox-label,
+html[data-theme="high-contrast-light"] .direct-print-toggle-label {
+  color: #09090B !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-btn-cancel {
+  background-color: #E4E4E7 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-btn-cancel:hover {
+  background-color: #D4D4D8 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-submit-btn {
+  background-color: #0284C7 !important;
+  border: 2px solid #075985 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-submit-btn:hover {
+  background-color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-success-box {
+  background-color: #F0FDF4 !important;
+  border: 2px solid #16A34A !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .direct-print-log-box {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
   color: #09090B !important;
 }
 
@@ -2647,6 +3072,202 @@ html[data-theme="high-contrast-dark"] .discovery-radar-box {
   background-color: #09090B !important;
   border: 2px solid #38BDF8 !important;
   color: #FFFFFF !important;
+}
+
+/* --- Direct Print Trigger Button & Modal (High-Contrast Dark) --- */
+html[data-theme="high-contrast-dark"] .direct-print-trigger-btn {
+  background: #0284C7 !important;
+  border: 2px solid #38BDF8 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-trigger-btn:hover {
+  background: #0369A1 !important;
+  border-color: #7DD3FC !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-trigger-pill {
+  background-color: #082F49 !important;
+  border: 1px solid #38BDF8 !important;
+  color: #E0F2FE !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-box {
+  background-color: #000000 !important;
+  border: 2px solid #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-header,
+html[data-theme="high-contrast-dark"] .direct-print-modal-footer {
+  background: #09090B !important;
+  border-color: #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-icon-badge {
+  background-color: #082F49 !important;
+  border: 1.5px solid #38BDF8 !important;
+  color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-badge-protocol {
+  background-color: #082F49 !important;
+  border: 1.5px solid #38BDF8 !important;
+  color: #38BDF8 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-subtitle,
+html[data-theme="high-contrast-dark"] .direct-print-muted-label {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-close {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-modal-close:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-job-card,
+html[data-theme="high-contrast-dark"] .direct-print-channel-box,
+html[data-theme="high-contrast-dark"] .direct-print-params-box {
+  background-color: #09090B !important;
+  border: 1.5px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-job-title,
+html[data-theme="high-contrast-dark"] .direct-print-section-title,
+html[data-theme="high-contrast-dark"] .direct-print-channel-title,
+html[data-theme="high-contrast-dark"] .direct-print-params-title,
+html[data-theme="high-contrast-dark"] .direct-print-param-label {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-cost-val {
+  color: #4ADE80 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-discovery-link {
+  color: #38BDF8 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-discovery-link:hover {
+  color: #7DD3FC !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-empty-box {
+  background-color: #09090B !important;
+  border: 2px dashed #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-target-card {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-target-card:hover {
+  border-color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-target-card-selected {
+  background-color: #082F49 !important;
+  border: 2.5px solid #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-target-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-card-footer {
+  border-top: 1px solid #27272A !important;
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-mode-toggle {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-mode-btn {
+  color: #D4D4D8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-channel-details {
+  background-color: #000000 !important;
+  border: 1px solid #27272A !important;
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-channel-details strong {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-input,
+html[data-theme="high-contrast-dark"] .direct-print-select {
+  background-color: #09090B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-input:focus,
+html[data-theme="high-contrast-dark"] .direct-print-select:focus {
+  border-color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-checkbox-label,
+html[data-theme="high-contrast-dark"] .direct-print-toggle-label {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-btn-cancel {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+  color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-btn-cancel:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-submit-btn {
+  background-color: #0284C7 !important;
+  border: 2px solid #38BDF8 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-submit-btn:hover {
+  background-color: #0369A1 !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-success-box {
+  background-color: #064E3B !important;
+  border: 2px solid #34D399 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .direct-print-log-box {
+  background-color: #000000 !important;
+  border: 1.5px solid #27272A !important;
+  color: #34D399 !important;
 }
 
 /* =========================================================================

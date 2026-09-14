@@ -163,7 +163,55 @@ export interface Product {
   ready_stock_qty?: number;
   min_stock_alert?: number;
   image_url?: string;
+  plates_json?: string; // JSON of BuildPlate[] or PlatesProjectData
   created_at: string;
+}
+
+export interface BuildPlatePart {
+  id: string;
+  name: string;
+  originalMeshIndex: number;
+  color_hex?: string;
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  scale: { x: number; y: number; z: number };
+  dimensions: { x: number; y: number; z: number };
+  volumeCm3: number;
+  weightGrams: number;
+  trianglesCount: number;
+}
+
+export interface BuildPlate {
+  id: string;
+  name: string;
+  plateNumber: number;
+  printer_id?: string;
+  filament_id?: string;
+  filament_name?: string;
+  filament_color?: string;
+  filament_color_hex?: string;
+  filament_material?: string;
+  bed_dimensions: { x: number; y: number; z: number };
+  parts: BuildPlatePart[];
+  estimated_time_minutes: number;
+  estimated_weight_g: number;
+  estimated_cost: number;
+  notes?: string;
+}
+
+export interface PlatesProjectData {
+  id?: string;
+  projectName: string;
+  sourceFileName?: string;
+  productId?: string;
+  productName?: string;
+  plates: BuildPlate[];
+  totalPlates: number;
+  totalParts: number;
+  totalWeightG: number;
+  totalTimeMinutes: number;
+  totalCost: number;
+  updatedAt: string;
 }
 
 export interface ProductSubcategory {

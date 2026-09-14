@@ -283,15 +283,18 @@ Evite os erros mais comuns cometidos por oficinas de manufatura aditiva:
 - **O Problema**: Muitos orçamentos consideram apenas a potência do bico extrusor (~50W). No entanto, a mesa aquecida consome de 150W a 350W contínuos ou em ciclos PWM. Em impressões de ABS/PETG a 80°C–100°C que duram 14 horas, a mesa consome mais de 70% de toda a energia elétrica do trabalho.
 - **A Solução**: Mantenha as potências separadas (Extrusora vs Mesa) devidamente preenchidas no cadastro de cada impressora.
 
-### 3. IP Estático ou Reserva DHCP para Impressoras na Rede
+### 3. IP Estático ou Reserva DHCP para Impressoras na Rede (ex: Anycubic Kobra, Bambu, Creality)
 - **O Problema**: Se o roteador da sua oficina reiniciar e atribuir um novo IP dinâmico para a impressora via DHCP, o envio direto de G-Code e o teste de ping falharão.
-- **A Solução**: Acesse o roteador Wi-Fi da oficina e faça a **Reserva de IP (DHCP Static Lease)** para o endereço MAC de cada impressora (ex: fixar a Bambu P1S em `192.168.1.50` e a Prusa MK4 em `192.168.1.51`).
+- **A Solução**: Acesse o roteador Wi-Fi da oficina e faça a **Reserva de IP (DHCP Static Lease)** para o endereço MAC de cada impressora (ex: fixar a Anycubic Kobra X em `192.168.1.130`, a Bambu P1S em `192.168.1.108` e a Prusa MK4 em `192.168.1.122`). Na ferramenta de **Varredura de Rede**, você pode digitar o IP fixo no campo *IP Específico* para localização instantânea da sua máquina Anycubic Kobra.
 
 ### 4. Evite Duplicidade de Baixa de Estoque
 - Se você cadastrou um produto acabado com BOM e efetuou a baixa através da conclusão da Ordem de Produção (OP), **não debite manualmente** os gramas do carretel na tela de estoque, caso contrário haverá baixa em dobro.
 
-### 5. Rotina Semanal de Backup do Banco de Dados
-- Acesse **Configurações** ➔ sub-aba **Integrações & Backups** uma vez por semana e clique em **"Exportar Backup Completo (JSON)"**. Guarde esse arquivo em uma pasta segura na nuvem (Google Drive, Dropbox ou pen drive).
+### 5. Rotina de Backup e Restauração de Dados (JSON e SQLite por Empresa)
+- **Backup da Empresa Conectada**: Acesse **Configurações** ➔ sub-aba **Integrações & Backups** e clique em **"Exportar Backup Completo (JSON)"**. Você também pode restaurar backups JSON a qualquer momento nesta mesma tela.
+- **Gerenciamento por Empresa (Super Administrador)**: No painel **Super Administrador** ➔ aba **Bancos SQLite por Empresa**, você pode:
+  - **Baixar Banco (.sqlite)**: download do arquivo binário SQLite isolado da empresa selecionada.
+  - **Importar Banco / Backup**: envie tanto arquivos binários `.sqlite` quanto backups `.json` salvos anteriormente. O sistema reconhece o formato automaticamente, valida a integridade e restaura todo o catálogo de filamentos, insumos, impressoras e ordens da empresa sem falhas.
 
 ---
 

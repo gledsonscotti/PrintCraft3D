@@ -84,25 +84,29 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
   // Choose printer automatically or sync from prop
   useEffect(() => {
+    if (!isOpen) return;
     if (initialPrinterId) {
-      setSelectedPrinterId(initialPrinterId);
-    } else if (isOpen && printers.length > 0 && !selectedPrinterId) {
-      const readyPrinter = printers.find(p => p.status === 'available') || printers[0];
-      setSelectedPrinterId(readyPrinter.id);
-      if (readyPrinter.connection_type) {
-        setConnectionMode(readyPrinter.connection_type);
+      setSelectedPrinterId((prev) => (prev !== initialPrinterId ? initialPrinterId : prev));
+    } else if (printers.length > 0) {
+      const readyPrinter = printers.find((p) => p.status === 'available') || printers[0];
+      if (readyPrinter) {
+        setSelectedPrinterId((prev) => (prev ? prev : readyPrinter.id));
+        if (readyPrinter.connection_type) {
+          setConnectionMode((prev) => (prev ? prev : readyPrinter.connection_type!));
+        }
       }
     }
-  }, [isOpen, printers, selectedPrinterId, initialPrinterId]);
+  }, [isOpen, printers, initialPrinterId]);
 
-  const selectedPrinter = printers.find(p => p.id === selectedPrinterId);
+  const selectedPrinter = printers.find((p) => p.id === selectedPrinterId);
   const brandPreset = selectedPrinter?.brand ? PRINTER_BRANDS[selectedPrinter.brand as PrinterBrand] : null;
 
   useEffect(() => {
+    if (!isOpen) return;
     if (selectedPrinter?.connection_type) {
-      setConnectionMode(selectedPrinter.connection_type);
+      setConnectionMode((prev) => (prev !== selectedPrinter.connection_type ? selectedPrinter.connection_type! : prev));
     }
-  }, [selectedPrinter]);
+  }, [isOpen, selectedPrinter?.connection_type]);
 
   if (!isOpen) return null;
 
@@ -180,23 +184,23 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-[#0F0F13] border border-white/[0.1] rounded-3xl shadow-2xl overflow-hidden my-auto">
+      <div className="direct-print-modal-box relative w-full max-w-3xl bg-[#0F0F13] border border-white/[0.1] rounded-3xl shadow-2xl overflow-hidden my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/[0.08] bg-gradient-to-r from-emerald-950/40 via-[#121217] to-[#171720]">
+        <div className="direct-print-modal-header flex items-center justify-between p-5 sm:p-6 border-b border-white/[0.08] bg-gradient-to-r from-emerald-950/40 via-[#121217] to-[#171720]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
+            <div className="direct-print-icon-badge w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
               <Zap className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-tight">
+                <h3 className="direct-print-modal-title text-base font-bold text-white tracking-tight">
                   Envio Direto para Impressora 3D
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="direct-print-badge-protocol px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   LAN / Cloud
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="direct-print-modal-subtitle text-xs text-slate-400 mt-0.5">
                 Dispare o trabalho calculado diretamente para a máquina sem precisar de pendrive ou SD card.
               </p>
             </div>
@@ -205,7 +209,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="direct-print-modal-close w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -213,12 +217,12 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
         <div className="p-5 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Job Summary Banner */}
-          <div className="p-4 rounded-2xl bg-[#15151B] border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
+          <div className="direct-print-job-card p-4 rounded-2xl bg-[#15151B] border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+              <span className="direct-print-muted-label text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
                 Trabalho a Imprimir
               </span>
-              <h4 className="text-sm font-bold text-white mt-0.5">
+              <h4 className="direct-print-job-title text-sm font-bold text-white mt-0.5">
                 {jobData.job_name || jobData.modelName || jobData.product_name || jobData.file_name || 'Modelo Calculado'}
               </h4>
               <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
@@ -244,8 +248,8 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
             {effectiveTotalCost !== undefined && (
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">Custo Total</span>
-                <span className="text-base font-extrabold text-emerald-400">
+                <span className="direct-print-muted-label text-[10px] text-slate-400 uppercase block font-semibold">Custo Total</span>
+                <span className="direct-print-cost-val text-base font-extrabold text-emerald-400">
                   R$ {Number(effectiveTotalCost || 0).toFixed(2)}
                 </span>
               </div>
@@ -255,7 +259,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
           {/* Success State */}
           {sendSuccess ? (
             <div className="space-y-4 py-3">
-              <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-3">
+              <div className="direct-print-success-box p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-3">
                 <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
@@ -269,7 +273,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
               </div>
 
               {/* Protocol Logs */}
-              <div className="rounded-2xl bg-[#09090C] border border-white/[0.08] p-4 font-mono text-[11px] text-slate-300 space-y-1.5">
+              <div className="direct-print-log-box rounded-2xl bg-[#09090C] border border-white/[0.08] p-4 font-mono text-[11px] text-slate-300 space-y-1.5">
                 <div className="flex items-center gap-2 pb-2 mb-2 border-b border-white/[0.06] text-xs text-slate-400">
                   <Terminal className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Log de Comunicação do Protocolo ({selectedPrinter?.brand})</span>
@@ -285,7 +289,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs transition cursor-pointer"
+                  className="direct-print-submit-btn px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs transition cursor-pointer"
                 >
                   Concluir e Fechar
                 </button>
@@ -296,7 +300,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
               {/* Printer Selection */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <label className="direct-print-section-title text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <PrinterIcon className="w-3.5 h-3.5 text-sky-400" />
                     Selecione a Impressora de Destino
                   </label>
@@ -307,7 +311,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                         onClose();
                         onOpenNetworkDiscovery();
                       }}
-                      className="text-[11px] text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
+                      className="direct-print-discovery-link text-[11px] text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <Wifi className="w-3 h-3" />
                       Buscar na Rede
@@ -316,7 +320,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                 </div>
 
                 {printers.length === 0 ? (
-                  <div className="p-6 rounded-2xl bg-[#14141A] border border-dashed border-white/[0.1] text-center space-y-3">
+                  <div className="direct-print-empty-box p-6 rounded-2xl bg-[#14141A] border border-dashed border-white/[0.1] text-center space-y-3">
                     <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
                     <p className="text-xs text-slate-300">
                       Nenhuma impressora cadastrada no sistema.
@@ -346,9 +350,9 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                         <div
                           key={p.id}
                           onClick={() => setSelectedPrinterId(p.id)}
-                          className={`p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
+                          className={`direct-print-target-card p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
                             isSelected
-                              ? 'bg-sky-500/10 border-sky-500/60 shadow-lg shadow-sky-500/10'
+                              ? 'direct-print-target-card-selected bg-sky-500/10 border-sky-500/60 shadow-lg shadow-sky-500/10'
                               : 'bg-[#14141A] border-white/[0.08] hover:border-white/[0.16]'
                           }`}
                         >
@@ -366,7 +370,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                               </span>
                             </div>
 
-                            <h5 className="text-xs font-bold text-white truncate">
+                            <h5 className="direct-print-target-title text-xs font-bold text-white truncate">
                               {p.name}
                             </h5>
                             <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
@@ -382,7 +386,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between pt-2 mt-2 border-t border-white/[0.05] text-[10px] text-slate-400">
+                          <div className="direct-print-card-footer flex items-center justify-between pt-2 mt-2 border-t border-white/[0.05] text-[10px] text-slate-400">
                             <span>Mesa: {p.bed_size_x || 220}x{p.bed_size_y || 220} mm</span>
                             {isSelected && (
                               <span className="text-sky-400 font-bold flex items-center gap-1">
@@ -399,17 +403,17 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
               {/* Connection Mode & Route Selector */}
               {selectedPrinter && (
-                <div className="p-4 rounded-2xl bg-[#14141A] border border-white/[0.08] space-y-3">
+                <div className="direct-print-channel-box p-4 rounded-2xl bg-[#14141A] border border-white/[0.08] space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <span className="direct-print-channel-title text-xs font-bold text-slate-300 flex items-center gap-1.5">
                       <Settings2 className="w-3.5 h-3.5 text-slate-400" />
                       Canal de Transmissão para {selectedPrinter.brand || 'Impressora'}
                     </span>
-                    <div className="flex items-center gap-1 bg-[#0A0A0E] p-0.5 rounded-xl border border-white/[0.08]">
+                    <div className="direct-print-mode-toggle flex items-center gap-1 bg-[#0A0A0E] p-0.5 rounded-xl border border-white/[0.08]">
                       <button
                         type="button"
                         onClick={() => setConnectionMode('lan')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                        className={`direct-print-mode-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
                           connectionMode === 'lan'
                             ? 'bg-sky-500 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white'
@@ -421,7 +425,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setConnectionMode('cloud')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                        className={`direct-print-mode-btn px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
                           connectionMode === 'cloud'
                             ? 'bg-purple-600 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white'
@@ -433,7 +437,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-400 bg-black/30 p-2.5 rounded-xl border border-white/[0.04]">
+                  <div className="direct-print-channel-details text-[11px] text-slate-400 bg-black/30 p-2.5 rounded-xl border border-white/[0.04]">
                     {connectionMode === 'lan' ? (
                       <div className="flex items-center justify-between">
                         <span>Endereço LAN: <strong className="text-white font-mono">{selectedPrinter.ip_address || '192.168.1.108'}:{selectedPrinter.port || 80}</strong></span>
@@ -450,47 +454,47 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
               )}
 
               {/* Hardware Execution & Calibration Options */}
-              <div className="p-4 rounded-2xl bg-[#14141A] border border-white/[0.08] space-y-3">
-                <span className="text-xs font-bold text-slate-300 block">
+              <div className="direct-print-params-box p-4 rounded-2xl bg-[#14141A] border border-white/[0.08] space-y-3">
+                <span className="direct-print-params-title text-xs font-bold text-slate-300 block">
                   Parâmetros de Disparo e Calibração
                 </span>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {/* Nozzle Temp */}
                   <div>
-                    <label className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
+                    <label className="direct-print-param-label text-[10px] text-slate-400 font-semibold uppercase block mb-1">
                       Temp. Bico (°C)
                     </label>
                     <input
                       type="number"
                       value={nozzleTemp}
                       onChange={(e) => setNozzleTemp(Number(e.target.value))}
-                      className="w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-sky-500 focus:outline-none"
+                      className="direct-print-input w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-sky-500 focus:outline-none"
                     />
                   </div>
 
                   {/* Bed Temp */}
                   <div>
-                    <label className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
+                    <label className="direct-print-param-label text-[10px] text-slate-400 font-semibold uppercase block mb-1">
                       Temp. Mesa (°C)
                     </label>
                     <input
                       type="number"
                       value={bedTemp}
                       onChange={(e) => setBedTemp(Number(e.target.value))}
-                      className="w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-sky-500 focus:outline-none"
+                      className="direct-print-input w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-sky-500 focus:outline-none"
                     />
                   </div>
 
                   {/* AMS Slot */}
                   <div>
-                    <label className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
+                    <label className="direct-print-param-label text-[10px] text-slate-400 font-semibold uppercase block mb-1">
                       Slot AMS / Material
                     </label>
                     <select
                       value={amsSlot}
                       onChange={(e) => setAmsSlot(Number(e.target.value))}
-                      className="w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-sky-500 focus:outline-none"
+                      className="direct-print-select w-full bg-[#0A0A0E] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-sky-500 focus:outline-none"
                     >
                       <option value={1}>Slot 1 (Principal)</option>
                       <option value={2}>Slot 2</option>
@@ -508,7 +512,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                         onChange={(e) => setAutoStart(e.target.checked)}
                         className="rounded border-white/[0.2] text-sky-500 focus:ring-0 w-4 h-4 bg-[#0A0A0E]"
                       />
-                      <span className="text-[11px] font-bold text-white">Auto-iniciar</span>
+                      <span className="direct-print-checkbox-label text-[11px] font-bold text-white">Auto-iniciar</span>
                     </label>
                   </div>
                 </div>
@@ -522,7 +526,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                       onChange={(e) => setAutoBedLevel(e.target.checked)}
                       className="rounded border-white/[0.2] text-sky-500 w-3.5 h-3.5 bg-[#0A0A0E]"
                     />
-                    <span className="text-[11px]">Nivelamento de Mesa (ABL)</span>
+                    <span className="direct-print-toggle-label text-[11px]">Nivelamento de Mesa (ABL)</span>
                   </label>
 
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -532,7 +536,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                       onChange={(e) => setFlowCalibration(e.target.checked)}
                       className="rounded border-white/[0.2] text-sky-500 w-3.5 h-3.5 bg-[#0A0A0E]"
                     />
-                    <span className="text-[11px]">Calibração Dinâmica / MicroLidar</span>
+                    <span className="direct-print-toggle-label text-[11px]">Calibração Dinâmica / MicroLidar</span>
                   </label>
 
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -542,7 +546,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
                       onChange={(e) => setTimelapse(e.target.checked)}
                       className="rounded border-white/[0.2] text-sky-500 w-3.5 h-3.5 bg-[#0A0A0E]"
                     />
-                    <span className="text-[11px]">Gravar Timelapse</span>
+                    <span className="direct-print-toggle-label text-[11px]">Gravar Timelapse</span>
                   </label>
                 </div>
               </div>
@@ -559,11 +563,11 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
 
         {/* Footer */}
         {!sendSuccess && (
-          <div className="p-4 sm:p-5 border-t border-white/[0.08] bg-[#0A0A0D] flex items-center justify-between">
+          <div className="direct-print-modal-footer p-4 sm:p-5 border-t border-white/[0.08] bg-[#0A0A0D] flex items-center justify-between">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-bold text-white transition cursor-pointer"
+              className="direct-print-btn-cancel px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-bold text-white transition cursor-pointer"
             >
               Cancelar
             </button>
@@ -572,7 +576,7 @@ export const DirectPrintModal: React.FC<DirectPrintModalProps> = ({
               type="button"
               onClick={handleSendDirectPrint}
               disabled={isSending || !selectedPrinter}
-              className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+              className="direct-print-submit-btn px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-500/20 cursor-pointer"
             >
               {isSending ? (
                 <>

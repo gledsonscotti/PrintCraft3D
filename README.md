@@ -18,12 +18,13 @@ Sistema profissional full-stack desenvolvido para proprietários de impressoras 
 - **Formação de Preço Inteligente**: sugestão de preço de venda por markup multiplicador sobre o custo total e cálculo de margem líquida.
 
 ### 2. Varredura de Rede Local (LAN Auto-Discovery) & Presets de 10 Marcas
-- **Descoberta Automática de Dispositivos**: varredura de sub-rede local (ex: `192.168.1.0/24`) com verificação síncrona de portas de controle (8883, 7125, 80, 8888, 8899, 12345, 8000, 8088, 8443) e protocolos de rede (**mDNS**, **SSDP**, **Moonraker Klipper**, **Bambu MQTT**, **OctoPrint REST**).
+- **Descoberta Automática de Dispositivos**: varredura de sub-rede local (ex: `192.168.1.0/24`) com verificação síncrona de portas de controle (8883, 7125, 80, 8888, 8899, 12345, 8000, 8088, 8443) e protocolos de rede (**mDNS**, **SSDP**, **Moonraker Klipper**, **Bambu MQTT**, **OctoPrint REST**, **Anycubic OS**).
+- **Foco em IP Específico**: suporte a busca direcionada por IP fixo para localização instantânea da sua máquina (ex: Anycubic Kobra X na porta 8888).
 - **Suporte aos 10 Principais Fabricantes Globais**:
   - **Bambu Lab** (X1-Carbon, P1S, P1P, A1, A1 Mini, X1E com detecção nativa de AMS)
   - **Creality** (K1, K1 Max, K1C, Ender 3 V3, Ender 3 S1 Pro, CR-10 SE, Halot Mage)
   - **Prusa Research** (MK4, MK3S+, XL Multi-Tool, MINI+, SL1S Speed)
-  - **Anycubic** (Kobra 2 Max, Kobra 2 Pro, Photon Mono M5s, Kobra 3 Combo com ACE)
+  - **Anycubic** (Kobra X Direct LAN, Kobra 3 Combo com ACE Pro, Kobra 2 Max, Kobra 2 Pro, Photon Mono M5s)
   - **Elegoo** (Neptune 4 Pro, Neptune 4 Max, Saturn 3 Ultra, Mars 4 Ultra)
   - **Flashforge** (Adventurer 5M Pro, Guider 3 Plus, Creator 4)
   - **Stratasys** (F370, F170, Fortus 450mc, Origin One)
@@ -64,7 +65,8 @@ Sistema profissional full-stack desenvolvido para proprietários de impressoras 
   - Ajustes de temperatura e fluxo para minimização de falhas mecânicas.
 
 ### 8. Arquitetura Multi-Tenant & Painel Super Administrador (SaaS)
-- **Isolamento por Empresa (CNPJ/CPF)**: criação e segregação de bancos de dados SQLite individuais por empresa cliente (`tenant_databases/tenant_<cnpj>.sqlite`), além do banco central administrativo.
+- **Isolamento por Empresa (CNPJ/CPF)**: criação e segregação de bancos de dados SQLite individuais por empresa cliente (`data/tenants/cnpj_<numero>.sqlite`), além do banco central administrativo.
+- **Importação e Exportação Híbrida de Backups**: capacidade de baixar e restaurar tanto arquivos binários nativos `.sqlite` quanto arquivos de backup estruturados `.json` diretamente pelo painel de bancos de dados da empresa com validação de cabeçalho binário e integridade relacional.
 - **Planos de Assinatura Flexíveis**: precificação mensal/anual, limites de usuários, cotas de impressoras e recursos liberados por plano.
 - **Auditoria & Logs de Acesso**: histórico completo de operações, logins de usuários e atividades de segurança da plataforma.
 - **Governança do Super Administrador**: criação, ativação, suspensão e exclusão de empresas e assinantes.

@@ -267,6 +267,21 @@ export const PRINTER_BRANDS: Record<PrinterBrand, BrandInfo> = {
     lanProtocolName: 'Anycubic Kobra OS LAN (Porta 8888 ou 8080)',
     models: [
       {
+        model: 'Anycubic Kobra X (Direct LAN)',
+        category: 'fdm',
+        powerWatts: 90,
+        bedWatts: 250,
+        hourlyDepreciation: 0.65,
+        bedSize: { x: 250, y: 250, z: 260 },
+        nozzleDiameter: 0.4,
+        defaultLanPort: 8888,
+        defaultProtocol: 'anycubic_lan',
+        supportsAms: true,
+        amsName: 'Anycubic ACE Pro Multi-Cor',
+        hasCamera: true,
+        hasLidarFlow: false,
+      },
+      {
         model: 'Kobra 3 Combo (com ACE Pro)',
         category: 'fdm',
         powerWatts: 85,
