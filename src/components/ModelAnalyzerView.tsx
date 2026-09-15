@@ -22,7 +22,6 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
-  Terminal,
   Bug,
   X
 } from 'lucide-react';
@@ -463,16 +462,6 @@ export const ModelAnalyzerView: React.FC<ModelAnalyzerViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/[0.06]">
-          <button
-            type="button"
-            onClick={() => setShowDiagnosticsPanel(!showDiagnosticsPanel)}
-            className="px-3.5 py-2.5 rounded-2xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-sm"
-            title="Abrir console de diagnóstico 3D (Tracing de carregamento e parsing)"
-          >
-            <Terminal className="w-4 h-4 text-sky-400" />
-            <span>Diagnóstico 3D</span>
-          </button>
-
           <button
             type="button"
             onClick={handleRequestAiOptimization}

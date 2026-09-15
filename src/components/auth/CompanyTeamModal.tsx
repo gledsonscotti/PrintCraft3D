@@ -26,6 +26,7 @@ interface CompanyTeamModalProps {
   companyId: string;
   companyName: string;
   isSuperadmin?: boolean;
+  currentUser?: AppUser | null;
 }
 
 interface ModuleOption {
@@ -51,6 +52,7 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
   companyId,
   companyName,
   isSuperadmin = false,
+  currentUser,
 }) => {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [companyInfo, setCompanyInfo] = useState<{
@@ -63,6 +65,17 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
 
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const activeUser = currentUser || (() => {
+    try {
+      const saved = localStorage.getItem('printcraft_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const canManageTeam = isSuperadmin || activeUser?.role === 'admin' || activeUser?.role === 'superadmin';
 
   // Form states for creating / editing user
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
@@ -232,7 +245,21 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
   };
 
   const handleDeleteUser = async (u: AppUser) => {
-    if (!window.confirm(`Deseja realmente remover o usuário "${u.name}" da equipe da empresa?`)) return;
+    const isSelf = Boolean(
+      (activeUser?.id && u.id === activeUser.id) ||
+      (activeUser?.email && u.email && u.email.trim().toLowerCase() === activeUser.email.trim().toLowerCase())
+    );
+
+    if (isSelf) {
+      alert('Você não pode excluir sua própria conta enquanto estiver conectado ao sistema.');
+      return;
+    }
+
+    const confirmMsg = u.role === 'admin'
+      ? `Deseja realmente remover o administrador "${u.name}" (${u.email})? Esta conta não está logada nesta sessão.`
+      : `Deseja realmente remover o colaborador "${u.name}" da equipe da empresa?`;
+
+    if (!window.confirm(confirmMsg)) return;
 
     const targetId = companyId || (isSuperadmin ? 'superadmin' : 'comp-1');
 
@@ -366,7 +393,13 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
             <div className="space-y-3">
               {users.map((u) => {
                 const isAdmin = u.role === 'admin';
-                const hasAllPerms = isAdmin || (u.permissions && u.permissions.includes('all'));
+                const isSuperadminUser = u.role === 'superadmin';
+                const isSelf = Boolean(
+                  (activeUser?.id && u.id === activeUser.id) ||
+                  (activeUser?.email && u.email && u.email.trim().toLowerCase() === activeUser.email.trim().toLowerCase())
+                );
+                const hasAllPerms = isAdmin || isSuperadminUser || (u.permissions && u.permissions.includes('all'));
+                const canDeleteThisUser = canManageTeam && !isSelf && (!isSuperadminUser || isSuperadmin);
 
                 return (
                   <div
@@ -383,6 +416,11 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
                         }`}>
                           {isAdmin ? 'Admin da Empresa' : u.role.toUpperCase()}
                         </span>
+                        {isSelf && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            Sua Conta (Logado)
+                          </span>
+                        )}
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                           u.status === 'active'
                             ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
@@ -446,15 +484,20 @@ export const CompanyTeamModal: React.FC<CompanyTeamModalProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                         <span>Editar</span>
                       </button>
-                      {!isAdmin && (
+                      {canDeleteThisUser ? (
                         <button
                           onClick={() => handleDeleteUser(u)}
-                          className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-xs rounded-lg border border-rose-800/50 flex items-center space-x-1 transition-all"
+                          className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-xs rounded-lg border border-rose-800/50 flex items-center space-x-1 transition-all cursor-pointer"
+                          title={isAdmin ? "Remover Administrador não conectado" : "Remover colaborador"}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Remover</span>
                         </button>
-                      )}
+                      ) : isSelf ? (
+                        <span className="text-[11px] text-slate-500 italic px-2 py-1">
+                          (Sessão ativa)
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 );

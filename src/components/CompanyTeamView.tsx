@@ -74,7 +74,16 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
 
-  const canManageTeam = isSuperadmin || currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const activeUser = currentUser || (() => {
+    try {
+      const saved = localStorage.getItem('printcraft_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const canManageTeam = isSuperadmin || activeUser?.role === 'admin' || activeUser?.role === 'superadmin';
 
   const loadCompanyUsers = async () => {
     const targetId = companyId || (isSuperadmin ? 'superadmin' : 'comp-1');
@@ -227,6 +236,17 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
   const handleDeleteUserConfirmed = async () => {
     if (!userToDelete) return;
 
+    const isSelf = Boolean(
+      (activeUser?.id && userToDelete.id === activeUser.id) ||
+      (activeUser?.email && userToDelete.email && userToDelete.email.trim().toLowerCase() === activeUser.email.trim().toLowerCase())
+    );
+
+    if (isSelf) {
+      alert('Você não pode excluir sua própria conta enquanto estiver conectado ao sistema.');
+      setUserToDelete(null);
+      return;
+    }
+
     const targetId = companyId || (isSuperadmin ? 'superadmin' : 'comp-1');
 
     try {
@@ -363,7 +383,14 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {users.map((u) => {
             const isAdmin = u.role === 'admin';
-            const hasAllPerms = isAdmin || (u.permissions && u.permissions.includes('all'));
+            const isSuperadminUser = u.role === 'superadmin';
+            const isSelf = Boolean(
+              (activeUser?.id && u.id === activeUser.id) ||
+              (activeUser?.email && u.email && u.email.trim().toLowerCase() === activeUser.email.trim().toLowerCase())
+            );
+            const hasAllPerms = isAdmin || isSuperadminUser || (u.permissions && u.permissions.includes('all'));
+            // An administrator can remove another administrator or team member, as long as the user being deleted is not currently logged in (not self)
+            const canDeleteThisUser = canManageTeam && !isSelf && (!isSuperadminUser || isSuperadmin);
 
             return (
               <div
@@ -386,6 +413,12 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
                           }`}>
                             {isAdmin ? 'Admin da Oficina' : u.role.toUpperCase()}
                           </span>
+                          {isSelf && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                              Sua Conta (Logado)
+                            </span>
+                          )}
                           {u.company_name && (
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
                               {u.company_name}
@@ -455,16 +488,21 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
                       <Edit2 className="w-3.5 h-3.5 text-slate-400" />
                       <span>Editar</span>
                     </button>
-                    {!isAdmin && (
+                    {canDeleteThisUser ? (
                       <button
                         type="button"
                         onClick={() => setUserToDelete(u)}
                         className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs rounded-lg border border-rose-500/20 flex items-center gap-1.5 transition cursor-pointer"
+                        title={isAdmin ? "Excluir Administrador não conectado" : "Excluir membro da equipe"}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Remover</span>
                       </button>
-                    )}
+                    ) : isSelf ? (
+                      <span className="text-[11px] text-slate-500 italic px-2 py-1 select-none">
+                        (Conta em uso)
+                      </span>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -664,27 +702,43 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
                 <Trash2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Remover Membro da Equipe?</h3>
-                <p className="text-xs text-slate-400">Esta ação revogará imediatamente o acesso do colaborador à oficina.</p>
+                <h3 className="text-base font-bold text-white">
+                  {userToDelete.role === 'admin' ? 'Remover Administrador?' : 'Remover Membro da Equipe?'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {userToDelete.role === 'admin'
+                    ? 'Este administrador não está atualmente logado. A conta e credenciais serão permanentemente excluídas.'
+                    : 'Esta ação revogará imediatamente o acesso do colaborador à oficina.'}
+                </p>
               </div>
             </div>
 
-            <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs text-white font-medium">
-              {userToDelete.name} ({userToDelete.email})
+            <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs text-white font-medium flex items-center justify-between">
+              <div>
+                <span className="font-bold text-slate-200">{userToDelete.name}</span>
+                <span className="text-slate-400 text-[11px] block">{userToDelete.email}</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                userToDelete.role === 'admin'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {userToDelete.role === 'admin' ? 'Admin da Oficina' : userToDelete.role.toUpperCase()}
+              </span>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setUserToDelete(null)}
-                className="px-4 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs font-medium rounded-xl transition"
+                className="px-4 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs font-medium rounded-xl transition cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleDeleteUserConfirmed}
-                className="px-5 py-2 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-rose-500/20"
+                className="px-5 py-2 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-rose-500/20 cursor-pointer"
               >
                 Sim, Remover
               </button>

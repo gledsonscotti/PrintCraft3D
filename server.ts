@@ -836,9 +836,13 @@ async function startServer() {
       const { companyId, userId } = req.params;
       const isSuperadminCall = companyId === 'superadmin' || companyId === 'all';
 
-      const existing = isSuperadminCall
+      let existing = isSuperadminCall
         ? queryOne<any>(db, 'SELECT * FROM app_users WHERE id = ?', [userId])
         : queryOne<any>(db, 'SELECT * FROM app_users WHERE id = ? AND company_id = ?', [userId, companyId]);
+
+      if (!existing && !isSuperadminCall) {
+        existing = queryOne<any>(db, 'SELECT * FROM app_users WHERE id = ?', [userId]);
+      }
 
       if (!existing) {
         return res.status(404).json({ error: 'Usuário não encontrado.' });

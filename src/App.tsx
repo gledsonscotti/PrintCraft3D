@@ -1176,6 +1176,7 @@ export default function App() {
           companyId={currentCompany.id}
           companyName={currentCompany.name}
           isSuperadmin={isSuperadmin}
+          currentUser={currentUser}
         />
       )}
     </div>
