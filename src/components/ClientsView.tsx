@@ -15,13 +15,17 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Shield
+  Shield,
+  Truck
 } from 'lucide-react';
-import { Client, AppUser, Company } from '../types';
+import { Client, AppUser, Company, Filament, Supply } from '../types';
 import { CompanyTeamView } from './CompanyTeamView';
+import { SuppliersView } from './SuppliersView';
 
 interface ClientsViewProps {
   clients: Client[];
+  filaments?: Filament[];
+  supplies?: Supply[];
   onRefreshData: () => void;
   theme?: string;
   currentUser?: AppUser | null;
@@ -31,13 +35,15 @@ interface ClientsViewProps {
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clients,
+  filaments = [],
+  supplies = [],
   onRefreshData,
   theme = 'standard',
   currentUser,
   currentCompany,
   isSuperadmin = false,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'team'>('clients');
+  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'suppliers' | 'team'>('clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'pf' | 'cnpj' | 'store'>('all');
 
@@ -169,14 +175,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     <div className="space-y-6">
       {/* Top Sub-Navigation Tabs: Clientes vs Equipe */}
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
-        <div className="flex items-center gap-2 p-1 bg-[#131316] border border-white/[0.08] rounded-xl shadow-xs">
+        <div className="flex items-center gap-2 p-1 bg-[#131316] border border-white/[0.08] rounded-xl shadow-xs clients-subtabs-container">
           <button
             type="button"
             id="tab-sub-clients"
             onClick={() => setActiveSubTab('clients')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`clients-subtab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'clients'
-                ? 'bg-sky-500 text-slate-950 shadow-sm'
+                ? 'clients-subtab-active bg-sky-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -191,11 +197,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
           <button
             type="button"
+            id="tab-sub-suppliers"
+            onClick={() => setActiveSubTab('suppliers')}
+            className={`clients-subtab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'suppliers'
+                ? 'clients-subtab-active bg-amber-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            <span>Fornecedores</span>
+          </button>
+
+          <button
+            type="button"
             id="tab-sub-team"
             onClick={() => setActiveSubTab('team')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`clients-subtab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'team'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                ? 'clients-subtab-active bg-emerald-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -269,35 +289,35 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             className="w-full bg-[#0A0A0B] border border-white/[0.08] rounded-xl pl-10 pr-3.5 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400 transition"
           />
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 clients-filter-container">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-              filterType === 'all' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
+            className={`clients-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+              filterType === 'all' ? 'clients-filter-active bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
             }`}
           >
             Todos ({clients.length})
           </button>
           <button
             onClick={() => setFilterType('pf')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-              filterType === 'pf' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
+            className={`clients-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+              filterType === 'pf' ? 'clients-filter-active bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
             }`}
           >
             Pessoa Física ({pfCount})
           </button>
           <button
             onClick={() => setFilterType('cnpj')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-              filterType === 'cnpj' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
+            className={`clients-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+              filterType === 'cnpj' ? 'clients-filter-active bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
             }`}
           >
             CNPJ ({cnpjCount})
           </button>
           <button
             onClick={() => setFilterType('store')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-              filterType === 'store' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
+            className={`clients-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+              filterType === 'store' ? 'clients-filter-active bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-white bg-[#0A0A0B]'
             }`}
           >
             Lojas ({storeCount})
@@ -601,6 +621,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
       )}
         </>
+      ) : activeSubTab === 'suppliers' ? (
+        <SuppliersView
+          filaments={filaments}
+          supplies={supplies}
+          onRefreshData={onRefreshData}
+          theme={theme}
+        />
       ) : (
         <CompanyTeamView
           companyId={currentCompany?.id || (isSuperadmin ? 'superadmin' : 'comp-1')}

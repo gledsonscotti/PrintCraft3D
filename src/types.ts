@@ -241,6 +241,126 @@ export interface Client {
   created_at: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_name?: string;
+  cnpj_cpf?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  category: string;
+  address?: string;
+  lead_time_days?: number;
+  payment_terms?: string;
+  notes?: string;
+  rating?: number;
+  created_at: string;
+}
+
+export interface SupplierQuote {
+  id: string;
+  supplier_id: string;
+  supplier_name: string;
+  item_type: 'filament' | 'supply' | 'other';
+  item_id?: string;
+  item_name: string;
+  unit_price: number;
+  unit: string;
+  moq?: number;
+  shipping_cost?: number;
+  lead_time_days?: number;
+  valid_until?: string;
+  status: 'active' | 'approved' | 'rejected' | 'expired';
+  notes?: string;
+  created_at: string;
+}
+
+export interface QuoteRoundItem {
+  id: string;
+  name: string;
+  item_type: 'filament' | 'supply' | 'part' | 'other';
+  quantity: number;
+  unit: string;
+  target_price?: number;
+  notes?: string;
+}
+
+export interface QuoteRoundSupplier {
+  supplier_id: string;
+  supplier_name: string;
+  supplier_email?: string;
+  supplier_phone?: string;
+  access_token: string;
+  invited_at: string;
+  responded_at?: string;
+  status: 'invited' | 'opened' | 'submitted' | 'declined';
+}
+
+export interface ProposalItemResponse {
+  item_id: string;
+  item_name: string;
+  available: boolean;
+  brand_model?: string;
+  unit_price: number;
+  total_price: number;
+  notes?: string;
+}
+
+export interface QuoteProposal {
+  id: string;
+  round_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  supplier_email?: string;
+  supplier_phone?: string;
+  access_token: string;
+  items: ProposalItemResponse[];
+  subtotal_items: number;
+  shipping_type: 'free' | 'carrier' | 'pickup';
+  shipping_cost: number;
+  carrier_name?: string;
+  delivery_lead_days: number;
+  payment_terms?: string;
+  installments_count: number;
+  installments_details?: string;
+  total_quote: number;
+  supplier_notes?: string;
+  submitted_at: string;
+  is_winner?: boolean;
+}
+
+export interface QuoteRound {
+  id: string;
+  title: string;
+  description?: string;
+  deadline: string;
+  status: 'open' | 'closed' | 'awarded';
+  items: QuoteRoundItem[];
+  invited_suppliers: QuoteRoundSupplier[];
+  awarded_supplier_id?: string | null;
+  proposals?: QuoteProposal[];
+  proposals_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaterialPurchase {
+  id: string;
+  item_type: 'filament' | 'supply' | 'other';
+  item_id?: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  total_cost: number;
+  supplier?: string;
+  purchase_date: string;
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+}
+
 export interface ConsignmentItem {
   id: string;
   consignment_id: string;

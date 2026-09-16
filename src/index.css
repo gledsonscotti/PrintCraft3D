@@ -284,11 +284,173 @@ html[data-theme="high-contrast-light"] nav button:hover {
   background-color: #CBD5E1 !important;
 }
 
-html[data-theme="high-contrast-light"] nav button.bg-sky-500 {
+html[data-theme="high-contrast-light"] nav button.bg-sky-500,
+html[data-theme="high-contrast-light"] #main-nav-clients.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #075985 !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="high-contrast-light"] nav button.bg-emerald-500,
+html[data-theme="high-contrast-light"] #main-nav-finance.bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #065F46 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-bar {
+  background-color: #E2E8F0 !important;
+  border-top: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-bar button {
+  color: #18181B !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:hover {
+  background-color: #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.bg-sky-500,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #075985 !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.bg-emerald-500,
+html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #065F46 !important;
+}
+
+/* High Contrast Light: Finance & Pessoas sub-elements */
+html[data-theme="high-contrast-light"] .finance-subtabs-container,
+html[data-theme="high-contrast-light"] .clients-subtabs-container,
+html[data-theme="high-contrast-light"] .suppliers-subtabs-container {
+  border-color: #09090B !important;
+  background-color: #F1F5F9 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn,
+html[data-theme="high-contrast-light"] .clients-subtab-btn,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .clients-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn:hover {
+  background-color: #E2E8F0 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active,
+html[data-theme="high-contrast-light"] .finance-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #065F46 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active span,
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active,
+html[data-theme="high-contrast-light"] .clients-subtab-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #075985 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active span,
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] #tab-sub-suppliers.clients-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #B45309 !important;
+}
+
+html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #065F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active,
+html[data-theme="high-contrast-light"] .suppliers-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #B45309 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active span,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-container {
+  background-color: #F1F5F9 !important;
+  border: 1.5px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-btn {
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-btn.finance-toggle-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #065F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-btn.finance-toggle-active span,
+html[data-theme="high-contrast-light"] .finance-toggle-btn.finance-toggle-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-container,
+html[data-theme="high-contrast-light"] .clients-filter-container {
+  background-color: #F1F5F9 !important;
+  border: 1.5px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-btn,
+html[data-theme="high-contrast-light"] .clients-filter-btn {
+  color: #09090B !important;
+  font-weight: 700 !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-btn.finance-filter-active,
+html[data-theme="high-contrast-light"] .finance-filter-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #065F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-filter-btn.clients-filter-active,
+html[data-theme="high-contrast-light"] .clients-filter-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #075985 !important;
 }
 
 /* Hero Metric Cards in Cost Calculator */
@@ -495,12 +657,24 @@ html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/60,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/50,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\]\/40,
 html[data-theme="sage-bento"] .bg-\[\#0A0A0B\],
+html[data-theme="sage-bento"] .bg-\[\#0c0c0e\],
+html[data-theme="sage-bento"] .bg-\[\#0C0C0E\],
+html[data-theme="sage-bento"] .bg-\[\#0d0d0f\],
+html[data-theme="sage-bento"] .bg-\[\#0D0D0F\],
+html[data-theme="sage-bento"] .bg-\[\#08080a\],
+html[data-theme="sage-bento"] .bg-\[\#08080A\],
+html[data-theme="sage-bento"] .bg-\[\#09090b\],
+html[data-theme="sage-bento"] .bg-\[\#09090B\],
+html[data-theme="sage-bento"] .bg-\[\#0e0e11\],
+html[data-theme="sage-bento"] .bg-\[\#0E0E11\],
 html[data-theme="sage-bento"] .bg-\[\#0f141a\],
 html[data-theme="sage-bento"] .bg-\[\#0F141A\],
 html[data-theme="sage-bento"] .bg-\[\#101012\],
 html[data-theme="sage-bento"] .bg-\[\#0D0D11\],
 html[data-theme="sage-bento"] .bg-\[\#0A0A0E\],
-html[data-theme="sage-bento"] .bg-\[\#111113\] {
+html[data-theme="sage-bento"] .bg-\[\#111113\],
+html[data-theme="sage-bento"] .bg-slate-900,
+html[data-theme="sage-bento"] .bg-slate-950 {
   background-color: #F8F6F1 !important;
   border: 1.5px solid #E8E2D6 !important;
   border-radius: 1.125rem !important;
@@ -654,11 +828,168 @@ html[data-theme="sage-bento"] nav button:hover {
 }
 
 html[data-theme="sage-bento"] nav button.bg-sky-500,
-html[data-theme="sage-bento"] nav button.bg-emerald-500 {
+html[data-theme="sage-bento"] nav button.bg-emerald-500,
+html[data-theme="sage-bento"] #main-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] #main-nav-finance.bg-emerald-500 {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
   border: 1px solid #446857 !important;
   box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .mobile-nav-bar {
+  background-color: #EDE7DC !important;
+  border-top: 1.5px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .mobile-nav-bar button {
+  color: #4A6054 !important;
+  background-color: #FBF9F5 !important;
+  border: 1px solid #DFD9CB !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .mobile-nav-bar button:hover {
+  background-color: #FFFFFF !important;
+  color: #192C23 !important;
+}
+
+/* Sage Bento: Menu Principal Finanças e Pessoas (Desktop e Mobile) */
+html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500,
+html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500,
+html[data-theme="sage-bento"] .mobile-nav-bar button.bg-sky-500,
+html[data-theme="sage-bento"] .mobile-nav-bar button.bg-emerald-500 {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500 svg,
+html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500 svg,
+html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500 svg,
+html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500 svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500),
+html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500) {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
+html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
+  background-color: rgba(86, 125, 107, 0.12) !important;
+  color: #192C23 !important;
+}
+
+/* Sage Bento: Finance & Pessoas sub-elements */
+html[data-theme="sage-bento"] .finance-subtabs-container,
+html[data-theme="sage-bento"] .clients-subtabs-container,
+html[data-theme="sage-bento"] .suppliers-subtabs-container {
+  border-color: #DFD9CB !important;
+  background-color: #EDE7DC !important;
+}
+
+html[data-theme="sage-bento"] .finance-subtab-btn,
+html[data-theme="sage-bento"] .clients-subtab-btn,
+html[data-theme="sage-bento"] .suppliers-subtab-btn {
+  background-color: #FFFFFF !important;
+  border: 1px solid #DFD9CB !important;
+  color: #4A6054 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .finance-subtab-btn:hover,
+html[data-theme="sage-bento"] .clients-subtab-btn:hover,
+html[data-theme="sage-bento"] .suppliers-subtab-btn:hover {
+  background-color: #F8F6F1 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active,
+html[data-theme="sage-bento"] .finance-subtab-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active span,
+html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .clients-subtab-btn.clients-subtab-active,
+html[data-theme="sage-bento"] .clients-subtab-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .clients-subtab-btn.clients-subtab-active span,
+html[data-theme="sage-bento"] .clients-subtab-btn.clients-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .suppliers-subtab-btn.suppliers-subtab-active,
+html[data-theme="sage-bento"] .suppliers-subtab-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+  box-shadow: 0 2px 6px rgba(86, 125, 107, 0.25) !important;
+}
+
+html[data-theme="sage-bento"] .suppliers-subtab-btn.suppliers-subtab-active span,
+html[data-theme="sage-bento"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .finance-toggle-container {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .finance-toggle-btn {
+  color: #4A6054 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .finance-toggle-btn.finance-toggle-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
+}
+
+html[data-theme="sage-bento"] .finance-toggle-btn.finance-toggle-active span,
+html[data-theme="sage-bento"] .finance-toggle-btn.finance-toggle-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="sage-bento"] .finance-filter-container,
+html[data-theme="sage-bento"] .clients-filter-container {
+  background-color: #EDE7DC !important;
+  border: 1px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .finance-filter-btn,
+html[data-theme="sage-bento"] .clients-filter-btn {
+  color: #4A6054 !important;
+  font-weight: 600 !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #DFD9CB !important;
+}
+
+html[data-theme="sage-bento"] .finance-filter-btn.finance-filter-active,
+html[data-theme="sage-bento"] .finance-filter-active,
+html[data-theme="sage-bento"] .clients-filter-btn.clients-filter-active,
+html[data-theme="sage-bento"] .clients-filter-active {
+  background-color: #567D6B !important;
+  color: #FFFFFF !important;
+  border: 1px solid #446857 !important;
 }
 
 /* Modal Dialogs */
@@ -3766,6 +4097,401 @@ html[data-theme="high-contrast-dark"] .admin-profile-active {
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #6EE7B7;
 }
+
+/* High Contrast Dark: Main Navigation & Submenus */
+html[data-theme="high-contrast-dark"] nav {
+  background-color: #050505 !important;
+  border: 1.5px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] nav button {
+  color: #A1A1AA !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] nav button:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] nav button.bg-sky-500,
+html[data-theme="high-contrast-dark"] #main-nav-clients.bg-sky-500 {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #38BDF8 !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.35) !important;
+}
+
+html[data-theme="high-contrast-dark"] nav button.bg-emerald-500,
+html[data-theme="high-contrast-dark"] #main-nav-finance.bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.35) !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar {
+  background-color: #050505 !important;
+  border-top: 1.5px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button {
+  color: #A1A1AA !important;
+  background-color: #121215 !important;
+  border: 1px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.bg-sky-500,
+html[data-theme="high-contrast-dark"] #mobile-nav-clients.bg-sky-500 {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.bg-emerald-500,
+html[data-theme="high-contrast-dark"] #mobile-nav-finance.bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+}
+
+/* High Contrast Dark: Finance & Pessoas sub-elements */
+html[data-theme="high-contrast-dark"] .finance-subtabs-container,
+html[data-theme="high-contrast-dark"] .clients-subtabs-container,
+html[data-theme="high-contrast-dark"] .suppliers-subtabs-container {
+  border-color: #3F3F46 !important;
+  background-color: #09090B !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-subtab-btn,
+html[data-theme="high-contrast-dark"] .clients-subtab-btn,
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn {
+  background-color: #121215 !important;
+  border: 1px solid #27272A !important;
+  color: #A1A1AA !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-subtab-btn:hover,
+html[data-theme="high-contrast-dark"] .clients-subtab-btn:hover,
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn:hover {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-subtab-btn.finance-subtab-active,
+html[data-theme="high-contrast-dark"] .finance-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.35) !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-subtab-btn.finance-subtab-active span,
+html[data-theme="high-contrast-dark"] .finance-subtab-btn.finance-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .clients-subtab-btn.clients-subtab-active,
+html[data-theme="high-contrast-dark"] .clients-subtab-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #38BDF8 !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.35) !important;
+}
+
+html[data-theme="high-contrast-dark"] .clients-subtab-btn.clients-subtab-active span,
+html[data-theme="high-contrast-dark"] .clients-subtab-btn.clients-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] #tab-sub-suppliers.clients-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #FBBF24 !important;
+}
+
+html[data-theme="high-contrast-dark"] #tab-sub-team.clients-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+}
+
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active,
+html[data-theme="high-contrast-dark"] .suppliers-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #FBBF24 !important;
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.35) !important;
+}
+
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active span,
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-toggle-container {
+  background-color: #09090B !important;
+  border: 1.5px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-toggle-btn {
+  color: #A1A1AA !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-toggle-btn.finance-toggle-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-toggle-btn.finance-toggle-active span,
+html[data-theme="high-contrast-dark"] .finance-toggle-btn.finance-toggle-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-filter-container,
+html[data-theme="high-contrast-dark"] .clients-filter-container {
+  background-color: #09090B !important;
+  border: 1.5px solid #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-filter-btn,
+html[data-theme="high-contrast-dark"] .clients-filter-btn {
+  color: #A1A1AA !important;
+  font-weight: 700 !important;
+  background-color: #121215 !important;
+  border: 1px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .finance-filter-btn.finance-filter-active,
+html[data-theme="high-contrast-dark"] .finance-filter-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #34D399 !important;
+}
+
+html[data-theme="high-contrast-dark"] .clients-filter-btn.clients-filter-active,
+html[data-theme="high-contrast-dark"] .clients-filter-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #38BDF8 !important;
+}
+
+/* =========================================================================
+   HIGH CONTRAST LIGHT: MENU PRINCIPAL & SUB-ITENS FINANÇAS E PESSOAS
+   ========================================================================= */
+
+/* Header Nav Buttons (Desktop & Mobile) */
+html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #0369A1 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500 svg,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] header nav button#main-nav-finance.bg-emerald-500,
+html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #047857 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] header nav button#main-nav-finance.bg-emerald-500 svg,
+html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500),
+html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500) {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
+html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* Sub-navegação e containers de abas */
+html[data-theme="high-contrast-light"] .finance-subtabs-container,
+html[data-theme="high-contrast-light"] .clients-subtabs-container,
+html[data-theme="high-contrast-light"] .suppliers-subtabs-container {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn,
+html[data-theme="high-contrast-light"] .clients-subtab-btn,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .clients-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active,
+html[data-theme="high-contrast-light"] .finance-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #047857 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active span,
+html[data-theme="high-contrast-light"] .finance-subtab-btn.finance-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active,
+html[data-theme="high-contrast-light"] .clients-subtab-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #0369A1 !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active span,
+html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-light"] #tab-sub-suppliers.clients-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #B45309 !important;
+}
+
+html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #047857 !important;
+}
+
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active,
+html[data-theme="high-contrast-light"] .suppliers-subtab-active {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #B45309 !important;
+}
+
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active span,
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+  color: #FFFFFF !important;
+}
+
+/* Filtros e Toggles */
+html[data-theme="high-contrast-light"] .finance-toggle-container {
+  background-color: #F1F5F9 !important;
+  border: 1.5px solid #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-btn {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-toggle-btn.finance-toggle-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #047857 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-container,
+html[data-theme="high-contrast-light"] .clients-filter-container {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-btn,
+html[data-theme="high-contrast-light"] .clients-filter-btn {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .finance-filter-btn.finance-filter-active,
+html[data-theme="high-contrast-light"] .finance-filter-active {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #047857 !important;
+}
+
+html[data-theme="high-contrast-light"] .clients-filter-btn.clients-filter-active,
+html[data-theme="high-contrast-light"] .clients-filter-active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #0369A1 !important;
+}
+
+/* Superfícies e Cards em Finanças, Pessoas e Fornecedores no High Contrast Light */
+html[data-theme="high-contrast-light"] .bg-\[\#131316\],
+html[data-theme="high-contrast-light"] .bg-\[\#141417\],
+html[data-theme="high-contrast-light"] .bg-\[\#1c1c20\],
+html[data-theme="high-contrast-light"] .bg-\[\#18181b\],
+html[data-theme="high-contrast-light"] .bg-\[\#18181c\] {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="high-contrast-light"] .bg-\[\#0c0c0e\],
+html[data-theme="high-contrast-light"] .bg-\[\#0C0C0E\],
+html[data-theme="high-contrast-light"] .bg-\[\#0d0d0f\],
+html[data-theme="high-contrast-light"] .bg-\[\#08080a\],
+html[data-theme="high-contrast-light"] .bg-\[\#09090b\],
+html[data-theme="high-contrast-light"] .bg-\[\#101012\] {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="high-contrast-light"] input:not([type="range"]),
+html[data-theme="high-contrast-light"] select,
+html[data-theme="high-contrast-light"] textarea {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #94A3B8 !important;
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="high-contrast-light"] thead tr,
+html[data-theme="high-contrast-light"] tr.bg-\[\#1c1c20\],
+html[data-theme="high-contrast-light"] tr.bg-\[\#101012\] {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-bottom: 2px solid #CBD5E1 !important;
+}
+
+html[data-theme="high-contrast-light"] td {
+  border-bottom: 1px solid #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="high-contrast-light"] tr:hover td {
+  background-color: #F8FAFC !important;
+}
+
 
 
 

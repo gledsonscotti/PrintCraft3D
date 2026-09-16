@@ -48,6 +48,7 @@ export const CompanyTeamView: React.FC<CompanyTeamViewProps> = ({
   companyName,
   isSuperadmin = false,
   currentUser,
+  theme = 'standard',
 }) => {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [companyInfo, setCompanyInfo] = useState<{

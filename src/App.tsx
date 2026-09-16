@@ -611,6 +611,7 @@ export default function App() {
               {/* Pessoas */}
               <button
                 type="button"
+                id="main-nav-clients"
                 disabled={!canAccess('clients')}
                 onClick={() => canAccess('clients') && setActiveTab('clients')}
                 title={canAccess('clients') ? 'Gestão de Pessoas (Clientes e Equipe)' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
@@ -708,6 +709,7 @@ export default function App() {
               {/* Finanças */}
               <button
                 type="button"
+                id="main-nav-finance"
                 disabled={!canAccess('finance')}
                 onClick={() => canAccess('finance') && setActiveTab('finance')}
                 title={canAccess('finance') ? 'Finanças & Contabilidade' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
@@ -842,7 +844,7 @@ export default function App() {
           </div>
 
           {/* Mobile / Tablet Navigation Row - Fixed full item row with restricted items disabled */}
-          <div className="lg:hidden flex items-center gap-1 overflow-x-auto py-1.5 border-t border-white/[0.08] no-scrollbar">
+          <div className="lg:hidden flex items-center gap-1 overflow-x-auto py-1.5 border-t border-white/[0.08] no-scrollbar mobile-nav-bar">
             {/* Analisador */}
             <button
               type="button"
@@ -905,6 +907,7 @@ export default function App() {
             {/* Pessoas */}
             <button
               type="button"
+              id="mobile-nav-clients"
               disabled={!canAccess('clients')}
               onClick={() => canAccess('clients') && setActiveTab('clients')}
               title={canAccess('clients') ? 'Pessoas (Clientes e Equipe)' : 'Módulo restrito'}
@@ -989,6 +992,7 @@ export default function App() {
             {/* Finanças */}
             <button
               type="button"
+              id="mobile-nav-finance"
               disabled={!canAccess('finance')}
               onClick={() => canAccess('finance') && setActiveTab('finance')}
               title={canAccess('finance') ? 'Finanças' : 'Módulo restrito'}
@@ -1157,6 +1161,8 @@ export default function App() {
             {activeTab === 'clients' && (
               <ClientsView
                 clients={clients}
+                filaments={filaments}
+                supplies={supplies}
                 onRefreshData={fetchData}
                 theme={companyTheme}
                 currentUser={currentUser}

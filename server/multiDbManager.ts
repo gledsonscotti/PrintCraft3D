@@ -723,6 +723,57 @@ export function initTenantTables(database: Database) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      contact_name TEXT,
+      cnpj_cpf TEXT,
+      phone TEXT,
+      email TEXT,
+      website TEXT,
+      category TEXT DEFAULT 'Filamentos',
+      address TEXT,
+      lead_time_days INTEGER DEFAULT 3,
+      payment_terms TEXT,
+      notes TEXT,
+      rating INTEGER DEFAULT 5,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS supplier_quotes (
+      id TEXT PRIMARY KEY,
+      supplier_id TEXT NOT NULL,
+      supplier_name TEXT NOT NULL,
+      item_type TEXT NOT NULL DEFAULT 'filament',
+      item_id TEXT,
+      item_name TEXT NOT NULL,
+      unit_price REAL NOT NULL DEFAULT 0.0,
+      unit TEXT NOT NULL DEFAULT 'un',
+      moq REAL DEFAULT 1,
+      shipping_cost REAL DEFAULT 0.0,
+      lead_time_days INTEGER DEFAULT 3,
+      valid_until TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS material_purchases (
+      id TEXT PRIMARY KEY,
+      item_type TEXT NOT NULL,
+      item_id TEXT,
+      item_name TEXT NOT NULL,
+      quantity REAL NOT NULL DEFAULT 1,
+      unit TEXT NOT NULL DEFAULT 'un',
+      unit_cost REAL NOT NULL DEFAULT 0.0,
+      total_cost REAL NOT NULL DEFAULT 0.0,
+      supplier TEXT,
+      purchase_date TEXT NOT NULL,
+      payment_method TEXT DEFAULT 'PIX',
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS carriers (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

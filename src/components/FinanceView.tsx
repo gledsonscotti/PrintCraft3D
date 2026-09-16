@@ -67,7 +67,7 @@ export function FinanceView({
   settings,
   onSaveSettings,
   onRefreshData,
-  theme = 'sage-bento',
+  theme = 'standard',
 }: FinanceViewProps) {
   const [activeFinanceTab, setActiveFinanceTab] = useState<'overview' | 'cashflow' | 'aging' | 'breakeven' | 'projects' | 'depreciation' | 'consignments' | 'marketplaces' | 'transactions' | 'settings'>('cashflow');
   const [cashflowSubTab, setCashflowSubTab] = useState<'flow' | 'aging'>('flow');
@@ -687,22 +687,22 @@ export function FinanceView({
       </div>
 
       {/* Sub-abas de Finanças Otimizadas e 100% Visíveis */}
-      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 border-b border-white/[0.08] pb-3">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 border-b border-white/[0.08] pb-3 finance-subtabs-container">
         {/* FLUXO DE CAIXA (INTEGRADO COM CONTAS A PAGAR & RECEBER E ALERTA DE ATRASO) */}
         <button
           type="button"
           id="tab-btn-cashflow"
           onClick={() => setActiveFinanceTab('cashflow')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'cashflow' || activeFinanceTab === 'aging'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
           <Wallet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <span>Fluxo de Caixa</span>
           {overdueAccounts.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-1">
+            <span className="finance-alert-badge px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-1">
               <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
               <span>{overdueAccounts.length}</span>
             </span>
@@ -714,9 +714,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-breakeven"
           onClick={() => setActiveFinanceTab('breakeven')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'breakeven'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -729,9 +729,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-projects"
           onClick={() => setActiveFinanceTab('projects')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'projects'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -744,9 +744,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-depreciation"
           onClick={() => setActiveFinanceTab('depreciation')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'depreciation'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -759,9 +759,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-overview"
           onClick={() => setActiveFinanceTab('overview')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'overview'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -774,9 +774,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-consignments"
           onClick={() => setActiveFinanceTab('consignments')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'consignments'
-              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -792,9 +792,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-marketplaces"
           onClick={() => setActiveFinanceTab('marketplaces')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'marketplaces'
-              ? 'bg-purple-500/15 text-purple-300 border border-purple-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-purple-500/15 text-purple-300 border border-purple-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -807,9 +807,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-transactions"
           onClick={() => setActiveFinanceTab('transactions')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'transactions'
-              ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-sky-500/15 text-sky-300 border border-sky-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -822,9 +822,9 @@ export function FinanceView({
           type="button"
           id="tab-btn-settings"
           onClick={() => setActiveFinanceTab('settings')}
-          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'settings'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
@@ -837,14 +837,14 @@ export function FinanceView({
       {(activeFinanceTab === 'cashflow' || activeFinanceTab === 'aging') && (
         <div className="space-y-6">
           {/* Sub-navegação do Fluxo de Caixa: Livro Caixa Realizado vs Contas a Pagar & Receber */}
-          <div className="flex items-center gap-1.5 p-1 bg-[#141417] rounded-xl border border-white/[0.08] w-fit">
+          <div className="flex items-center gap-1.5 p-1 bg-[#141417] rounded-xl border border-white/[0.08] w-fit finance-toggle-container">
             <button
               type="button"
               id="subtab-cashflow-flow"
               onClick={() => setCashflowSubTab('flow')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`finance-toggle-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 cashflowSubTab === 'flow'
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-black'
+                  ? 'finance-toggle-active bg-emerald-500 text-slate-950 shadow-sm font-black'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -856,9 +856,9 @@ export function FinanceView({
               type="button"
               id="subtab-cashflow-aging"
               onClick={() => setCashflowSubTab('aging')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`finance-toggle-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 cashflowSubTab === 'aging'
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-black'
+                  ? 'finance-toggle-active bg-emerald-500 text-slate-950 shadow-sm font-black'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -901,13 +901,13 @@ export function FinanceView({
               </div>
 
               {/* Filtro de Tipo (Entradas/Saídas) */}
-              <div className="inline-flex items-center bg-[#1c1c20] p-1 rounded-xl border border-white/[0.08] text-xs">
+              <div className="inline-flex items-center bg-[#1c1c20] p-1 rounded-xl border border-white/[0.08] text-xs finance-filter-container">
                 <button
                   type="button"
                   onClick={() => setSelectedFlowTypeFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                  className={`finance-filter-btn px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                     selectedFlowTypeFilter === 'all'
-                      ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                      ? 'finance-filter-active bg-emerald-500 text-slate-950 shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -916,9 +916,9 @@ export function FinanceView({
                 <button
                   type="button"
                   onClick={() => setSelectedFlowTypeFilter('in')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  className={`finance-filter-btn px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                     selectedFlowTypeFilter === 'in'
-                      ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                      ? 'finance-filter-active bg-emerald-500 text-slate-950 shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -928,9 +928,9 @@ export function FinanceView({
                 <button
                   type="button"
                   onClick={() => setSelectedFlowTypeFilter('out')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  className={`finance-filter-btn px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                     selectedFlowTypeFilter === 'out'
-                      ? 'bg-rose-500 text-white shadow-xs'
+                      ? 'finance-filter-active bg-rose-500 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >

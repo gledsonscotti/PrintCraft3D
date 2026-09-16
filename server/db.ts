@@ -376,6 +376,259 @@ function initTables(database: Database) {
     console.warn('Material purchases seed check:', err);
   }
 
+  // Suppliers (Fornecedores de Insumos, Filamentos, Peças e Embalagens)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      contact_name TEXT,
+      cnpj_cpf TEXT,
+      phone TEXT,
+      email TEXT,
+      website TEXT,
+      category TEXT DEFAULT 'Filamentos',
+      address TEXT,
+      lead_time_days INTEGER DEFAULT 3,
+      payment_terms TEXT,
+      notes TEXT,
+      rating INTEGER DEFAULT 5,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Supplier Quotes (Cotações por Item e Fornecedor)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS supplier_quotes (
+      id TEXT PRIMARY KEY,
+      supplier_id TEXT NOT NULL,
+      supplier_name TEXT NOT NULL,
+      item_type TEXT NOT NULL DEFAULT 'filament',
+      item_id TEXT,
+      item_name TEXT NOT NULL,
+      unit_price REAL NOT NULL DEFAULT 0.0,
+      unit TEXT NOT NULL DEFAULT 'un',
+      moq REAL DEFAULT 1,
+      shipping_cost REAL DEFAULT 0.0,
+      lead_time_days INTEGER DEFAULT 3,
+      valid_until TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Seed default suppliers and quotes if none exist
+  try {
+    const supCountRes = database.exec("SELECT COUNT(*) FROM suppliers");
+    const supCount = supCountRes.length > 0 && supCountRes[0].values.length > 0 ? Number(supCountRes[0].values[0][0]) : 0;
+    if (supCount === 0) {
+      const now = new Date().toISOString();
+      database.run(`
+        INSERT OR IGNORE INTO suppliers (
+          id, name, contact_name, cnpj_cpf, phone, email, website, category, address, lead_time_days, payment_terms, notes, rating, created_at
+        ) VALUES
+        ('sup-corp-1', 'Voolt3D Filamentos', 'Matheus Vendas', '28.123.456/0001-89', '(11) 98765-4321', 'comercial@voolt3d.com.br', 'https://voolt3d.com.br', 'Filamentos', 'São Paulo - SP', 2, 'PIX à vista (-5%) ou Cartão 3x s/ juros', 'Fornecedor homologado para PLA e PETG de alto giro na oficina.', 5, '${now}'),
+        ('sup-corp-2', '3D Fila Indústria', 'Camila Suprimentos', '19.987.654/0001-32', '(31) 99812-3456', 'pedidos@3dfila.com.br', 'https://3dfila.com.br', 'Filamentos', 'Belo Horizonte - MG', 3, 'Boleto faturado 28 dias ou PIX com frete grátis > R$ 300', 'Fornecedor de filamentos técnicos, ABS, ASA e PLA Silk especial.', 5, '${now}'),
+        ('sup-corp-3', 'Printalot Brasil', 'Roberto Atacado', '33.456.789/0001-01', '(47) 99123-7890', 'vendas@printalot.com.br', 'https://printalot.com.br', 'Filamentos', 'Joinville - SC', 4, 'Boleto bancário 30 dias', 'Linha de PETG translúcido e PLA padrão para impressões de engenharia.', 4, '${now}'),
+        ('sup-corp-4', 'Mercado Livre / Atacado Metal', 'Central de Vendas', '10.555.222/0001-44', '(11) 3221-5000', 'contato@atacadometal.com.br', 'https://mercadolivre.com.br', 'Insumos & Fixação', 'São Paulo - SP (Brás)', 5, 'Cartão de crédito ou Mercado Pago', 'Fornecedor de ferragens para chaveiros, argolas italianas e mosquetões.', 4, '${now}'),
+        ('sup-corp-5', 'Embalagens Express & Kraft', 'Juliana Atendimento', '42.333.777/0001-99', '(11) 97654-1122', 'atacado@embalagensexpress.com.br', 'https://embalagensexpress.com.br', 'Embalagens', 'Guarulhos - SP', 2, 'PIX à vista ou Boleto 15 dias', 'Caixas de envio, sacos kraft com visor e fecho zip, plástico bolha.', 5, '${now}')
+      `);
+    }
+
+    const quoteCountRes = database.exec("SELECT COUNT(*) FROM supplier_quotes");
+    const quoteCount = quoteCountRes.length > 0 && quoteCountRes[0].values.length > 0 ? Number(quoteCountRes[0].values[0][0]) : 0;
+    if (quoteCount === 0) {
+      const now = new Date().toISOString();
+      database.run(`
+        INSERT OR IGNORE INTO supplier_quotes (
+          id, supplier_id, supplier_name, item_type, item_id, item_name, unit_price, unit, moq, shipping_cost, lead_time_days, valid_until, status, notes, created_at
+        ) VALUES
+        ('sq-1', 'sup-corp-1', 'Voolt3D Filamentos', 'filament', 'fil-1', 'PLA Preto Fosco 1kg (1.75mm)', 84.90, 'carretel', 5, 0.00, 2, '2026-10-15', 'approved', 'Preço promocional para compras de lote acima de 5 carretéis com frete grátis SP.', '${now}'),
+        ('sq-2', 'sup-corp-2', '3D Fila Indústria', 'filament', 'fil-2', 'PLA Silk Prata 1kg (1.75mm)', 114.00, 'carretel', 2, 18.00, 3, '2026-10-01', 'active', 'Desconto especial no PIX; carretel premium ideal para chaveiros e troféus.', '${now}'),
+        ('sq-3', 'sup-corp-4', 'Mercado Livre / Atacado Metal', 'supply', 'sup-1', 'Argola de Chaveiro com Corrente Italiana 25mm', 0.28, 'un', 500, 15.00, 5, '2026-10-20', 'active', 'Pacote fechado com 500 unidades niqueladas antiferrugem.', '${now}'),
+        ('sq-4', 'sup-corp-5', 'Embalagens Express & Kraft', 'supply', 'sup-5', 'Saco Kraft c/ Visor e Fecho Zip 10x15cm', 0.38, 'un', 300, 0.00, 2, '2026-10-10', 'active', 'Preço de atacado para 300 unidades com entrega rápida na oficina.', '${now}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Suppliers and quotes seed check:', err);
+  }
+
+  // Quote Rounds (Cotações em Lote / RFP com Conjunto de Itens e Fornecedores)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS quote_rounds (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      deadline TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      items_json TEXT NOT NULL,
+      invited_suppliers_json TEXT NOT NULL,
+      awarded_supplier_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  database.run(`
+    CREATE TABLE IF NOT EXISTS quote_proposals (
+      id TEXT PRIMARY KEY,
+      round_id TEXT NOT NULL,
+      supplier_id TEXT NOT NULL,
+      supplier_name TEXT NOT NULL,
+      supplier_email TEXT,
+      supplier_phone TEXT,
+      access_token TEXT NOT NULL,
+      items_json TEXT NOT NULL,
+      subtotal_items REAL NOT NULL DEFAULT 0.0,
+      shipping_type TEXT NOT NULL DEFAULT 'free',
+      shipping_cost REAL NOT NULL DEFAULT 0.0,
+      carrier_name TEXT,
+      delivery_lead_days INTEGER DEFAULT 3,
+      payment_terms TEXT,
+      installments_count INTEGER DEFAULT 1,
+      installments_details TEXT,
+      total_quote REAL NOT NULL DEFAULT 0.0,
+      supplier_notes TEXT,
+      submitted_at TEXT NOT NULL,
+      is_winner INTEGER DEFAULT 0
+    );
+  `);
+
+  // Seed sample quote round with suppliers and proposals if empty
+  try {
+    const roundCountRes = database.exec("SELECT COUNT(*) FROM quote_rounds");
+    const roundCount = roundCountRes.length > 0 && roundCountRes[0].values.length > 0 ? Number(roundCountRes[0].values[0][0]) : 0;
+    if (roundCount === 0) {
+      const now = new Date().toISOString();
+      const inFiveDays = new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString();
+
+      const sampleItems = [
+        { id: 'item-1', name: 'Filamento PLA Preto 1kg 1.75mm', item_type: 'filament', quantity: 10, unit: 'carretéis', target_price: 85.00, notes: 'Carretel reforçado compatível com AMS' },
+        { id: 'item-2', name: 'Filamento PETG Cristal Translúcido 1kg', item_type: 'filament', quantity: 5, unit: 'carretéis', target_price: 90.00, notes: 'Para peças técnicas e translúcidas' },
+        { id: 'item-3', name: 'Álcool Isopropílico 99.8% 1L', item_type: 'supply', quantity: 4, unit: 'litros', target_price: 26.00, notes: 'Higienização de mesas PEI' },
+        { id: 'item-4', name: 'Argola Chaveiro Italiana 25mm com Corrente', item_type: 'supply', quantity: 500, unit: 'unidades', target_price: 0.28, notes: 'Niquelada antiferrugem' }
+      ];
+
+      const sampleSuppliers = [
+        {
+          supplier_id: 'sup-corp-1',
+          supplier_name: 'Voolt3D Filamentos',
+          supplier_email: 'comercial@voolt3d.com.br',
+          supplier_phone: '(11) 98765-4321',
+          access_token: 'token-voolt3d-demo',
+          invited_at: now,
+          status: 'submitted'
+        },
+        {
+          supplier_id: 'sup-corp-2',
+          supplier_name: '3D Fila Indústria',
+          supplier_email: 'pedidos@3dfila.com.br',
+          supplier_phone: '(31) 99812-3456',
+          access_token: 'token-3dfila-demo',
+          invited_at: now,
+          status: 'submitted'
+        },
+        {
+          supplier_id: 'sup-corp-3',
+          supplier_name: 'Printalot Brasil',
+          supplier_email: 'vendas@printalot.com.br',
+          supplier_phone: '(47) 99123-7890',
+          access_token: 'token-printalot-demo',
+          invited_at: now,
+          status: 'invited'
+        }
+      ];
+
+      database.run(`
+        INSERT INTO quote_rounds (
+          id, title, description, deadline, status, items_json, invited_suppliers_json, created_at, updated_at
+        ) VALUES (
+          'round-1',
+          'Reposição Geral de Filamentos e Insumos da Oficina (Lote Outubro)',
+          'Cotação conjunta para suprimento da produção do próximo mês. Avaliaremos custo total, frete para nossa oficina e condições de faturamento.',
+          '${inFiveDays}',
+          'open',
+          '${JSON.stringify(sampleItems).replace(/'/g, "''")}',
+          '${JSON.stringify(sampleSuppliers).replace(/'/g, "''")}',
+          '${now}',
+          '${now}'
+        );
+      `);
+
+      // Proposal 1: Voolt3D
+      const vooltItems = [
+        { item_id: 'item-1', item_name: 'Filamento PLA Preto 1kg 1.75mm', available: true, brand_model: 'Voolt3D PLA Premium', unit_price: 82.00, total_price: 820.00, notes: 'Carretel de papelão AMS-Ready' },
+        { item_id: 'item-2', item_name: 'Filamento PETG Cristal Translúcido 1kg', available: true, brand_model: 'Voolt3D PETG Crystal', unit_price: 89.00, total_price: 445.00, notes: 'Alta transparência' },
+        { item_id: 'item-3', item_name: 'Álcool Isopropílico 99.8% 1L', available: false, brand_model: '', unit_price: 0, total_price: 0, notes: 'Não comercializamos produtos químicos' },
+        { item_id: 'item-4', item_name: 'Argola Chaveiro Italiana 25mm com Corrente', available: false, brand_model: '', unit_price: 0, total_price: 0, notes: 'Não comercializamos ferragens' }
+      ];
+
+      database.run(`
+        INSERT INTO quote_proposals (
+          id, round_id, supplier_id, supplier_name, supplier_email, supplier_phone, access_token, items_json, subtotal_items, shipping_type, shipping_cost, carrier_name, delivery_lead_days, payment_terms, installments_count, installments_details, total_quote, supplier_notes, submitted_at, is_winner
+        ) VALUES (
+          'prop-1',
+          'round-1',
+          'sup-corp-1',
+          'Voolt3D Filamentos',
+          'comercial@voolt3d.com.br',
+          '(11) 98765-4321',
+          'token-voolt3d-demo',
+          '${JSON.stringify(vooltItems).replace(/'/g, "''")}',
+          1265.00,
+          'free',
+          0.00,
+          'Jadlog Express (CIF Grátis)',
+          2,
+          'Boleto Faturado ou Cartão',
+          3,
+          '3x de R$ 421,66 sem juros (Boleto faturado 30/60/90 dias)',
+          1265.00,
+          'Frete cortesia para compras acima de R$ 800. Carretéis com tolerância de ±0.02mm.',
+          '${new Date(Date.now() - 3600000).toISOString()}',
+          0
+        );
+      `);
+
+      // Proposal 2: 3D Fila
+      const filaItems = [
+        { item_id: 'item-1', item_name: 'Filamento PLA Preto 1kg 1.75mm', available: true, brand_model: '3D Fila PLA Clássico', unit_price: 85.00, total_price: 850.00, notes: 'Bobina compatível com AMS e K1 Max' },
+        { item_id: 'item-2', item_name: 'Filamento PETG Cristal Translúcido 1kg', available: true, brand_model: '3D Fila PETG Clear', unit_price: 84.00, total_price: 420.00, notes: 'Menor preço do lote no PETG!' },
+        { item_id: 'item-3', item_name: 'Álcool Isopropílico 99.8% 1L', available: true, brand_model: 'Isopropanol Grau Eletrônico 1L', unit_price: 25.50, total_price: 102.00, notes: 'Frasco lacrado com bico dosador' },
+        { item_id: 'item-4', item_name: 'Argola Chaveiro Italiana 25mm com Corrente', available: false, brand_model: '', unit_price: 0, total_price: 0, notes: 'Não temos ferragens' }
+      ];
+
+      database.run(`
+        INSERT INTO quote_proposals (
+          id, round_id, supplier_id, supplier_name, supplier_email, supplier_phone, access_token, items_json, subtotal_items, shipping_type, shipping_cost, carrier_name, delivery_lead_days, payment_terms, installments_count, installments_details, total_quote, supplier_notes, submitted_at, is_winner
+        ) VALUES (
+          'prop-2',
+          'round-1',
+          'sup-corp-2',
+          '3D Fila Indústria',
+          'pedidos@3dfila.com.br',
+          '(31) 99812-3456',
+          'token-3dfila-demo',
+          '${JSON.stringify(filaItems).replace(/'/g, "''")}',
+          1372.00,
+          'carrier',
+          28.00,
+          'Transportadora Rodoviário Express',
+          3,
+          'PIX ou Cartão em até 4x',
+          4,
+          '4x de R$ 350,00 sem juros ou 5% de desconto no PIX à vista',
+          1400.00,
+          'Atendemos também o álcool isopropílico no mesmo frete. Despacho no dia útil seguinte.',
+          '${new Date(Date.now() - 1800000).toISOString()}',
+          0
+        );
+      `);
+    }
+  } catch (err) {
+    console.warn('Quote rounds and proposals seed check:', err);
+  }
+
   // Cost Centers table (Centros de Custos da Oficina 3D)
   database.run(`
     CREATE TABLE IF NOT EXISTS cost_centers (

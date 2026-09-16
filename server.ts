@@ -3797,6 +3797,841 @@ async function startServer() {
     }
   });
 
+  // ================= SUPPLIERS & PURCHASING CONTACTS API =================
+  app.get('/api/suppliers', (req: Request, res: Response) => {
+    try {
+      const suppliers = queryAll(db, 'SELECT * FROM suppliers ORDER BY name ASC');
+      res.json(suppliers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/suppliers', (req: Request, res: Response) => {
+    try {
+      const {
+        name,
+        contact_name = '',
+        cnpj_cpf = '',
+        phone = '',
+        email = '',
+        website = '',
+        category = 'Filamentos',
+        address = '',
+        lead_time_days = 3,
+        payment_terms = '',
+        notes = '',
+        rating = 5
+      } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Nome do fornecedor é obrigatório' });
+      }
+
+      const id = 'sup-' + Date.now();
+      const created_at = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO suppliers (
+          id, name, contact_name, cnpj_cpf, phone, email, website, category, address, lead_time_days, payment_terms, notes, rating, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        name.trim(),
+        contact_name || '',
+        cnpj_cpf || '',
+        phone || '',
+        email || '',
+        website || '',
+        category || 'Filamentos',
+        address || '',
+        Number(lead_time_days) || 3,
+        payment_terms || '',
+        notes || '',
+        Number(rating) || 5,
+        created_at
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM suppliers WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/suppliers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        contact_name,
+        cnpj_cpf,
+        phone,
+        email,
+        website,
+        category,
+        address,
+        lead_time_days,
+        payment_terms,
+        notes,
+        rating
+      } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Nome do fornecedor é obrigatório' });
+      }
+
+      db.run(`
+        UPDATE suppliers
+        SET name = ?, contact_name = ?, cnpj_cpf = ?, phone = ?, email = ?, website = ?,
+            category = ?, address = ?, lead_time_days = ?, payment_terms = ?, notes = ?, rating = ?
+        WHERE id = ?
+      `, [
+        name.trim(),
+        contact_name || '',
+        cnpj_cpf || '',
+        phone || '',
+        email || '',
+        website || '',
+        category || 'Filamentos',
+        address || '',
+        Number(lead_time_days) || 3,
+        payment_terms || '',
+        notes || '',
+        Number(rating) || 5,
+        id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM suppliers WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/suppliers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM suppliers WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ================= SUPPLIER QUOTES API =================
+  app.get('/api/supplier-quotes', (req: Request, res: Response) => {
+    try {
+      const { supplier_id, item_id } = req.query;
+      let query = 'SELECT * FROM supplier_quotes';
+      const params: any[] = [];
+
+      if (supplier_id && item_id) {
+        query += ' WHERE supplier_id = ? AND item_id = ?';
+        params.push(supplier_id, item_id);
+      } else if (supplier_id) {
+        query += ' WHERE supplier_id = ?';
+        params.push(supplier_id);
+      } else if (item_id) {
+        query += ' WHERE item_id = ?';
+        params.push(item_id);
+      }
+
+      query += ' ORDER BY created_at DESC';
+      const quotes = queryAll(db, query, params);
+      res.json(quotes);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/supplier-quotes', (req: Request, res: Response) => {
+    try {
+      const {
+        supplier_id,
+        supplier_name,
+        item_type = 'filament',
+        item_id = null,
+        item_name,
+        unit_price = 0,
+        unit = 'un',
+        moq = 1,
+        shipping_cost = 0,
+        lead_time_days = 3,
+        valid_until = null,
+        status = 'active',
+        notes = null
+      } = req.body;
+
+      if (!supplier_name || !item_name || Number(unit_price) <= 0) {
+        return res.status(400).json({ error: 'Fornecedor, nome do item e preço unitário válido são obrigatórios' });
+      }
+
+      const id = 'sq-' + Date.now();
+      const created_at = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO supplier_quotes (
+          id, supplier_id, supplier_name, item_type, item_id, item_name,
+          unit_price, unit, moq, shipping_cost, lead_time_days, valid_until, status, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        supplier_id || '',
+        supplier_name,
+        item_type || 'filament',
+        item_id || null,
+        item_name,
+        Number(unit_price) || 0,
+        unit || 'un',
+        Number(moq) || 1,
+        Number(shipping_cost) || 0,
+        Number(lead_time_days) || 3,
+        valid_until || null,
+        status || 'active',
+        notes || null,
+        created_at
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM supplier_quotes WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/supplier-quotes/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        supplier_id,
+        supplier_name,
+        item_type,
+        item_id,
+        item_name,
+        unit_price,
+        unit,
+        moq,
+        shipping_cost,
+        lead_time_days,
+        valid_until,
+        status,
+        notes
+      } = req.body;
+
+      db.run(`
+        UPDATE supplier_quotes
+        SET supplier_id = COALESCE(?, supplier_id),
+            supplier_name = COALESCE(?, supplier_name),
+            item_type = COALESCE(?, item_type),
+            item_id = COALESCE(?, item_id),
+            item_name = COALESCE(?, item_name),
+            unit_price = COALESCE(?, unit_price),
+            unit = COALESCE(?, unit),
+            moq = COALESCE(?, moq),
+            shipping_cost = COALESCE(?, shipping_cost),
+            lead_time_days = COALESCE(?, lead_time_days),
+            valid_until = COALESCE(?, valid_until),
+            status = COALESCE(?, status),
+            notes = COALESCE(?, notes)
+        WHERE id = ?
+      `, [
+        supplier_id,
+        supplier_name,
+        item_type,
+        item_id,
+        item_name,
+        unit_price !== undefined ? Number(unit_price) : null,
+        unit,
+        moq !== undefined ? Number(moq) : null,
+        shipping_cost !== undefined ? Number(shipping_cost) : null,
+        lead_time_days !== undefined ? Number(lead_time_days) : null,
+        valid_until,
+        status,
+        notes,
+        id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM supplier_quotes WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/supplier-quotes/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM supplier_quotes WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Convert Quote to Purchase & Update Inventory
+  app.post('/api/supplier-quotes/:id/convert-to-purchase', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const quote = queryOne<any>(db, 'SELECT * FROM supplier_quotes WHERE id = ?', [id]);
+      if (!quote) {
+        return res.status(404).json({ error: 'Cotação não encontrada' });
+      }
+
+      const {
+        quantity = quote.moq || 1,
+        purchase_date = new Date().toISOString().split('T')[0],
+        payment_method = 'PIX',
+        update_stock = true
+      } = req.body;
+
+      const qty = Number(quantity) > 0 ? Number(quantity) : 1;
+      const unitCost = Number(quote.unit_price) || 0;
+      const totalCost = (qty * unitCost) + Number(quote.shipping_cost || 0);
+      const purchaseId = 'pur-' + Date.now();
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO material_purchases (
+          id, item_type, item_id, item_name, quantity, unit, unit_cost, total_cost, supplier, purchase_date, payment_method, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        purchaseId,
+        quote.item_type || 'other',
+        quote.item_id || null,
+        quote.item_name,
+        qty,
+        quote.unit || 'un',
+        unitCost,
+        totalCost,
+        quote.supplier_name,
+        purchase_date,
+        payment_method,
+        `Convertido da cotação #${quote.id.substring(0, 8)}. ` + (quote.notes || ''),
+        now
+      ]);
+
+      // Mark quote as approved
+      db.run("UPDATE supplier_quotes SET status = 'approved' WHERE id = ?", [id]);
+
+      // Stock update
+      if (update_stock && quote.item_id) {
+        if (quote.item_type === 'filament') {
+          const fil = queryOne<any>(db, 'SELECT * FROM filaments WHERE id = ?', [quote.item_id]);
+          if (fil) {
+            const spoolWeight = Number(fil.total_weight_g) || 1000;
+            const addedGrams = qty * spoolWeight;
+            db.run('UPDATE filaments SET remaining_weight_g = remaining_weight_g + ?, cost_per_spool = ? WHERE id = ?', [
+              addedGrams,
+              unitCost > 0 ? unitCost : fil.cost_per_spool,
+              quote.item_id
+            ]);
+          }
+        } else if (quote.item_type === 'supply') {
+          db.run('UPDATE supplies SET in_stock_qty = in_stock_qty + ?, unit_cost = ? WHERE id = ?', [
+            qty,
+            unitCost > 0 ? unitCost : 0,
+            quote.item_id
+          ]);
+        }
+      }
+
+      saveDb();
+      const purchase = queryOne(db, 'SELECT * FROM material_purchases WHERE id = ?', [purchaseId]);
+      res.status(201).json({ success: true, purchase, quote_id: id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ================= BATCH QUOTE ROUNDS (RFP) & PROPOSALS API =================
+  // 1. Get all quote rounds
+  app.get('/api/quote-rounds', (req: Request, res: Response) => {
+    try {
+      const rounds = queryAll<any>(db, 'SELECT * FROM quote_rounds ORDER BY created_at DESC');
+      const result = rounds.map((r: any) => {
+        let items = [];
+        let invited_suppliers = [];
+        try { items = JSON.parse(r.items_json || '[]'); } catch {}
+        try { invited_suppliers = JSON.parse(r.invited_suppliers_json || '[]'); } catch {}
+
+        const proposalsRaw = queryAll<any>(db, 'SELECT * FROM quote_proposals WHERE round_id = ? ORDER BY total_quote ASC', [r.id]);
+        const proposals = proposalsRaw.map((p: any) => {
+          let propItems = [];
+          try { propItems = JSON.parse(p.items_json || '[]'); } catch {}
+          return { ...p, items: propItems, is_winner: Boolean(p.is_winner) };
+        });
+
+        return {
+          ...r,
+          items,
+          invited_suppliers,
+          proposals,
+          proposals_count: proposals.length
+        };
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 2. Create a new quote round
+  app.post('/api/quote-rounds', (req: Request, res: Response) => {
+    try {
+      const {
+        title,
+        description = '',
+        deadline,
+        items = [],
+        suppliers = []
+      } = req.body;
+
+      if (!title || !title.trim()) {
+        return res.status(400).json({ error: 'Título da rodada de cotação é obrigatório' });
+      }
+      if (!deadline) {
+        return res.status(400).json({ error: 'Data limite para envio de propostas é obrigatória' });
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Pelo menos um item deve ser adicionado à cotação' });
+      }
+      if (!Array.isArray(suppliers) || suppliers.length === 0) {
+        return res.status(400).json({ error: 'Selecione ao menos um fornecedor para participar da cotação' });
+      }
+
+      const roundId = 'rfp-' + Date.now();
+      const now = new Date().toISOString();
+
+      // Format items with IDs
+      const formattedItems = items.map((item: any, idx: number) => ({
+        id: item.id || `item-${idx + 1}-${Date.now()}`,
+        name: item.name || `Item ${idx + 1}`,
+        item_type: item.item_type || 'filament',
+        quantity: Number(item.quantity) > 0 ? Number(item.quantity) : 1,
+        unit: item.unit || 'un',
+        target_price: Number(item.target_price) || 0,
+        notes: item.notes || ''
+      }));
+
+      // Format invited suppliers with unique access tokens
+      const formattedSuppliers = suppliers.map((sup: any) => {
+        const token = 'token-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
+        return {
+          supplier_id: sup.supplier_id || sup.id || `sup-${Date.now()}`,
+          supplier_name: sup.supplier_name || sup.name || 'Fornecedor',
+          supplier_email: sup.supplier_email || sup.email || '',
+          supplier_phone: sup.supplier_phone || sup.phone || '',
+          access_token: token,
+          invited_at: now,
+          status: 'invited'
+        };
+      });
+
+      db.run(`
+        INSERT INTO quote_rounds (
+          id, title, description, deadline, status, items_json, invited_suppliers_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?)
+      `, [
+        roundId,
+        title.trim(),
+        description.trim(),
+        deadline,
+        JSON.stringify(formattedItems),
+        JSON.stringify(formattedSuppliers),
+        now,
+        now
+      ]);
+
+      saveDb();
+
+      res.status(201).json({
+        success: true,
+        round: {
+          id: roundId,
+          title,
+          description,
+          deadline,
+          status: 'open',
+          items: formattedItems,
+          invited_suppliers: formattedSuppliers,
+          proposals: [],
+          proposals_count: 0,
+          created_at: now,
+          updated_at: now
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 3. Get single round with full proposals
+  app.get('/api/quote-rounds/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const r = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!r) {
+        return res.status(404).json({ error: 'Rodada de cotação não encontrada' });
+      }
+
+      let items = [];
+      let invited_suppliers = [];
+      try { items = JSON.parse(r.items_json || '[]'); } catch {}
+      try { invited_suppliers = JSON.parse(r.invited_suppliers_json || '[]'); } catch {}
+
+      const proposalsRaw = queryAll<any>(db, 'SELECT * FROM quote_proposals WHERE round_id = ? ORDER BY total_quote ASC', [id]);
+      const proposals = proposalsRaw.map((p: any) => {
+        let propItems = [];
+        try { propItems = JSON.parse(p.items_json || '[]'); } catch {}
+        return { ...p, items: propItems, is_winner: Boolean(p.is_winner) };
+      });
+
+      res.json({
+        ...r,
+        items,
+        invited_suppliers,
+        proposals,
+        proposals_count: proposals.length
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 4. Update quote round (status, deadline, description)
+  app.put('/api/quote-rounds/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { title, description, deadline, status } = req.body;
+      const existing = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Rodada de cotação não encontrada' });
+      }
+
+      const now = new Date().toISOString();
+      db.run(`
+        UPDATE quote_rounds
+        SET title = COALESCE(?, title),
+            description = COALESCE(?, description),
+            deadline = COALESCE(?, deadline),
+            status = COALESCE(?, status),
+            updated_at = ?
+        WHERE id = ?
+      `, [
+        title !== undefined ? title : existing.title,
+        description !== undefined ? description : existing.description,
+        deadline !== undefined ? deadline : existing.deadline,
+        status !== undefined ? status : existing.status,
+        now,
+        id
+      ]);
+
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 5. Delete quote round
+  app.delete('/api/quote-rounds/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM quote_proposals WHERE round_id = ?', [id]);
+      db.run('DELETE FROM quote_rounds WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 6. Award winner supplier proposal & optionally create purchase
+  app.post('/api/quote-rounds/:id/award', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { proposal_id, create_purchases = true, payment_method = 'Boleto' } = req.body;
+
+      const round = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!round) {
+        return res.status(404).json({ error: 'Rodada não encontrada' });
+      }
+
+      const proposal = queryOne<any>(db, 'SELECT * FROM quote_proposals WHERE id = ? AND round_id = ?', [proposal_id, id]);
+      if (!proposal) {
+        return res.status(404).json({ error: 'Proposta não encontrada' });
+      }
+
+      // Reset any previous winner flags for this round
+      db.run('UPDATE quote_proposals SET is_winner = 0 WHERE round_id = ?', [id]);
+      // Mark this proposal as winner
+      db.run('UPDATE quote_proposals SET is_winner = 1 WHERE id = ?', [proposal_id]);
+
+      const now = new Date().toISOString();
+      db.run(`
+        UPDATE quote_rounds
+        SET status = 'awarded', awarded_supplier_id = ?, updated_at = ?
+        WHERE id = ?
+      `, [proposal.supplier_id, now, id]);
+
+      // If user wants to automatically generate inventory purchases:
+      let createdPurchases: any[] = [];
+      if (create_purchases) {
+        let propItems: any[] = [];
+        try { propItems = JSON.parse(proposal.items_json || '[]'); } catch {}
+
+        let roundItems: any[] = [];
+        try { roundItems = JSON.parse(round.items_json || '[]'); } catch {}
+
+        for (const it of propItems) {
+          if (it.available && Number(it.unit_price) > 0) {
+            const rItem = roundItems.find((ri: any) => ri.id === it.item_id);
+            const qty = rItem ? Number(rItem.quantity) || 1 : 1;
+            const unit = rItem ? rItem.unit || 'un' : 'un';
+            const itemType = rItem ? rItem.item_type || 'other' : 'other';
+            const unitCost = Number(it.unit_price);
+            const totalCost = qty * unitCost;
+            const purchaseId = 'pur-rfp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+
+            db.run(`
+              INSERT INTO material_purchases (
+                id, item_type, item_name, quantity, unit, unit_cost, total_cost, supplier, purchase_date, payment_method, notes, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              purchaseId,
+              itemType,
+              it.brand_model ? `${it.item_name} (${it.brand_model})` : it.item_name,
+              qty,
+              unit,
+              unitCost,
+              totalCost,
+              proposal.supplier_name,
+              new Date().toISOString().split('T')[0],
+              proposal.payment_terms || payment_method,
+              `Gerado a partir da Cotação em Lote "${round.title}". Condições: ${proposal.installments_details || proposal.installments_count + 'x'}. Frete: ${proposal.shipping_type === 'free' ? 'Grátis' : 'R$ ' + proposal.shipping_cost}`,
+              now
+            ]);
+
+            createdPurchases.push({ id: purchaseId, item_name: it.item_name, total_cost: totalCost });
+          }
+        }
+      }
+
+      saveDb();
+      res.json({
+        success: true,
+        round_id: id,
+        winner_supplier_id: proposal.supplier_id,
+        created_purchases: createdPurchases
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 7. PUBLIC SUPPLIER PORTAL: Get RFP by Token
+  app.get('/api/public/quote-round/:token', (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      const rounds = queryAll<any>(db, 'SELECT * FROM quote_rounds');
+
+      let targetRound: any = null;
+      let matchedSupplier: any = null;
+
+      for (const r of rounds) {
+        let supList: any[] = [];
+        try { supList = JSON.parse(r.invited_suppliers_json || '[]'); } catch {}
+        const found = supList.find((s: any) => s.access_token === token);
+        if (found) {
+          targetRound = r;
+          matchedSupplier = found;
+          break;
+        }
+      }
+
+      if (!targetRound || !matchedSupplier) {
+        return res.status(404).json({ error: 'Link de cotação inválido ou expirado. Verifique com a empresa solicitante.' });
+      }
+
+      let items = [];
+      try { items = JSON.parse(targetRound.items_json || '[]'); } catch {}
+
+      // Check if supplier already submitted a proposal
+      const existingProposalRaw = queryOne<any>(db, 'SELECT * FROM quote_proposals WHERE round_id = ? AND access_token = ?', [targetRound.id, token]);
+      let existingProposal = null;
+      if (existingProposalRaw) {
+        let pItems = [];
+        try { pItems = JSON.parse(existingProposalRaw.items_json || '[]'); } catch {}
+        existingProposal = { ...existingProposalRaw, items: pItems };
+      }
+
+      // Check if workshop company name exists
+      const company = queryOne<any>(db, 'SELECT name, trade_name, email, phone FROM companies LIMIT 1');
+
+      res.json({
+        round: {
+          id: targetRound.id,
+          title: targetRound.title,
+          description: targetRound.description,
+          deadline: targetRound.deadline,
+          status: targetRound.status,
+          created_at: targetRound.created_at
+        },
+        items,
+        supplier: {
+          supplier_id: matchedSupplier.supplier_id,
+          supplier_name: matchedSupplier.supplier_name,
+          supplier_email: matchedSupplier.supplier_email,
+          supplier_phone: matchedSupplier.supplier_phone,
+          access_token: token
+        },
+        existing_proposal: existingProposal,
+        company: company || { name: 'Oficina de Impressão 3D', trade_name: 'PrintCraft 3D' }
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 8. PUBLIC SUPPLIER PORTAL: Submit proposal by Token
+  app.post('/api/public/quote-round/:token/submit', (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      const {
+        items = [],
+        shipping_type = 'free',
+        shipping_cost = 0,
+        carrier_name = '',
+        delivery_lead_days = 3,
+        payment_terms = '',
+        installments_count = 1,
+        installments_details = '',
+        supplier_notes = ''
+      } = req.body;
+
+      const rounds = queryAll<any>(db, 'SELECT * FROM quote_rounds');
+      let targetRound: any = null;
+      let matchedSupplier: any = null;
+
+      for (const r of rounds) {
+        let supList: any[] = [];
+        try { supList = JSON.parse(r.invited_suppliers_json || '[]'); } catch {}
+        const found = supList.find((s: any) => s.access_token === token);
+        if (found) {
+          targetRound = r;
+          matchedSupplier = found;
+          break;
+        }
+      }
+
+      if (!targetRound || !matchedSupplier) {
+        return res.status(404).json({ error: 'Cotação não encontrada ou token inválido' });
+      }
+
+      // Validate deadline
+      const deadlineDate = new Date(targetRound.deadline);
+      const now = new Date();
+      if (now > deadlineDate && targetRound.status !== 'open') {
+        return res.status(400).json({ error: 'O prazo limite para envio de propostas para esta cotação foi encerrado.' });
+      }
+
+      // Calculate totals
+      let subtotalItems = 0;
+      const formattedItems = (items || []).map((it: any) => {
+        const uPrice = Number(it.unit_price) || 0;
+        const available = Boolean(it.available);
+        const tPrice = available ? (Number(it.total_price) || uPrice) : 0;
+        if (available) {
+          subtotalItems += tPrice;
+        }
+        return {
+          item_id: it.item_id,
+          item_name: it.item_name,
+          available,
+          brand_model: it.brand_model || '',
+          unit_price: uPrice,
+          total_price: tPrice,
+          notes: it.notes || ''
+        };
+      });
+
+      const finalShippingCost = shipping_type === 'free' ? 0 : (Number(shipping_cost) || 0);
+      const totalQuote = subtotalItems + finalShippingCost;
+
+      // Delete existing proposal if replacing
+      db.run('DELETE FROM quote_proposals WHERE round_id = ? AND access_token = ?', [targetRound.id, token]);
+
+      const proposalId = 'prop-' + Date.now();
+      const submittedAt = now.toISOString();
+
+      db.run(`
+        INSERT INTO quote_proposals (
+          id, round_id, supplier_id, supplier_name, supplier_email, supplier_phone,
+          access_token, items_json, subtotal_items, shipping_type, shipping_cost,
+          carrier_name, delivery_lead_days, payment_terms, installments_count,
+          installments_details, total_quote, supplier_notes, submitted_at, is_winner
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `, [
+        proposalId,
+        targetRound.id,
+        matchedSupplier.supplier_id,
+        matchedSupplier.supplier_name,
+        matchedSupplier.supplier_email,
+        matchedSupplier.supplier_phone,
+        token,
+        JSON.stringify(formattedItems),
+        subtotalItems,
+        shipping_type,
+        finalShippingCost,
+        carrier_name,
+        Number(delivery_lead_days) || 3,
+        payment_terms,
+        Number(installments_count) || 1,
+        installments_details,
+        totalQuote,
+        supplier_notes,
+        submittedAt
+      ]);
+
+      // Update invited suppliers JSON status
+      let supList: any[] = [];
+      try { supList = JSON.parse(targetRound.invited_suppliers_json || '[]'); } catch {}
+      const updatedSupList = supList.map((s: any) => {
+        if (s.access_token === token) {
+          return { ...s, status: 'submitted', responded_at: submittedAt };
+        }
+        return s;
+      });
+
+      db.run('UPDATE quote_rounds SET invited_suppliers_json = ?, updated_at = ? WHERE id = ?', [
+        JSON.stringify(updatedSupList),
+        submittedAt,
+        targetRound.id
+      ]);
+
+      saveDb();
+
+      res.status(201).json({
+        success: true,
+        message: 'Proposta comercial enviada com sucesso!',
+        proposal_id: proposalId,
+        subtotal_items: subtotalItems,
+        shipping_cost: finalShippingCost,
+        total_quote: totalQuote,
+        submitted_at: submittedAt
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // --- CONSIGNMENTS API ---
   app.get('/api/consignments', (req: Request, res: Response) => {
     try {
