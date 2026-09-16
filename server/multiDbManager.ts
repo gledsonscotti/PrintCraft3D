@@ -683,9 +683,35 @@ export function initTenantTables(database: Database) {
       platform_fee_amount REAL NOT NULL DEFAULT 0,
       payment_method TEXT,
       notes TEXT,
+      delivery_status TEXT NOT NULL DEFAULT 'pending',
+      tracking_code TEXT DEFAULT '',
+      shipping_carrier TEXT DEFAULT '',
+      shipping_cost REAL DEFAULT 0,
+      delivery_address TEXT DEFAULT '',
+      estimated_delivery_date TEXT DEFAULT '',
+      delivered_at TEXT DEFAULT '',
+      delivery_notes TEXT DEFAULT '',
       created_at TEXT NOT NULL
     );
+  `);
 
+  const tenantSalesMigrations = [
+    "ALTER TABLE product_sales ADD COLUMN delivery_status TEXT DEFAULT 'pending';",
+    "ALTER TABLE product_sales ADD COLUMN tracking_code TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN shipping_carrier TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN shipping_cost REAL DEFAULT 0;",
+    "ALTER TABLE product_sales ADD COLUMN delivery_address TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN estimated_delivery_date TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN delivered_at TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN delivery_notes TEXT DEFAULT '';",
+  ];
+  for (const m of tenantSalesMigrations) {
+    try {
+      database.run(m);
+    } catch {}
+  }
+
+  database.run(`
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -720,6 +746,101 @@ export function initTenantTables(database: Database) {
       id TEXT PRIMARY KEY,
       action TEXT NOT NULL,
       details TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cost_centers (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT 'emerald',
+      budget_monthly REAL NOT NULL DEFAULT 0.0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS custom_projects (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT,
+      client_id TEXT,
+      client_name TEXT,
+      cost_center_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'quote',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      target_delivery_date TEXT,
+      agreed_price REAL NOT NULL DEFAULT 0.0,
+      amount_paid REAL NOT NULL DEFAULT 0.0,
+      production_order_id TEXT,
+      op_number TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS project_allocations (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      resource_type TEXT NOT NULL,
+      resource_id TEXT,
+      resource_name TEXT NOT NULL,
+      quantity REAL NOT NULL DEFAULT 1.0,
+      unit TEXT NOT NULL DEFAULT 'un',
+      unit_cost REAL NOT NULL DEFAULT 0.0,
+      total_cost REAL NOT NULL DEFAULT 0.0,
+      stock_deducted INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      allocated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS machine_assets (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT '3d_printer',
+      printer_id TEXT,
+      printer_name TEXT,
+      brand TEXT,
+      model TEXT,
+      serial_number TEXT,
+      purchase_date TEXT NOT NULL,
+      supplier TEXT,
+      invoice_number TEXT,
+      acquisition_cost REAL NOT NULL DEFAULT 0.0,
+      freight_and_installation REAL NOT NULL DEFAULT 0.0,
+      initial_total_cost REAL NOT NULL DEFAULT 0.0,
+      residual_value REAL NOT NULL DEFAULT 0.0,
+      depreciable_base REAL NOT NULL DEFAULT 0.0,
+      depreciation_method TEXT NOT NULL DEFAULT 'linear_time',
+      useful_life_months INTEGER NOT NULL DEFAULT 36,
+      useful_life_hours REAL NOT NULL DEFAULT 6000.0,
+      accumulated_hours REAL NOT NULL DEFAULT 0.0,
+      current_status TEXT NOT NULL DEFAULT 'active',
+      hourly_rate REAL NOT NULL DEFAULT 0.0,
+      monthly_rate REAL NOT NULL DEFAULT 0.0,
+      accumulated_depreciation REAL NOT NULL DEFAULT 0.0,
+      current_book_value REAL NOT NULL DEFAULT 0.0,
+      location TEXT DEFAULT 'Oficina Principal',
+      disposal_date TEXT,
+      disposal_value REAL DEFAULT 0.0,
+      disposal_reason TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS depreciation_logs (
+      id TEXT PRIMARY KEY,
+      asset_id TEXT NOT NULL,
+      period_month TEXT NOT NULL,
+      depreciation_amount REAL NOT NULL DEFAULT 0.0,
+      accumulated_to_date REAL NOT NULL DEFAULT 0.0,
+      book_value_after REAL NOT NULL DEFAULT 0.0,
+      method_used TEXT NOT NULL DEFAULT 'linear_time',
+      hours_in_period REAL DEFAULT 0.0,
+      notes TEXT,
       created_at TEXT NOT NULL
     );
   `);
@@ -1118,6 +1239,14 @@ CREATE TABLE IF NOT EXISTS product_sales (
   platform_fee_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
   payment_method VARCHAR(50),
   notes TEXT,
+  delivery_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+  tracking_code VARCHAR(100) DEFAULT '',
+  shipping_carrier VARCHAR(100) DEFAULT '',
+  shipping_cost NUMERIC(10,2) DEFAULT 0.0,
+  delivery_address TEXT DEFAULT '',
+  estimated_delivery_date VARCHAR(50) DEFAULT '',
+  delivered_at VARCHAR(50) DEFAULT '',
+  delivery_notes TEXT DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_sales_company ON product_sales(company_id);

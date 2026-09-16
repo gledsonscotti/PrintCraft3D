@@ -16,10 +16,14 @@ import {
   Search,
   CheckCircle2,
   Factory,
-  Check
+  Check,
+  Truck,
+  Layers,
+  Clock
 } from 'lucide-react';
-import { ProductSale, Product, SaleChannelType, Consignment } from '../types';
+import { ProductSale, Product, SaleChannelType, Consignment, DeliveryStatus } from '../types';
 import { safeFetchJson } from '../utils/api';
+import { DeliveryTrackingView, DELIVERY_STAGES } from './sales/DeliveryTrackingView';
 
 interface SalesManagementViewProps {
   sales: ProductSale[];
@@ -38,7 +42,7 @@ export function SalesManagementView({
   onRefreshData,
   onGenerateOP,
 }: SalesManagementViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'sales' | 'consignments'>('sales');
+  const [activeSubTab, setActiveSubTab] = useState<'sales' | 'deliveries' | 'consignments'>('sales');
   const [filterChannel, setFilterChannel] = useState<'all' | SaleChannelType>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -202,6 +206,24 @@ export function SalesManagementView({
     }
   };
 
+  const getDeliveryStatusBadge = (sale: ProductSale) => {
+    const status = sale.delivery_status || 'pending';
+    const stage = DELIVERY_STAGES.find((s) => s.key === status) || DELIVERY_STAGES[0];
+    const StageIcon = stage.icon;
+
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveSubTab('deliveries')}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition hover:opacity-85 cursor-pointer ${stage.badgeBg} ${stage.badgeText} ${stage.badgeBorder}`}
+        title="Clique para gerenciar no Acompanhamento de Entrega"
+      >
+        <StageIcon className="w-3 h-3" />
+        <span>{stage.label}</span>
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header com Botão de Ação */}
@@ -229,11 +251,11 @@ export function SalesManagementView({
       </div>
 
       {/* Sub-abas de Navegação */}
-      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveSubTab('sales')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
             activeSubTab === 'sales'
               ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -245,8 +267,24 @@ export function SalesManagementView({
 
         <button
           type="button"
+          onClick={() => setActiveSubTab('deliveries')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            activeSubTab === 'deliveries'
+              ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40'
+              : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
+          }`}
+        >
+          <Truck className="w-4 h-4 text-sky-400" />
+          <span>Acompanhamento de Entrega</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+            {sales.filter((s) => (s.delivery_status || 'pending') !== 'delivered' && (s.delivery_status || 'pending') !== 'picked_up' && (s.delivery_status || 'pending') !== 'returned').length} pendentes
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveSubTab('consignments')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
             activeSubTab === 'consignments'
               ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -341,6 +379,7 @@ export function SalesManagementView({
                       <th className="px-5 py-3.5">Data / Hora</th>
                       <th className="px-5 py-3.5">Produto</th>
                       <th className="px-5 py-3.5">Canal / Cliente</th>
+                      <th className="px-5 py-3.5 text-center">Entrega / Envio</th>
                       <th className="px-5 py-3.5 text-center">Qtd</th>
                       <th className="px-5 py-3.5 text-right">Valor Total</th>
                       <th className="px-5 py-3.5 text-right">Lucro Líquido</th>
@@ -367,6 +406,18 @@ export function SalesManagementView({
                           )}
                         </td>
                         <td className="px-5 py-4">{getChannelBadge(sale)}</td>
+                        <td className="px-5 py-4 text-center whitespace-nowrap">
+                          {getDeliveryStatusBadge(sale)}
+                          {sale.tracking_code ? (
+                            <span className="block text-[10px] text-sky-400 font-mono mt-1 font-bold">
+                              {sale.tracking_code}
+                            </span>
+                          ) : sale.shipping_carrier ? (
+                            <span className="block text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px] mx-auto">
+                              {sale.shipping_carrier}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-5 py-4 text-center font-bold text-sky-400">{sale.quantity} un.</td>
                         <td className="px-5 py-4 text-right font-extrabold text-emerald-400">
                           R$ {Number(sale.total_revenue || 0).toFixed(2)}
@@ -374,7 +425,16 @@ export function SalesManagementView({
                         <td className="px-5 py-4 text-right font-bold text-sky-300">
                           R$ {Number(sale.profit || 0).toFixed(2)}
                         </td>
-                        <td className="px-5 py-4 text-center flex items-center justify-center gap-2">
+                        <td className="px-5 py-4 text-center flex items-center justify-center gap-1.5 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubTab('deliveries')}
+                            className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 transition text-[11px] font-semibold flex items-center gap-1"
+                            title="Acompanhar envio e status de entrega"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            Entrega
+                          </button>
                           {onGenerateOP && (
                             <button
                               type="button"
@@ -406,6 +466,15 @@ export function SalesManagementView({
             )}
           </div>
         </div>
+      )}
+
+      {/* CONTEÚDO DA SUB-ABA: ACOMPANHAMENTO DE ENTREGA */}
+      {activeSubTab === 'deliveries' && (
+        <DeliveryTrackingView
+          sales={sales}
+          onRefreshData={onRefreshData}
+          onOpenNewSaleModal={onOpenNewSaleModal}
+        />
       )}
 
       {/* CONTEÚDO DA SUB-ABA: CONSIGNADOS & EXPOSITORES */}

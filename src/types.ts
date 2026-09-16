@@ -265,6 +265,16 @@ export interface Consignment {
 
 export type SaleChannelType = 'platform' | 'cnpj' | 'pf' | 'direct' | 'indirect' | 'consignment' | 'presale';
 
+export type DeliveryStatus =
+  | 'pending'      // Aguardando Separação
+  | 'separated'    // Separado
+  | 'packaged'     // Embalado / Pronto para envio
+  | 'shipped'      // Entregue aos Correios / Despachado
+  | 'in_transit'   // Em Trânsito
+  | 'delivered'    // Entregue ao Cliente
+  | 'picked_up'    // Retirado no Local
+  | 'returned';    // Devolvido / Problema
+
 export interface ProductSale {
   id: string;
   product_id?: string;
@@ -284,6 +294,75 @@ export interface ProductSale {
   payment_method?: string;
   notes?: string;
   created_at: string;
+  delivery_status?: DeliveryStatus;
+  tracking_code?: string;
+  shipping_carrier?: string;
+  shipping_cost?: number;
+  delivery_address?: string;
+  estimated_delivery_date?: string;
+  delivered_at?: string;
+  delivery_notes?: string;
+}
+
+export interface MaterialPurchase {
+  id: string;
+  item_type: 'filament' | 'supply' | 'other';
+  item_id?: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  total_cost: number;
+  supplier?: string;
+  purchase_date: string;
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export type FinancialAccountType = 'payable' | 'receivable'; // Contas a Pagar / Contas a Receber
+export type FinancialAccountStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+export type FinancialAccountCategory = 
+  | 'filament'
+  | 'supply'
+  | 'maintenance'
+  | 'energy'
+  | 'equipment'
+  | 'rent_fixed'
+  | 'sale_client'
+  | 'sale_marketplace'
+  | 'consignment_settlement'
+  | 'services'
+  | 'taxes'
+  | 'other';
+
+export interface FinancialAccount {
+  id: string;
+  type: FinancialAccountType;
+  description: string;
+  category: FinancialAccountCategory;
+  entity_name: string; // Fornecedor / Cliente / Plataforma
+  document_ref?: string; // Número da NF / Pedido / Título
+  amount: number;
+  due_date: string; // YYYY-MM-DD
+  payment_date?: string | null; // YYYY-MM-DD quando baixado
+  payment_method?: string; // PIX, Boleto, Cartão, Transferência
+  status: FinancialAccountStatus;
+  notes?: string;
+  related_sale_id?: string;
+  related_purchase_id?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AgingBucket {
+  key: string;
+  label: string;
+  daysRange: string;
+  count: number;
+  totalPayable: number;
+  totalReceivable: number;
+  color: string;
 }
 
 export type ProductionPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -314,6 +393,10 @@ export interface ProductionOrder {
   supplies_json?: string;
   fail_reason?: string;
   wasted_filament_g?: number;
+  cost_center_id?: string;
+  cost_center_name?: string;
+  project_id?: string;
+  project_code?: string;
   created_at: string;
 }
 
@@ -612,5 +695,162 @@ export interface AppAccessLog {
   details?: string;
   created_at: string;
 }
+
+// ================= CENTRO DE CUSTOS & ALOCAÇÃO POR PROJETO / ENCOMENDA =================
+export interface CostCenter {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  color?: string; // emerald, sky, amber, purple, rose, indigo
+  budget_monthly?: number;
+  is_active?: boolean | number;
+  created_at: string;
+  total_projects?: number;
+  total_allocated_cost?: number;
+  total_agreed_revenue?: number;
+  budget_utilization_percent?: number;
+}
+
+export type CustomProjectStatus =
+  | 'draft'        // Rascunho / Orçamento preliminar
+  | 'quote'        // Orçamento enviado ao cliente
+  | 'approved'     // Aprovado / Aguardando fila
+  | 'in_progress'  // Em Produção
+  | 'completed'    // Produção Concluída
+  | 'delivered'    // Entregue / Faturado
+  | 'cancelled';   // Cancelado
+
+export type CustomProjectPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export type AllocationResourceType = 'filament' | 'supply' | 'machine_time' | 'labor' | 'outsourced';
+
+export interface ProjectAllocation {
+  id: string;
+  project_id: string;
+  resource_type: AllocationResourceType;
+  resource_id?: string;
+  resource_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  total_cost: number;
+  stock_deducted: boolean | number;
+  notes?: string;
+  allocated_at: string;
+}
+
+export interface CustomProject {
+  id: string;
+  code: string;
+  title: string;
+  description?: string;
+  client_id?: string;
+  client_name?: string;
+  cost_center_id: string;
+  cost_center_name?: string;
+  status: CustomProjectStatus;
+  priority: CustomProjectPriority;
+  target_delivery_date?: string;
+  agreed_price: number;
+  amount_paid: number;
+  production_order_id?: string;
+  op_number?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  allocations?: ProjectAllocation[];
+  total_allocated_cost?: number;
+  profit?: number;
+  profit_margin_percent?: number;
+}
+
+// ==========================================
+// CONTROLE DE DEPRECIAÇÃO DE MÁQUINAS E EQUIPAMENTOS
+// ==========================================
+
+export type AssetCategory =
+  | '3d_printer'         // Impressoras 3D (FDM, Resina SLA/DLP, SLS)
+  | 'post_processing'    // Estações de Lavagem, Cura UV, Cabine de Pintura, Jateamento
+  | 'drying_storage'     // Secadores de Filamento, Dry Box, Desumidificador, Estufas
+  | 'power_protection'   // Nobreak Online / UPS, Transformadores, Ar-condicionado
+  | 'tooling_cad'        // Estações CAD / Computador de Fatiamento, Dremel, Scanner 3D
+  | 'other';             // Outros equipamentos e periféricos
+
+export type DepreciationMethod =
+  | 'linear_time'        // Linear Contábil por Tempo (Vida útil em meses/anos)
+  | 'operating_hours'    // Unidades de Produção / Horas de Operação (Horímetro)
+  | 'sum_of_years';      // Soma dos Dígitos dos Anos (Depreciação Acelerada)
+
+export type AssetStatus =
+  | 'active'             // Em Operação
+  | 'maintenance'        // Em Manutenção
+  | 'fully_depreciated'  // 100% Depreciado / Amortizado (Continua em uso)
+  | 'disposed';          // Baixado / Vendido / Sucateado
+
+export interface MachineAsset {
+  id: string;
+  code: string;                          // PAT-001, EQP-002
+  name: string;                          // Ex: Bambu Lab P1S Combo c/ AMS
+  category: AssetCategory;
+  printer_id?: string;                   // Vínculo opcional com a tabela printers
+  printer_name?: string;
+  brand?: string;                        // Bambu Lab, Creality, Elegoo, etc.
+  model?: string;                        // P1S, K1 Max, Neptune 4
+  serial_number?: string;
+  purchase_date: string;                 // YYYY-MM-DD
+  supplier?: string;
+  invoice_number?: string;
+  acquisition_cost: number;              // Valor da máquina na compra (R$)
+  freight_and_installation: number;      // Frete, impostos, acessórios iniciais
+  initial_total_cost: number;            // Custo Total Ativado = Aquisição + Frete
+  residual_value: number;                // Valor de revenda/sucata estimado ao final
+  depreciable_base: number;              // Base depreciável = Total - Residual
+  depreciation_method: DepreciationMethod;
+  useful_life_months: number;            // Ex: 36 meses (3 anos)
+  useful_life_hours: number;             // Ex: 6.000 horas
+  accumulated_hours: number;             // Horímetro real acumulado
+  current_status: AssetStatus;
+  hourly_rate: number;                   // R$/hora calculado de depreciação
+  monthly_rate: number;                  // R$/mês calculado de depreciação
+  accumulated_depreciation: number;      // Depreciação acumulada até hoje (R$)
+  current_book_value: number;            // Valor Contábil Líquido atual (R$)
+  percent_depreciated?: number;          // % da vida útil/depreciação já consumida
+  months_elapsed?: number;               // Meses decorridos desde a compra
+  location?: string;                     // Sala 1, Bancada Principal, etc.
+  disposal_date?: string;
+  disposal_value?: number;
+  disposal_reason?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepreciationLog {
+  id: string;
+  asset_id: string;
+  asset_name?: string;
+  period_month: string;                  // YYYY-MM
+  depreciation_amount: number;
+  accumulated_to_date: number;
+  book_value_after: number;
+  method_used: DepreciationMethod;
+  hours_in_period?: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface DepreciationSummary {
+  total_assets: number;
+  active_assets: number;
+  total_acquisition_cost: number;
+  total_accumulated_depreciation: number;
+  total_current_book_value: number;
+  total_monthly_depreciation_provision: number;
+  average_hourly_depreciation: number;
+  fully_depreciated_count: number;
+  maintenance_count: number;
+}
+
 
 

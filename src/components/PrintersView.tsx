@@ -24,12 +24,14 @@ import {
   Search,
   Check,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Scale
 } from 'lucide-react';
 import { Printer, AmsHeater, PrinterMaintenance, MaintenanceType, MaintenanceStatus, MaintenanceSeverity, PrinterBrand, PrinterProtocol } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 import { NetworkDiscoveryModal } from './NetworkDiscoveryModal';
 import { PRINTER_BRANDS } from '../data/printerBrands';
+import { DepreciationControlView } from './DepreciationControlView';
 
 interface PrintersViewProps {
   printers: Printer[];
@@ -37,7 +39,7 @@ interface PrintersViewProps {
 }
 
 export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshData }) => {
-  const [subTab, setSubTab] = useState<'printers' | 'ams_heaters' | 'maintenance'>('printers');
+  const [subTab, setSubTab] = useState<'printers' | 'ams_heaters' | 'maintenance' | 'depreciation'>('printers');
 
   // AMS & Heaters State
   const [amsHeaters, setAmsHeaters] = useState<AmsHeater[]>([]);
@@ -624,6 +626,20 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            id="btn-printers-depreciation-tab"
+            onClick={() => setSubTab('depreciation')}
+            className={`printers-subtab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+              subTab === 'depreciation'
+                ? 'printers-subtab-active bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Scale className="w-4 h-4" />
+            Depreciação & Patrimônio
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1043,6 +1059,14 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
             )}
           </div>
         </div>
+      )}
+
+      {/* GUIA 4: DEPRECIAÇÃO & PATRIMÔNIO */}
+      {subTab === 'depreciation' && (
+        <DepreciationControlView
+          printers={printers}
+          onRefreshData={onRefreshData}
+        />
       )}
 
       {/* Modal Criar/Editar Impressora */}

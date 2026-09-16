@@ -125,7 +125,8 @@ export function getDbStats(database: Database) {
     'printers', 'filaments', 'supplies', 'products', 'product_sales',
     'production_orders', 'carriers', 'categories', 'subcategories',
     'clients', 'consignments', 'print_jobs', 'integrations', 'setup_templates',
-    'subscription_plans', 'admin_users', 'companies', 'app_users', 'app_access_logs', 'plate_projects'
+    'subscription_plans', 'admin_users', 'companies', 'app_users', 'app_access_logs', 'plate_projects',
+    'cost_centers', 'custom_projects', 'project_allocations', 'machine_assets', 'depreciation_logs'
   ];
 
   for (const t of tables) {
@@ -281,6 +282,390 @@ function initTables(database: Database) {
     );
   `);
 
+  // Material Purchases / Cash Flow Expenses (Compras de Filamentos e Suprimentos)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS material_purchases (
+      id TEXT PRIMARY KEY,
+      item_type TEXT NOT NULL,
+      item_id TEXT,
+      item_name TEXT NOT NULL,
+      quantity REAL NOT NULL DEFAULT 1,
+      unit TEXT NOT NULL DEFAULT 'un',
+      unit_cost REAL NOT NULL DEFAULT 0.0,
+      total_cost REAL NOT NULL DEFAULT 0.0,
+      supplier TEXT,
+      purchase_date TEXT NOT NULL,
+      payment_method TEXT DEFAULT 'PIX',
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Financial Accounts (Contas a Pagar e a Receber / Aging List de Vencimentos)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS financial_accounts (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'other',
+      entity_name TEXT NOT NULL,
+      document_ref TEXT,
+      amount REAL NOT NULL DEFAULT 0.0,
+      due_date TEXT NOT NULL,
+      payment_date TEXT,
+      payment_method TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      notes TEXT,
+      related_sale_id TEXT,
+      related_purchase_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  try {
+    const accCountRes = database.exec("SELECT COUNT(*) FROM financial_accounts");
+    const accCount = accCountRes.length > 0 && accCountRes[0].values.length > 0 ? Number(accCountRes[0].values[0][0]) : 0;
+    if (accCount === 0) {
+      const today = new Date();
+      const fmtDate = (d: Date) => d.toISOString().split('T')[0];
+      const addDays = (days: number) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + days);
+        return fmtDate(d);
+      };
+      const now = new Date().toISOString();
+
+      database.run(`
+        INSERT OR IGNORE INTO financial_accounts (
+          id, type, description, category, entity_name, document_ref, amount, due_date, payment_date, payment_method, status, notes, created_at, updated_at
+        ) VALUES
+        ('acc-1', 'payable', 'Fatura Distribuidora Filamentos Voolt3D (10kg)', 'filament', 'Voolt3D Suprimentos', 'NF 89210', 899.00, '${addDays(5)}', NULL, 'Boleto Bancário', 'pending', 'Boleto parcelado reposição de filamentos PLA/PETG', '${now}', '${now}'),
+        ('acc-2', 'payable', 'Conta de Energia Elétrica - Oficina 3D (Celesc/Enel)', 'energy', 'Concessionária de Energia', 'FAT-09/2026', 342.50, '${addDays(12)}', NULL, 'Débito / PIX', 'pending', 'Consumo mensal de 2 impressoras e estufa', '${now}', '${now}'),
+        ('acc-3', 'payable', 'Lote de Argolas e Mosquetões Niquelados (500un)', 'supply', 'Atacado Metal & Chaveiros', 'PED-4521', 175.00, '${addDays(-4)}', NULL, 'Boleto', 'overdue', 'Vencido há 4 dias - efetuar pagamento para liberar próximo pedido', '${now}', '${now}'),
+        ('acc-4', 'payable', 'Manutenção Preventiva Extrusora Bambu Lab / Nozzles E3D', 'maintenance', '3D Tech Assistência', 'OS 104', 120.00, '${addDays(20)}', NULL, 'PIX', 'pending', 'Troca de bicos endurecidos 0.4mm e termistores', '${now}', '${now}'),
+        ('acc-5', 'payable', 'Aluguel do Espaço da Oficina Maker', 'rent_fixed', 'Imobiliária Central', 'ALUG-09', 650.00, '${addDays(-15)}', '${addDays(-15)}', 'Transferência', 'paid', 'Pago pontualmente com comprovante arquivado', '${now}', '${now}'),
+        ('acc-6', 'receivable', 'Pedido Corporativo 80x Troféus Personalizados 3D', 'sale_client', 'Agência Spark Comunicação', 'PED-CORP-99', 1840.00, '${addDays(3)}', NULL, 'PIX Parcelado', 'pending', 'Segunda parcela (50%) na entrega do lote com acabamento', '${now}', '${now}'),
+        ('acc-7', 'receivable', 'Repasse Mercado Livre - Vendas Chaveiros & Suportes', 'sale_marketplace', 'Mercado Livre / Mercado Pago', 'REP-MELI-88', 950.00, '${addDays(8)}', NULL, 'Transferência Automática', 'pending', 'Ciclo quinzenal de liberação Mercado Pago', '${now}', '${now}'),
+        ('acc-8', 'receivable', 'Fechamento Consignação Loja Geek Pixel (Agosto/Set)', 'consignment_settlement', 'Loja Geek Pixel Mania', 'CONS-LOJA-01', 480.00, '${addDays(-6)}', NULL, 'PIX', 'overdue', 'Cobrar proprietário da loja física (acerto de 16 chaveiros vendidos)', '${now}', '${now}'),
+        ('acc-9', 'receivable', 'Impressão Sob Demanda Peças Técnicas Mecânicas', 'sale_client', 'Metalúrgica Precision LTDA', 'NF 0034', 720.00, '${addDays(15)}', NULL, 'Boleto 30DD', 'pending', 'Boleto a vencer faturado em 30 dias para empresa', '${now}', '${now}'),
+        ('acc-10', 'receivable', 'Repasse Shopee Brasil - Lote de Miniaturas RPG', 'sale_marketplace', 'Shopee Pagamentos', 'SHP-PAY-441', 315.00, '${addDays(-20)}', '${addDays(-19)}', 'PIX', 'paid', 'Creditado na conta bancária', '${now}', '${now}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Financial accounts seed check:', err);
+  }
+
+  try {
+    const purchaseCountRes = database.exec("SELECT COUNT(*) FROM material_purchases");
+    const pCount = purchaseCountRes.length > 0 && purchaseCountRes[0].values.length > 0 ? Number(purchaseCountRes[0].values[0][0]) : 0;
+    if (pCount === 0) {
+      database.run(`
+        INSERT OR IGNORE INTO material_purchases (
+          id, item_type, item_id, item_name, quantity, unit, unit_cost, total_cost, supplier, purchase_date, payment_method, notes, created_at
+        ) VALUES
+        ('pur-1', 'filament', 'fil-1', 'PLA Preto Fosco 1kg (1.75mm)', 4, 'carretel', 89.90, 359.60, 'Voolt3D', '2026-08-12', 'PIX', 'Reposição de estoque para pedidos Shopee', '${new Date(Date.now() - 2800000000).toISOString()}'),
+        ('pur-2', 'supply', 'sup-1', 'Argola de Chaveiro c/ Corrente Italiana 25mm (Pacote c/ 300)', 300, 'un', 0.35, 105.00, 'Mercado Livre / Atacado Metal', '2026-08-18', 'Boleto Bancário', 'Lote promocional de argolas para chaveiros Spotify', '${new Date(Date.now() - 2300000000).toISOString()}'),
+        ('pur-3', 'filament', 'fil-2', 'PLA Silk Prata 1kg (1.75mm)', 2, 'carretel', 119.00, 238.00, '3D Fila', '2026-08-25', 'Cartão de Crédito', 'Filamento especial para tags natalinas e brindes premium', '${new Date(Date.now() - 1700000000).toISOString()}'),
+        ('pur-4', 'supply', 'sup-5', 'Saco Kraft c/ Visor e Fecho Zip 10x15cm (Pacote c/ 200)', 200, 'un', 0.45, 90.00, 'Embalagens Express', '2026-09-02', 'PIX', 'Embalagens para pronta entrega e envio dos chaveiros', '${new Date(Date.now() - 1100000000).toISOString()}'),
+        ('pur-5', 'filament', 'fil-3', 'PETG Azul Royal 1kg (1.75mm)', 3, 'carretel', 99.00, 297.00, 'Printalot', '2026-09-06', 'PIX', 'Produção de suportes de celular e peças técnicas', '${new Date(Date.now() - 750000000).toISOString()}'),
+        ('pur-6', 'supply', 'sup-3', 'Ímã de Neodímio 10x2mm N52 (Cento)', 100, 'un', 0.70, 70.00, 'SuperÍmãs Brasil', '2026-09-10', 'Cartão de Crédito', 'Ímãs para suportes e colecionáveis magnéticos', '${new Date(Date.now() - 400000000).toISOString()}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Material purchases seed check:', err);
+  }
+
+  // Cost Centers table (Centros de Custos da Oficina 3D)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS cost_centers (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT 'emerald',
+      budget_monthly REAL NOT NULL DEFAULT 0.0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Custom Projects / Encomendas table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS custom_projects (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT,
+      client_id TEXT,
+      client_name TEXT,
+      cost_center_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'quote',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      target_delivery_date TEXT,
+      agreed_price REAL NOT NULL DEFAULT 0.0,
+      amount_paid REAL NOT NULL DEFAULT 0.0,
+      production_order_id TEXT,
+      op_number TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  // Project Allocations table (Alocação Detalhada de Insumos e Recursos por Projeto)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS project_allocations (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      resource_type TEXT NOT NULL,
+      resource_id TEXT,
+      resource_name TEXT NOT NULL,
+      quantity REAL NOT NULL DEFAULT 1.0,
+      unit TEXT NOT NULL DEFAULT 'un',
+      unit_cost REAL NOT NULL DEFAULT 0.0,
+      total_cost REAL NOT NULL DEFAULT 0.0,
+      stock_deducted INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      allocated_at TEXT NOT NULL
+    );
+  `);
+
+  // Seed default cost centers if empty
+  try {
+    const ccCountRes = database.exec("SELECT COUNT(*) FROM cost_centers");
+    const ccCount = ccCountRes.length > 0 && ccCountRes[0].values.length > 0 ? Number(ccCountRes[0].values[0][0]) : 0;
+    if (ccCount === 0) {
+      const now = new Date().toISOString();
+      database.run(`
+        INSERT OR IGNORE INTO cost_centers (id, code, name, description, color, budget_monthly, is_active, created_at)
+        VALUES
+          ('cc-1', 'CC-01', 'Projetos Especiais & Encomendas Sob Medida', 'Encomendas personalizadas, troféus corporativos, peças exclusivas e acabamento sob medida.', 'emerald', 4500.00, 1, '${now}'),
+          ('cc-2', 'CC-02', 'Produção Seriada & Catálogo', 'Linha contínua de chaveiros, suportes de celular, organizadores e itens de giro rápido.', 'sky', 3500.00, 1, '${now}'),
+          ('cc-3', 'CC-03', 'Prototipagem Rápida & Engenharia', 'Desenvolvimento de produtos técnicos, gabaritos industriais, cases e validação dimensional.', 'purple', 3000.00, 1, '${now}'),
+          ('cc-4', 'CC-04', 'Marketplaces & E-commerce', 'Vendas online via canais integrados (Mercado Livre, Shopee) com embalagem e taxas inclusas.', 'amber', 2800.00, 1, '${now}'),
+          ('cc-5', 'CC-05', 'Manutenção, P&D & Oficina Interna', 'Peças de reposição para as impressoras, melhorias na oficina, testes de filamentos e insumos.', 'rose', 1200.00, 1, '${now}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Cost centers seed check:', err);
+  }
+
+  // Seed default custom projects and allocations if empty
+  try {
+    const prjCountRes = database.exec("SELECT COUNT(*) FROM custom_projects");
+    const prjCount = prjCountRes.length > 0 && prjCountRes[0].values.length > 0 ? Number(prjCountRes[0].values[0][0]) : 0;
+    if (prjCount === 0) {
+      const now = new Date().toISOString();
+      const today = new Date();
+      const fmtDate = (d: Date) => d.toISOString().split('T')[0];
+      const addDays = (days: number) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + days);
+        return fmtDate(d);
+      };
+
+      database.run(`
+        INSERT OR IGNORE INTO custom_projects (
+          id, code, title, description, client_id, client_name, cost_center_id, status, priority,
+          target_delivery_date, agreed_price, amount_paid, production_order_id, op_number, notes, created_at, updated_at
+        ) VALUES
+        (
+          'prj-1', 'PRJ-2026-001', 'Lote 60x Troféus Futuristas Tech Summit',
+          'Troféus geométricos com base preta e torre prateada silk para premiação corporativa.',
+          'cl-1', 'Agência Spark Comunicação', 'cc-1', 'in_progress', 'high',
+          '${addDays(8)}', 1840.00, 920.00, 'op-101', 'OP #101',
+          'Exige acabamento impecável, remoção de costuras e aplicação de peso de lastro na base.',
+          '${now}', '${now}'
+        ),
+        (
+          'prj-2', 'PRJ-2026-002', 'Gabinete Industrial IoT c/ Trilho DIN (5 unidades)',
+          'Cases técnicos para placas ESP32 em ambiente industrial com ventilação passiva.',
+          'cl-3', 'Metalúrgica Precision LTDA', 'cc-3', 'approved', 'normal',
+          '${addDays(14)}', 720.00, 720.00, NULL, NULL,
+          'Material obrigatório em PETG resistente a calor, com 4 inserts roscados de latão M3 por unidade.',
+          '${now}', '${now}'
+        ),
+        (
+          'prj-3', 'PRJ-2026-003', 'Coleção 25x Miniaturas e Cenários RPG Dragão Ancião',
+          'Miniaturas colecionáveis com alto nível de detalhe 0.12mm e base texturizada.',
+          'cl-2', 'Lucas Silva (#SHP-9812)', 'cc-1', 'completed', 'urgent',
+          '${addDays(-2)}', 650.00, 650.00, 'op-103', 'OP #103',
+          'Acompanha embalagens individuais em saco kraft com tag personalizada.',
+          '${now}', '${now}'
+        ),
+        (
+          'prj-4', 'PRJ-2026-004', 'Reposição Lote 120x Chaveiros Spotify com Argolas',
+          'Lote de reposição de estoque para pronta-entrega nos canais de e-commerce.',
+          NULL, 'Estoque Pronta-Entrega', 'cc-2', 'in_progress', 'normal',
+          '${addDays(5)}', 1440.00, 0.00, 'op-102', 'OP #102',
+          'Produção em batches na Ender 3 e Bambu Lab.',
+          '${now}', '${now}'
+        )
+      `);
+
+      // Allocations for Project 1 (Troféus Tech Summit)
+      database.run(`
+        INSERT OR IGNORE INTO project_allocations (
+          id, project_id, resource_type, resource_id, resource_name, quantity, unit, unit_cost, total_cost, stock_deducted, notes, allocated_at
+        ) VALUES
+        ('alloc-1', 'prj-1', 'filament', 'fil-1', 'PLA Preto Fosco 1kg (1.75mm)', 720, 'g', 0.0899, 64.73, 1, 'Bases pesadas dos 60 troféus', '${now}'),
+        ('alloc-2', 'prj-1', 'filament', 'fil-2', 'PLA Silk Prata 1kg (1.75mm)', 480, 'g', 0.1190, 57.12, 1, 'Torres em espiral futurista', '${now}'),
+        ('alloc-3', 'prj-1', 'supply', 'sup-5', 'Saco Kraft c/ Visor e Fecho Zip 10x15cm', 60, 'un', 0.45, 27.00, 1, 'Embalagens individuais de entrega', '${now}'),
+        ('alloc-4', 'prj-1', 'supply', 'sup-6', 'Tag Cartão Kraft Personalizado + Fio Sisal', 60, 'un', 0.30, 18.00, 1, 'Identificação dos homenageados', '${now}'),
+        ('alloc-5', 'prj-1', 'machine_time', 'p-2', 'Bambu Lab P1S Combo (Energia + Depreciação)', 38, 'h', 1.50, 57.00, 0, 'Tempo de máquina computado', '${now}'),
+        ('alloc-6', 'prj-1', 'labor', NULL, 'Modelagem 3D & Preparação de Fatiamento Especial', 3.5, 'h', 35.00, 122.50, 0, 'Design das formas geométricas no Fusion 360', '${now}'),
+        ('alloc-7', 'prj-1', 'labor', NULL, 'Pós-processamento, Montagem & Embalagem', 5.0, 'h', 20.00, 100.00, 0, 'Inspeção de qualidade e ensacamento', '${now}'),
+
+        ('alloc-8', 'prj-2', 'filament', 'fil-3', 'PETG Azul Royal 1kg (1.75mm)', 320, 'g', 0.0990, 31.68, 1, 'Corpos dos gabinetes e tampas', '${now}'),
+        ('alloc-9', 'prj-2', 'supply', 'sup-4', 'Parafuso Allen M3 x 12mm c/ Porca', 20, 'kit', 0.25, 5.00, 1, 'Fixação das tampas e trilho', '${now}'),
+        ('alloc-10', 'prj-2', 'machine_time', 'p-1', 'Creality Ender 3 S1 Pro (Energia + Depreciação)', 16, 'h', 0.90, 14.40, 0, 'Tempo de impressão total', '${now}'),
+        ('alloc-11', 'prj-2', 'labor', NULL, 'Engenharia CAD & Ensaio de Encaixe Placa', 4.0, 'h', 40.00, 160.00, 0, 'Validação das tolerâncias dimensionais', '${now}'),
+
+        ('alloc-12', 'prj-3', 'filament', 'fil-1', 'PLA Preto Fosco 1kg (1.75mm)', 250, 'g', 0.0899, 22.48, 1, 'Impressão das 25 miniaturas e bases', '${now}'),
+        ('alloc-13', 'prj-3', 'supply', 'sup-5', 'Saco Kraft c/ Visor e Fecho Zip 10x15cm', 25, 'un', 0.45, 11.25, 1, 'Embalagem individual para envio', '${now}'),
+        ('alloc-14', 'prj-3', 'machine_time', 'p-3', 'Artillery Genius Pro (Energia + Depreciação)', 28, 'h', 0.85, 23.80, 0, 'Camada fina 0.12mm', '${now}'),
+        ('alloc-15', 'prj-3', 'labor', NULL, 'Remoção Cuidadosa de Suportes Finos & Cura', 4.0, 'h', 25.00, 100.00, 0, 'Acabamento fino sem quebrar detalhes', '${now}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Projects and allocations seed check:', err);
+  }
+
+  // Machine Assets & Depreciation Control (Ativos Imobilizados, Máquinas e Depreciação)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS machine_assets (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT '3d_printer',
+      printer_id TEXT,
+      printer_name TEXT,
+      brand TEXT,
+      model TEXT,
+      serial_number TEXT,
+      purchase_date TEXT NOT NULL,
+      supplier TEXT,
+      invoice_number TEXT,
+      acquisition_cost REAL NOT NULL DEFAULT 0.0,
+      freight_and_installation REAL NOT NULL DEFAULT 0.0,
+      initial_total_cost REAL NOT NULL DEFAULT 0.0,
+      residual_value REAL NOT NULL DEFAULT 0.0,
+      depreciable_base REAL NOT NULL DEFAULT 0.0,
+      depreciation_method TEXT NOT NULL DEFAULT 'linear_time',
+      useful_life_months INTEGER NOT NULL DEFAULT 36,
+      useful_life_hours REAL NOT NULL DEFAULT 6000.0,
+      accumulated_hours REAL NOT NULL DEFAULT 0.0,
+      current_status TEXT NOT NULL DEFAULT 'active',
+      hourly_rate REAL NOT NULL DEFAULT 0.0,
+      monthly_rate REAL NOT NULL DEFAULT 0.0,
+      accumulated_depreciation REAL NOT NULL DEFAULT 0.0,
+      current_book_value REAL NOT NULL DEFAULT 0.0,
+      location TEXT DEFAULT 'Oficina Principal',
+      disposal_date TEXT,
+      disposal_value REAL DEFAULT 0.0,
+      disposal_reason TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  // Depreciation Historical Logs (Lançamentos Contábeis de Amortização Mensal)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS depreciation_logs (
+      id TEXT PRIMARY KEY,
+      asset_id TEXT NOT NULL,
+      period_month TEXT NOT NULL,
+      depreciation_amount REAL NOT NULL DEFAULT 0.0,
+      accumulated_to_date REAL NOT NULL DEFAULT 0.0,
+      book_value_after REAL NOT NULL DEFAULT 0.0,
+      method_used TEXT NOT NULL DEFAULT 'linear_time',
+      hours_in_period REAL DEFAULT 0.0,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Seed default machine assets if empty
+  try {
+    const astCountRes = database.exec("SELECT COUNT(*) FROM machine_assets");
+    const astCount = astCountRes.length > 0 && astCountRes[0].values.length > 0 ? Number(astCountRes[0].values[0][0]) : 0;
+    if (astCount === 0) {
+      const now = new Date().toISOString();
+      database.run(`
+        INSERT OR IGNORE INTO machine_assets (
+          id, code, name, category, printer_id, printer_name, brand, model, serial_number,
+          purchase_date, supplier, invoice_number, acquisition_cost, freight_and_installation,
+          initial_total_cost, residual_value, depreciable_base, depreciation_method,
+          useful_life_months, useful_life_hours, accumulated_hours, current_status,
+          hourly_rate, monthly_rate, accumulated_depreciation, current_book_value,
+          location, notes, created_at, updated_at
+        ) VALUES
+        (
+          'ast-1', 'PAT-001', 'Bambu Lab P1S Combo c/ AMS', '3d_printer', 'p-2', 'Bambu Lab P1S Combo', 'Bambu Lab', 'P1S Combo', '01P1S-2024-88192',
+          '2024-04-10', '3D Prime Brasil Oficial', 'NF-e 048.192', 5800.00, 200.00,
+          6000.00, 1200.00, 4800.00, 'linear_time',
+          36, 6000.0, 1850.0, 'active',
+          0.80, 133.33, 3066.59, 2933.41,
+          'Bancada 1 - Sala Principal', 'Impressora de alta velocidade CoreXY com sistema de 4 cores AMS.', '${now}', '${now}'
+        ),
+        (
+          'ast-2', 'PAT-002', 'Creality Ender 3 S1 Pro Direct Drive', '3d_printer', 'p-1', 'Creality Ender 3 S1 Pro', 'Creality', 'Ender 3 S1 Pro', 'CRE-S1P-991204',
+          '2023-08-15', 'Creality Official Store BR', 'NF-e 102.841', 2750.00, 150.00,
+          2900.00, 500.00, 2400.00, 'operating_hours',
+          36, 5000.0, 3100.0, 'active',
+          0.48, 66.67, 1488.00, 1412.00,
+          'Bancada 2 - Linha Seriada', 'Equipamento robusto com extrusor Sprite todo em metal para altas temperaturas.', '${now}', '${now}'
+        ),
+        (
+          'ast-3', 'PAT-003', 'Artillery Genius Pro V2', '3d_printer', 'p-3', 'Artillery Genius Pro', 'Artillery', 'Genius Pro', 'ART-GP-118273',
+          '2023-01-20', 'Tech3D Distribuidora', 'NF-e 021.503', 2100.00, 100.00,
+          2200.00, 400.00, 1800.00, 'linear_time',
+          36, 4500.0, 3900.0, 'fully_depreciated',
+          0.40, 50.00, 1800.00, 400.00,
+          'Bancada 3 - Prototipagem', 'Máquina silenciosa que já atingiu 100% de depreciação contábil e opera com lucro líquido máximo.', '${now}', '${now}'
+        ),
+        (
+          'ast-4', 'PAT-004', 'Estação de Secagem Sunlu S4 Quad-Spool', 'drying_storage', NULL, NULL, 'Sunlu', 'FilaDryer S4', 'SL-S4-2024-00481',
+          '2024-06-01', 'Importação Direta', 'DI-99201', 950.00, 130.00,
+          1080.00, 180.00, 900.00, 'linear_time',
+          24, 4000.0, 1200.0, 'active',
+          0.22, 37.50, 337.50, 742.50,
+          'Bancada Central de Insumos', 'Desidratador com circulação de ar aquecido para 4 bobinas simultâneas (PA, PETG, TPU).', '${now}', '${now}'
+        ),
+        (
+          'ast-5', 'PAT-005', 'Nobreak Senoidal Online NHS Laser Prime 3000VA', 'power_protection', NULL, NULL, 'NHS', 'Laser Prime 3kVA', 'NHS-3K-88129',
+          '2024-01-10', 'EletroSeg Automação', 'NF-e 881.029', 3200.00, 150.00,
+          3350.00, 650.00, 2700.00, 'linear_time',
+          60, 15000.0, 4500.0, 'active',
+          0.18, 45.00, 1170.00, 2180.00,
+          'Rack de Energia Protegida', 'Proteção contra surtos, quedas e flutuações de tensão nas 3 impressoras 3D.', '${now}', '${now}'
+        ),
+        (
+          'ast-6', 'PAT-006', 'Estação de Cura & Lavagem Elegoo Mercury Plus V2', 'post_processing', NULL, NULL, 'Elegoo', 'Mercury Plus V2', 'ELG-MP2-7718',
+          '2024-02-18', '3D Prime Brasil', 'NF-e 049.201', 1100.00, 80.00,
+          1180.00, 200.00, 980.00, 'linear_time',
+          24, 3000.0, 850.0, 'active',
+          0.33, 40.83, 571.62, 608.38,
+          'Área Química e Pós-Cura', 'Lavadora ultrassônica e câmara de cura UV 405nm.', '${now}', '${now}'
+        )
+      `);
+
+      // Seed sample logs
+      database.run(`
+        INSERT OR IGNORE INTO depreciation_logs (id, asset_id, period_month, depreciation_amount, accumulated_to_date, book_value_after, method_used, hours_in_period, notes, created_at)
+        VALUES
+          ('dlog-1', 'ast-1', '2026-01', 133.33, 2933.26, 3066.74, 'linear_time', 120.0, 'Depreciação mensal programada', '${now}'),
+          ('dlog-2', 'ast-1', '2026-02', 133.33, 3066.59, 2933.41, 'linear_time', 115.0, 'Depreciação mensal programada', '${now}'),
+          ('dlog-3', 'ast-2', '2026-01', 57.60, 1430.40, 1469.60, 'operating_hours', 120.0, 'Horímetro mensal apurado (120h x R$0,48)', '${now}'),
+          ('dlog-4', 'ast-2', '2026-02', 57.60, 1488.00, 1412.00, 'operating_hours', 120.0, 'Horímetro mensal apurado (120h x R$0,48)', '${now}')
+      `);
+    }
+  } catch (err) {
+    console.warn('Machine assets seed check:', err);
+  }
+
   // 4. Products table
   database.run(`
     CREATE TABLE IF NOT EXISTS products (
@@ -385,9 +770,33 @@ function initTables(database: Database) {
       platform_fee_amount REAL NOT NULL DEFAULT 0,
       payment_method TEXT,
       notes TEXT,
+      delivery_status TEXT NOT NULL DEFAULT 'pending',
+      tracking_code TEXT DEFAULT '',
+      shipping_carrier TEXT DEFAULT '',
+      shipping_cost REAL DEFAULT 0,
+      delivery_address TEXT DEFAULT '',
+      estimated_delivery_date TEXT DEFAULT '',
+      delivered_at TEXT DEFAULT '',
+      delivery_notes TEXT DEFAULT '',
       created_at TEXT NOT NULL
     );
   `);
+
+  const salesDeliveryMigrations = [
+    "ALTER TABLE product_sales ADD COLUMN delivery_status TEXT DEFAULT 'pending';",
+    "ALTER TABLE product_sales ADD COLUMN tracking_code TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN shipping_carrier TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN shipping_cost REAL DEFAULT 0;",
+    "ALTER TABLE product_sales ADD COLUMN delivery_address TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN estimated_delivery_date TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN delivered_at TEXT DEFAULT '';",
+    "ALTER TABLE product_sales ADD COLUMN delivery_notes TEXT DEFAULT '';",
+  ];
+  for (const m of salesDeliveryMigrations) {
+    try {
+      database.run(m);
+    } catch {}
+  }
 
   database.run(`
     CREATE TABLE IF NOT EXISTS clients (

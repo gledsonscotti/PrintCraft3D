@@ -4792,6 +4792,1593 @@ async function startServer() {
     }
   });
 
+  // Material Purchases / Cash Flow Expenses API (Compras de Filamentos e Suprimentos)
+  app.get('/api/material-purchases', (req: Request, res: Response) => {
+    try {
+      const purchases = queryAll(db, 'SELECT * FROM material_purchases ORDER BY purchase_date DESC, created_at DESC');
+      res.json(purchases);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/material-purchases', (req: Request, res: Response) => {
+    try {
+      const {
+        item_type,
+        item_id = null,
+        item_name,
+        quantity = 1,
+        unit = 'un',
+        unit_cost = 0,
+        total_cost = 0,
+        supplier = null,
+        purchase_date = new Date().toISOString().split('T')[0],
+        payment_method = 'PIX',
+        notes = null,
+        update_stock = false
+      } = req.body;
+
+      if (!item_name || Number(quantity) <= 0) {
+        return res.status(400).json({ error: 'Nome do item e quantidade válida são obrigatórios' });
+      }
+
+      const id = `pur-${Date.now()}`;
+      const finalTotalCost = Number(total_cost) > 0 ? Number(total_cost) : (Number(quantity) * Number(unit_cost));
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO material_purchases (
+          id, item_type, item_id, item_name, quantity, unit, unit_cost, total_cost, supplier, purchase_date, payment_method, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        item_type || 'other',
+        item_id || null,
+        item_name,
+        Number(quantity),
+        unit || 'un',
+        Number(unit_cost) || 0,
+        finalTotalCost,
+        supplier || null,
+        purchase_date,
+        payment_method || 'PIX',
+        notes || null,
+        now
+      ]);
+
+      if (update_stock && item_id) {
+        if (item_type === 'filament') {
+          const fil = queryOne<any>(db, 'SELECT * FROM filaments WHERE id = ?', [item_id]);
+          if (fil) {
+            const addedGrams = Number(quantity) * Number(fil.total_weight_g || 1000);
+            db.run('UPDATE filaments SET remaining_weight_g = remaining_weight_g + ?, cost_per_spool = ? WHERE id = ?', [
+              addedGrams,
+              Number(unit_cost) > 0 ? Number(unit_cost) : fil.cost_per_spool,
+              item_id
+            ]);
+          }
+        } else if (item_type === 'supply') {
+          db.run('UPDATE supplies SET in_stock_qty = in_stock_qty + ?, unit_cost = ? WHERE id = ?', [
+            Number(quantity),
+            Number(unit_cost) > 0 ? Number(unit_cost) : 0,
+            item_id
+          ]);
+        }
+      }
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM material_purchases WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/material-purchases/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM material_purchases WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ================= FINANCIAL ACCOUNTS & AGING LIST (CONTAS A PAGAR E A RECEBER) =================
+  app.get('/api/financial-accounts', (req: Request, res: Response) => {
+    try {
+      const { type, status } = req.query;
+      let sql = 'SELECT * FROM financial_accounts';
+      const conditions: string[] = [];
+      const params: any[] = [];
+
+      if (type && (type === 'payable' || type === 'receivable')) {
+        conditions.push('type = ?');
+        params.push(type);
+      }
+
+      if (status && typeof status === 'string') {
+        conditions.push('status = ?');
+        params.push(status);
+      }
+
+      if (conditions.length > 0) {
+        sql += ' WHERE ' + conditions.join(' AND ');
+      }
+
+      sql += ' ORDER BY due_date ASC, created_at DESC';
+
+      const accounts = queryAll<any>(db, sql, params);
+
+      // Auto-flag overdue pending accounts against today's date
+      const todayStr = new Date().toISOString().split('T')[0];
+      const normalizedAccounts = accounts.map((acc) => {
+        let currentStatus = acc.status;
+        if (currentStatus === 'pending' && acc.due_date < todayStr) {
+          currentStatus = 'overdue';
+        }
+        return {
+          ...acc,
+          amount: Number(acc.amount) || 0,
+          status: currentStatus,
+        };
+      });
+
+      res.json(normalizedAccounts);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/financial-accounts', (req: Request, res: Response) => {
+    try {
+      const {
+        type = 'payable', // 'payable' | 'receivable'
+        description,
+        category = 'other',
+        entity_name,
+        document_ref = null,
+        amount,
+        due_date,
+        payment_date = null,
+        payment_method = 'PIX',
+        status = 'pending',
+        notes = null,
+        related_sale_id = null,
+        related_purchase_id = null,
+      } = req.body;
+
+      if (!description || !entity_name || !amount || !due_date) {
+        return res.status(400).json({ error: 'Descrição, favorecido/cliente, valor e data de vencimento são obrigatórios.' });
+      }
+
+      const id = 'acc-' + Date.now();
+      const now = new Date().toISOString();
+      const todayStr = now.split('T')[0];
+      const finalStatus = status === 'pending' && due_date < todayStr ? 'overdue' : status;
+
+      db.run(`
+        INSERT INTO financial_accounts (
+          id, type, description, category, entity_name, document_ref, amount,
+          due_date, payment_date, payment_method, status, notes, related_sale_id,
+          related_purchase_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        type,
+        description.trim(),
+        category,
+        entity_name.trim(),
+        document_ref ? document_ref.trim() : null,
+        Number(amount) || 0,
+        due_date,
+        payment_date || null,
+        payment_method || 'PIX',
+        finalStatus,
+        notes ? notes.trim() : null,
+        related_sale_id || null,
+        related_purchase_id || null,
+        now,
+        now
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/financial-accounts/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        type,
+        description,
+        category,
+        entity_name,
+        document_ref,
+        amount,
+        due_date,
+        payment_date,
+        payment_method,
+        status,
+        notes,
+      } = req.body;
+
+      const existing = queryOne<any>(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Título financeiro não encontrado.' });
+      }
+
+      const now = new Date().toISOString();
+      const todayStr = now.split('T')[0];
+      const targetDueDate = due_date || existing.due_date;
+      let targetStatus = status || existing.status;
+      if (targetStatus === 'pending' && targetDueDate < todayStr) {
+        targetStatus = 'overdue';
+      }
+
+      db.run(`
+        UPDATE financial_accounts SET
+          type = ?,
+          description = ?,
+          category = ?,
+          entity_name = ?,
+          document_ref = ?,
+          amount = ?,
+          due_date = ?,
+          payment_date = ?,
+          payment_method = ?,
+          status = ?,
+          notes = ?,
+          updated_at = ?
+        WHERE id = ?
+      `, [
+        type || existing.type,
+        description !== undefined ? description : existing.description,
+        category || existing.category,
+        entity_name !== undefined ? entity_name : existing.entity_name,
+        document_ref !== undefined ? document_ref : existing.document_ref,
+        amount !== undefined ? Number(amount) : existing.amount,
+        targetDueDate,
+        payment_date !== undefined ? payment_date : existing.payment_date,
+        payment_method !== undefined ? payment_method : existing.payment_method,
+        targetStatus,
+        notes !== undefined ? notes : existing.notes,
+        now,
+        id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Action endpoint to quickly settle / pay an account (Baixar título)
+  app.patch('/api/financial-accounts/:id/settle', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { payment_date, payment_method } = req.body;
+
+      const existing = queryOne<any>(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Título financeiro não encontrado.' });
+      }
+
+      const now = new Date().toISOString();
+      const settleDate = payment_date || now.split('T')[0];
+      const settleMethod = payment_method || existing.payment_method || 'PIX';
+
+      db.run(`
+        UPDATE financial_accounts SET
+          status = 'paid',
+          payment_date = ?,
+          payment_method = ?,
+          updated_at = ?
+        WHERE id = ?
+      `, [settleDate, settleMethod, now, id]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      res.json({ success: true, account: updated });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Reopen an account back to pending
+  app.patch('/api/financial-accounts/:id/reopen', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const existing = queryOne<any>(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Título financeiro não encontrado.' });
+      }
+
+      const now = new Date().toISOString();
+      const todayStr = now.split('T')[0];
+      const targetStatus = existing.due_date < todayStr ? 'overdue' : 'pending';
+
+      db.run(`
+        UPDATE financial_accounts SET
+          status = ?,
+          payment_date = NULL,
+          updated_at = ?
+        WHERE id = ?
+      `, [targetStatus, now, id]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM financial_accounts WHERE id = ?', [id]);
+      res.json({ success: true, account: updated });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/financial-accounts/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM financial_accounts WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // =========================================================================
+  // CENTRO DE CUSTOS & ALOCAÇÃO DE INSUMOS POR PROJETO / ENCOMENDA
+  // =========================================================================
+
+  // 1. Cost Centers Endpoints
+  app.get('/api/cost-centers', (req: Request, res: Response) => {
+    try {
+      const costCenters = queryAll<any>(db, 'SELECT * FROM cost_centers ORDER BY code ASC');
+      const projects = queryAll<any>(db, 'SELECT id, cost_center_id, agreed_price FROM custom_projects');
+      const allocations = queryAll<any>(db, `
+        SELECT pa.project_id, pa.total_cost, cp.cost_center_id
+        FROM project_allocations pa
+        JOIN custom_projects cp ON pa.project_id = cp.id
+      `);
+
+      const enriched = costCenters.map((cc) => {
+        const ccProjects = projects.filter((p) => p.cost_center_id === cc.id);
+        const totalProjects = ccProjects.length;
+        const totalAgreedRevenue = ccProjects.reduce((acc, p) => acc + (Number(p.agreed_price) || 0), 0);
+        const totalAllocatedCost = allocations
+          .filter((a) => a.cost_center_id === cc.id)
+          .reduce((acc, a) => acc + (Number(a.total_cost) || 0), 0);
+        const budget = Number(cc.budget_monthly) || 0;
+        const budgetUtilPercent = budget > 0 ? (totalAllocatedCost / budget) * 100 : 0;
+
+        return {
+          ...cc,
+          total_projects: totalProjects,
+          total_agreed_revenue: totalAgreedRevenue,
+          total_allocated_cost: totalAllocatedCost,
+          budget_utilization_percent: Math.min(999, Math.round(budgetUtilPercent * 10) / 10),
+        };
+      });
+
+      res.json(enriched);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/cost-centers', (req: Request, res: Response) => {
+    try {
+      const { code, name, description = '', color = 'emerald', budget_monthly = 0, is_active = 1 } = req.body;
+      if (!name || !code) {
+        return res.status(400).json({ error: 'Código e nome do Centro de Custos são obrigatórios.' });
+      }
+
+      const id = 'cc-' + Date.now();
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO cost_centers (id, code, name, description, color, budget_monthly, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, code.trim().toUpperCase(), name.trim(), description.trim(), color, Number(budget_monthly) || 0, is_active ? 1 : 0, now]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM cost_centers WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/cost-centers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { code, name, description, color, budget_monthly, is_active } = req.body;
+
+      const existing = queryOne<any>(db, 'SELECT * FROM cost_centers WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Centro de Custos não encontrado.' });
+      }
+
+      db.run(`
+        UPDATE cost_centers SET
+          code = ?,
+          name = ?,
+          description = ?,
+          color = ?,
+          budget_monthly = ?,
+          is_active = ?
+        WHERE id = ?
+      `, [
+        code !== undefined ? code.trim().toUpperCase() : existing.code,
+        name !== undefined ? name.trim() : existing.name,
+        description !== undefined ? description.trim() : existing.description,
+        color !== undefined ? color : existing.color,
+        budget_monthly !== undefined ? Number(budget_monthly) : existing.budget_monthly,
+        is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+        id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM cost_centers WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/cost-centers/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      // Reassign any projects in this cost center to the first available cost center
+      const fallbackCc = queryOne<any>(db, 'SELECT id FROM cost_centers WHERE id != ? LIMIT 1', [id]);
+      if (fallbackCc) {
+        db.run('UPDATE custom_projects SET cost_center_id = ? WHERE cost_center_id = ?', [fallbackCc.id, id]);
+      }
+      db.run('DELETE FROM cost_centers WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 2. Custom Projects Endpoints
+  app.get('/api/custom-projects', (req: Request, res: Response) => {
+    try {
+      const { cost_center_id, status, client_id } = req.query;
+      let sql = `
+        SELECT 
+          cp.*,
+          cc.name as cost_center_name,
+          cc.color as cost_center_color
+        FROM custom_projects cp
+        LEFT JOIN cost_centers cc ON cp.cost_center_id = cc.id
+        WHERE 1=1
+      `;
+      const params: any[] = [];
+
+      if (cost_center_id) {
+        sql += ' AND cp.cost_center_id = ?';
+        params.push(cost_center_id);
+      }
+      if (status) {
+        sql += ' AND cp.status = ?';
+        params.push(status);
+      }
+      if (client_id) {
+        sql += ' AND cp.client_id = ?';
+        params.push(client_id);
+      }
+
+      sql += ' ORDER BY cp.created_at DESC';
+      const projects = queryAll<any>(db, sql, params);
+
+      // Compute allocated costs and profit margins for each project
+      const allAllocations = queryAll<any>(db, 'SELECT project_id, resource_type, quantity, unit_cost, total_cost FROM project_allocations');
+
+      const enriched = projects.map((p) => {
+        const pAllocations = allAllocations.filter((a) => a.project_id === p.id);
+        const totalAllocatedCost = pAllocations.reduce((sum, a) => sum + (Number(a.total_cost) || 0), 0);
+        const agreedPrice = Number(p.agreed_price) || 0;
+        const profit = agreedPrice - totalAllocatedCost;
+        const profitMarginPercent = agreedPrice > 0 ? (profit / agreedPrice) * 100 : 0;
+
+        return {
+          ...p,
+          allocations_count: pAllocations.length,
+          total_allocated_cost: Math.round(totalAllocatedCost * 100) / 100,
+          profit: Math.round(profit * 100) / 100,
+          profit_margin_percent: Math.round(profitMarginPercent * 10) / 10,
+        };
+      });
+
+      res.json(enriched);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/custom-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const project = queryOne<any>(db, `
+        SELECT 
+          cp.*,
+          cc.name as cost_center_name,
+          cc.color as cost_center_color
+        FROM custom_projects cp
+        LEFT JOIN cost_centers cc ON cp.cost_center_id = cc.id
+        WHERE cp.id = ?
+      `, [id]);
+
+      if (!project) {
+        return res.status(404).json({ error: 'Projeto/Encomenda não encontrado.' });
+      }
+
+      const allocations = queryAll<any>(db, `
+        SELECT * FROM project_allocations WHERE project_id = ? ORDER BY allocated_at ASC
+      `, [id]);
+
+      const totalAllocatedCost = allocations.reduce((sum, a) => sum + (Number(a.total_cost) || 0), 0);
+      const agreedPrice = Number(project.agreed_price) || 0;
+      const profit = agreedPrice - totalAllocatedCost;
+      const profitMarginPercent = agreedPrice > 0 ? (profit / agreedPrice) * 100 : 0;
+
+      res.json({
+        ...project,
+        allocations,
+        total_allocated_cost: Math.round(totalAllocatedCost * 100) / 100,
+        profit: Math.round(profit * 100) / 100,
+        profit_margin_percent: Math.round(profitMarginPercent * 10) / 10,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/custom-projects', (req: Request, res: Response) => {
+    try {
+      const {
+        code,
+        title,
+        description = '',
+        client_id = null,
+        client_name = 'Cliente Avulso',
+        cost_center_id,
+        status = 'quote',
+        priority = 'normal',
+        target_delivery_date = null,
+        agreed_price = 0,
+        amount_paid = 0,
+        production_order_id = null,
+        op_number = null,
+        notes = '',
+      } = req.body;
+
+      if (!title || !cost_center_id) {
+        return res.status(400).json({ error: 'Título do projeto e Centro de Custos são obrigatórios.' });
+      }
+
+      const id = 'prj-' + Date.now();
+      const generatedCode = code && code.trim() ? code.trim().toUpperCase() : `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO custom_projects (
+          id, code, title, description, client_id, client_name, cost_center_id, status, priority,
+          target_delivery_date, agreed_price, amount_paid, production_order_id, op_number, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        generatedCode,
+        title.trim(),
+        description ? description.trim() : '',
+        client_id || null,
+        client_name ? client_name.trim() : 'Cliente Avulso',
+        cost_center_id,
+        status,
+        priority,
+        target_delivery_date || null,
+        Number(agreed_price) || 0,
+        Number(amount_paid) || 0,
+        production_order_id || null,
+        op_number || null,
+        notes ? notes.trim() : '',
+        now,
+        now
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM custom_projects WHERE id = ?', [id]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/custom-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        code,
+        title,
+        description,
+        client_id,
+        client_name,
+        cost_center_id,
+        status,
+        priority,
+        target_delivery_date,
+        agreed_price,
+        amount_paid,
+        production_order_id,
+        op_number,
+        notes,
+      } = req.body;
+
+      const existing = queryOne<any>(db, 'SELECT * FROM custom_projects WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Projeto não encontrado.' });
+      }
+
+      const now = new Date().toISOString();
+
+      db.run(`
+        UPDATE custom_projects SET
+          code = ?,
+          title = ?,
+          description = ?,
+          client_id = ?,
+          client_name = ?,
+          cost_center_id = ?,
+          status = ?,
+          priority = ?,
+          target_delivery_date = ?,
+          agreed_price = ?,
+          amount_paid = ?,
+          production_order_id = ?,
+          op_number = ?,
+          notes = ?,
+          updated_at = ?
+        WHERE id = ?
+      `, [
+        code !== undefined ? code.trim().toUpperCase() : existing.code,
+        title !== undefined ? title.trim() : existing.title,
+        description !== undefined ? description : existing.description,
+        client_id !== undefined ? client_id : existing.client_id,
+        client_name !== undefined ? client_name.trim() : existing.client_name,
+        cost_center_id !== undefined ? cost_center_id : existing.cost_center_id,
+        status !== undefined ? status : existing.status,
+        priority !== undefined ? priority : existing.priority,
+        target_delivery_date !== undefined ? target_delivery_date : existing.target_delivery_date,
+        agreed_price !== undefined ? Number(agreed_price) : existing.agreed_price,
+        amount_paid !== undefined ? Number(amount_paid) : existing.amount_paid,
+        production_order_id !== undefined ? production_order_id : existing.production_order_id,
+        op_number !== undefined ? op_number : existing.op_number,
+        notes !== undefined ? notes : existing.notes,
+        now,
+        id
+      ]);
+
+      saveDb();
+      const updated = queryOne(db, 'SELECT * FROM custom_projects WHERE id = ?', [id]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/custom-projects/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM project_allocations WHERE project_id = ?', [id]);
+      db.run('DELETE FROM custom_projects WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 3. Project Allocations (Alocações de Insumos, Filamentos, Máquinas e Mão de Obra)
+  app.get('/api/custom-projects/:id/allocations', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const allocations = queryAll(db, 'SELECT * FROM project_allocations WHERE project_id = ? ORDER BY allocated_at ASC', [id]);
+      res.json(allocations);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/custom-projects/:id/allocations', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        resource_type, // 'filament' | 'supply' | 'machine_time' | 'labor' | 'outsourced'
+        resource_id = null,
+        resource_name,
+        quantity,
+        unit = 'un',
+        unit_cost = 0,
+        stock_deducted = 0,
+        notes = '',
+      } = req.body;
+
+      if (!resource_type || !resource_name || quantity === undefined) {
+        return res.status(400).json({ error: 'Tipo, nome e quantidade do recurso são obrigatórios.' });
+      }
+
+      const qty = Math.max(0.01, Number(quantity) || 1);
+      const uCost = Number(unit_cost) || 0;
+      const totalCost = Math.round(qty * uCost * 100) / 100;
+      const allocId = 'alloc-' + Date.now();
+      const now = new Date().toISOString();
+      const shouldDeduct = Boolean(stock_deducted);
+
+      // Perform stock deduction if requested and resource_id is provided
+      if (shouldDeduct && resource_id) {
+        if (resource_type === 'filament') {
+          db.run('UPDATE filaments SET remaining_weight_g = MAX(0, remaining_weight_g - ?) WHERE id = ?', [qty, resource_id]);
+        } else if (resource_type === 'supply') {
+          db.run('UPDATE supplies SET in_stock_qty = MAX(0, in_stock_qty - ?) WHERE id = ?', [Math.round(qty), resource_id]);
+        }
+      }
+
+      db.run(`
+        INSERT INTO project_allocations (
+          id, project_id, resource_type, resource_id, resource_name, quantity, unit, unit_cost, total_cost, stock_deducted, notes, allocated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        allocId,
+        id,
+        resource_type,
+        resource_id || null,
+        resource_name.trim(),
+        qty,
+        unit.trim(),
+        uCost,
+        totalCost,
+        shouldDeduct ? 1 : 0,
+        notes ? notes.trim() : '',
+        now
+      ]);
+
+      saveDb();
+      const created = queryOne(db, 'SELECT * FROM project_allocations WHERE id = ?', [allocId]);
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/custom-projects/:id/allocations/:allocId/deduct-stock', (req: Request, res: Response) => {
+    try {
+      const { id, allocId } = req.params;
+      const alloc = queryOne<any>(db, 'SELECT * FROM project_allocations WHERE id = ? AND project_id = ?', [allocId, id]);
+      if (!alloc) {
+        return res.status(404).json({ error: 'Alocação não encontrada.' });
+      }
+
+      if (!alloc.stock_deducted && alloc.resource_id) {
+        if (alloc.resource_type === 'filament') {
+          db.run('UPDATE filaments SET remaining_weight_g = MAX(0, remaining_weight_g - ?) WHERE id = ?', [alloc.quantity, alloc.resource_id]);
+        } else if (alloc.resource_type === 'supply') {
+          db.run('UPDATE supplies SET in_stock_qty = MAX(0, in_stock_qty - ?) WHERE id = ?', [Math.round(alloc.quantity), alloc.resource_id]);
+        }
+        db.run('UPDATE project_allocations SET stock_deducted = 1 WHERE id = ?', [allocId]);
+        saveDb();
+      }
+
+      const updated = queryOne(db, 'SELECT * FROM project_allocations WHERE id = ?', [allocId]);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/custom-projects/:id/allocations/:allocId', (req: Request, res: Response) => {
+    try {
+      const { id, allocId } = req.params;
+      const { revert_stock } = req.query;
+
+      const alloc = queryOne<any>(db, 'SELECT * FROM project_allocations WHERE id = ? AND project_id = ?', [allocId, id]);
+      if (alloc && (revert_stock === 'true' || revert_stock === '1') && alloc.stock_deducted && alloc.resource_id) {
+        if (alloc.resource_type === 'filament') {
+          db.run('UPDATE filaments SET remaining_weight_g = remaining_weight_g + ? WHERE id = ?', [alloc.quantity, alloc.resource_id]);
+        } else if (alloc.resource_type === 'supply') {
+          db.run('UPDATE supplies SET in_stock_qty = in_stock_qty + ? WHERE id = ?', [Math.round(alloc.quantity), alloc.resource_id]);
+        }
+      }
+
+      db.run('DELETE FROM project_allocations WHERE id = ? AND project_id = ?', [allocId, id]);
+      saveDb();
+      res.json({ success: true, id: allocId });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 4. Quick Action: Convert Project into Production Order (OP)
+  app.post('/api/custom-projects/:id/create-op', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const project = queryOne<any>(db, 'SELECT * FROM custom_projects WHERE id = ?', [id]);
+      if (!project) {
+        return res.status(404).json({ error: 'Projeto não encontrado.' });
+      }
+
+      const opId = 'op-' + Date.now();
+      const opNumber = `OP #${String(Date.now()).slice(-4)}`;
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO production_orders (
+          id, order_number, client_name, product_id, product_name, quantity, status,
+          priority, target_date, created_at, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        opId,
+        opNumber,
+        project.client_name || 'Cliente de Encomenda',
+        null,
+        project.title,
+        1,
+        'in_progress',
+        project.priority || 'normal',
+        project.target_delivery_date || now.split('T')[0],
+        now,
+        `Gerado a partir do Projeto/Encomenda ${project.code}. ${project.notes || ''}`
+      ]);
+
+      db.run(`
+        UPDATE custom_projects SET
+          production_order_id = ?,
+          op_number = ?,
+          status = 'in_progress',
+          updated_at = ?
+        WHERE id = ?
+      `, [opId, opNumber, now, id]);
+
+      saveDb();
+      res.json({ success: true, op_id: opId, op_number: opNumber });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 5. Quick Action: Create Receivable Account from Project Balance
+  app.post('/api/custom-projects/:id/create-receivable', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const project = queryOne<any>(db, 'SELECT * FROM custom_projects WHERE id = ?', [id]);
+      if (!project) {
+        return res.status(404).json({ error: 'Projeto não encontrado.' });
+      }
+
+      const pendingAmount = Math.max(0, (Number(project.agreed_price) || 0) - (Number(project.amount_paid) || 0));
+      if (pendingAmount <= 0) {
+        return res.status(400).json({ error: 'Este projeto já está com o valor 100% quitado.' });
+      }
+
+      const accId = 'acc-' + Date.now();
+      const now = new Date().toISOString();
+      const todayStr = now.split('T')[0];
+      const dueDate = project.target_delivery_date || todayStr;
+
+      db.run(`
+        INSERT INTO financial_accounts (
+          id, type, description, category, entity_name, document_ref, amount,
+          due_date, payment_date, payment_method, status, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        accId,
+        'receivable',
+        `Saldo Encomenda: ${project.title}`,
+        'sale_client',
+        project.client_name || 'Cliente do Projeto',
+        project.code,
+        pendingAmount,
+        dueDate,
+        null,
+        'PIX',
+        dueDate < todayStr ? 'overdue' : 'pending',
+        `Lançamento automático de cobrança a partir da Encomenda ${project.code}.`,
+        now,
+        now
+      ]);
+
+      saveDb();
+      res.json({ success: true, account_id: accId, amount: pendingAmount });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // =========================================================================
+  // CONTROLE DE DEPRECIAÇÃO DE MÁQUINAS E EQUIPAMENTOS
+  // =========================================================================
+
+  // Helper to calculate dynamic asset depreciation
+  function computeAssetDepreciation(asset: any) {
+    const now = new Date();
+    const purchaseDate = new Date(asset.purchase_date || now);
+    
+    // Calculate months elapsed
+    let monthsElapsed = (now.getFullYear() - purchaseDate.getFullYear()) * 12 + (now.getMonth() - purchaseDate.getMonth());
+    if (now.getDate() >= purchaseDate.getDate()) {
+      monthsElapsed += 1;
+    }
+    monthsElapsed = Math.max(0, monthsElapsed);
+
+    const initialCost = Number(asset.initial_total_cost) || ((Number(asset.acquisition_cost) || 0) + (Number(asset.freight_and_installation) || 0));
+    const residualVal = Number(asset.residual_value) || 0;
+    const depreciableBase = Math.max(0, initialCost - residualVal);
+    const lifeMonths = Math.max(1, Number(asset.useful_life_months) || 36);
+    const lifeHours = Math.max(1, Number(asset.useful_life_hours) || 6000);
+    const accumHours = Math.max(0, Number(asset.accumulated_hours) || 0);
+
+    let monthlyRate = 0;
+    let hourlyRate = 0;
+    let accumulatedDepreciation = 0;
+    let percentDepreciated = 0;
+
+    const method = asset.depreciation_method || 'linear_time';
+
+    if (method === 'operating_hours') {
+      hourlyRate = lifeHours > 0 ? depreciableBase / lifeHours : 0;
+      monthlyRate = lifeMonths > 0 ? depreciableBase / lifeMonths : 0;
+      accumulatedDepreciation = Math.min(depreciableBase, accumHours * hourlyRate);
+      percentDepreciated = lifeHours > 0 ? (accumHours / lifeHours) * 100 : 100;
+    } else if (method === 'sum_of_years') {
+      const yearsTotal = Math.max(1, Math.round(lifeMonths / 12));
+      const sumDigits = (yearsTotal * (yearsTotal + 1)) / 2;
+      monthlyRate = lifeMonths > 0 ? depreciableBase / lifeMonths : 0;
+      hourlyRate = lifeHours > 0 ? depreciableBase / lifeHours : monthlyRate / 160;
+
+      // Accelerated calculation based on year fraction
+      const currentYearIndex = Math.min(yearsTotal, Math.floor(monthsElapsed / 12) + 1);
+      let cumulativeFraction = 0;
+      for (let y = 1; y <= currentYearIndex; y++) {
+        const yearWeight = (yearsTotal - y + 1) / sumDigits;
+        if (y < currentYearIndex) {
+          cumulativeFraction += yearWeight;
+        } else {
+          const monthsInThisYear = (monthsElapsed % 12) || 12;
+          cumulativeFraction += yearWeight * (monthsInThisYear / 12);
+        }
+      }
+      accumulatedDepreciation = Math.min(depreciableBase, depreciableBase * Math.min(1, cumulativeFraction));
+      percentDepreciated = depreciableBase > 0 ? (accumulatedDepreciation / depreciableBase) * 100 : 100;
+    } else {
+      // Default: linear_time
+      monthlyRate = lifeMonths > 0 ? depreciableBase / lifeMonths : 0;
+      hourlyRate = lifeHours > 0 ? depreciableBase / lifeHours : (monthlyRate / 160);
+      accumulatedDepreciation = Math.min(depreciableBase, monthsElapsed * monthlyRate);
+      percentDepreciated = lifeMonths > 0 ? (monthsElapsed / lifeMonths) * 100 : 100;
+    }
+
+    if (asset.current_status === 'disposed') {
+      percentDepreciated = 100;
+    }
+
+    const currentBookValue = Math.max(residualVal, initialCost - accumulatedDepreciation);
+    let resolvedStatus = asset.current_status;
+    if (resolvedStatus === 'active' && percentDepreciated >= 99.9) {
+      resolvedStatus = 'fully_depreciated';
+    }
+
+    return {
+      ...asset,
+      initial_total_cost: Math.round(initialCost * 100) / 100,
+      residual_value: Math.round(residualVal * 100) / 100,
+      depreciable_base: Math.round(depreciableBase * 100) / 100,
+      months_elapsed: monthsElapsed,
+      monthly_rate: Math.round(monthlyRate * 100) / 100,
+      hourly_rate: Math.round(hourlyRate * 100) / 100,
+      accumulated_depreciation: Math.round(accumulatedDepreciation * 100) / 100,
+      current_book_value: Math.round(currentBookValue * 100) / 100,
+      percent_depreciated: Math.min(100, Math.round(percentDepreciated * 10) / 10),
+      current_status: resolvedStatus,
+    };
+  }
+
+  // 1. Get all assets
+  app.get('/api/machine-assets', (req: Request, res: Response) => {
+    try {
+      const { category, status, search } = req.query;
+      let sql = 'SELECT * FROM machine_assets WHERE 1=1';
+      const params: any[] = [];
+
+      if (category && category !== 'all') {
+        sql += ' AND category = ?';
+        params.push(category);
+      }
+      if (status && status !== 'all') {
+        sql += ' AND current_status = ?';
+        params.push(status);
+      }
+      if (search && typeof search === 'string' && search.trim()) {
+        sql += ' AND (name LIKE ? OR code LIKE ? OR brand LIKE ? OR model LIKE ?)';
+        const term = `%${search.trim()}%`;
+        params.push(term, term, term, term);
+      }
+
+      sql += ' ORDER BY code ASC';
+      const rawAssets = queryAll<any>(db, sql, params);
+      const enriched = rawAssets.map(computeAssetDepreciation);
+      res.json(enriched);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 2. Summary KPI metrics for Depreciation Dashboard
+  app.get('/api/machine-assets/summary', (req: Request, res: Response) => {
+    try {
+      const rawAssets = queryAll<any>(db, 'SELECT * FROM machine_assets');
+      const enriched = rawAssets.map(computeAssetDepreciation);
+
+      const totalAssets = enriched.length;
+      const activeAssets = enriched.filter(a => a.current_status === 'active').length;
+      const totalAcquisitionCost = enriched.reduce((sum, a) => sum + (Number(a.initial_total_cost) || 0), 0);
+      const totalAccumulatedDepreciation = enriched.reduce((sum, a) => sum + (Number(a.accumulated_depreciation) || 0), 0);
+      const totalCurrentBookValue = enriched.reduce((sum, a) => sum + (Number(a.current_book_value) || 0), 0);
+      const totalMonthlyDepreciationProvision = enriched
+        .filter(a => a.current_status === 'active')
+        .reduce((sum, a) => sum + (Number(a.monthly_rate) || 0), 0);
+
+      const printerAssets = enriched.filter(a => a.category === '3d_printer' && a.current_status !== 'disposed');
+      const avgHourly = printerAssets.length > 0
+        ? printerAssets.reduce((sum, a) => sum + (Number(a.hourly_rate) || 0), 0) / printerAssets.length
+        : 0.60;
+
+      const fullyDepreciatedCount = enriched.filter(a => a.current_status === 'fully_depreciated').length;
+      const maintenanceCount = enriched.filter(a => a.current_status === 'maintenance').length;
+
+      res.json({
+        total_assets: totalAssets,
+        active_assets: activeAssets,
+        total_acquisition_cost: Math.round(totalAcquisitionCost * 100) / 100,
+        total_accumulated_depreciation: Math.round(totalAccumulatedDepreciation * 100) / 100,
+        total_current_book_value: Math.round(totalCurrentBookValue * 100) / 100,
+        total_monthly_depreciation_provision: Math.round(totalMonthlyDepreciationProvision * 100) / 100,
+        average_hourly_depreciation: Math.round(avgHourly * 100) / 100,
+        fully_depreciated_count: fullyDepreciatedCount,
+        maintenance_count: maintenanceCount,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 3. Get single asset with logs
+  app.get('/api/machine-assets/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const raw = queryOne<any>(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      if (!raw) {
+        return res.status(404).json({ error: 'Equipamento patrimonial não encontrado.' });
+      }
+      const asset = computeAssetDepreciation(raw);
+      const logs = queryAll<any>(db, 'SELECT * FROM depreciation_logs WHERE asset_id = ? ORDER BY period_month DESC', [id]);
+      res.json({ ...asset, logs });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 4. Create new asset
+  app.post('/api/machine-assets', (req: Request, res: Response) => {
+    try {
+      const {
+        code,
+        name,
+        category = '3d_printer',
+        printer_id = null,
+        brand = '',
+        model = '',
+        serial_number = '',
+        purchase_date,
+        supplier = '',
+        invoice_number = '',
+        acquisition_cost = 0,
+        freight_and_installation = 0,
+        residual_value = 0,
+        depreciation_method = 'linear_time',
+        useful_life_months = 36,
+        useful_life_hours = 6000,
+        accumulated_hours = 0,
+        current_status = 'active',
+        location = 'Oficina Principal',
+        notes = '',
+      } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Nome do equipamento é obrigatório.' });
+      }
+
+      // Generate code if not provided
+      let finalCode = code && code.trim() ? code.trim().toUpperCase() : '';
+      if (!finalCode) {
+        const countRow = queryOne<{ c: number }>(db, 'SELECT COUNT(*) as c FROM machine_assets');
+        const nextNum = (countRow?.c || 0) + 1;
+        finalCode = `PAT-${String(nextNum).padStart(3, '0')}`;
+      }
+
+      // Check unique code
+      const existing = queryOne(db, 'SELECT id FROM machine_assets WHERE code = ?', [finalCode]);
+      if (existing) {
+        return res.status(400).json({ error: `O código patrimonial "${finalCode}" já está em uso.` });
+      }
+
+      const id = 'ast-' + Date.now();
+      const now = new Date().toISOString();
+      const pDate = purchase_date ? purchase_date.trim() : now.split('T')[0];
+
+      const acqCost = Number(acquisition_cost) || 0;
+      const freight = Number(freight_and_installation) || 0;
+      const initialTotal = acqCost + freight;
+      const resVal = Number(residual_value) || 0;
+      const depBase = Math.max(0, initialTotal - resVal);
+
+      let printerName = null;
+      if (printer_id) {
+        const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printer_id]);
+        if (p) printerName = p.name;
+      }
+
+      // Compute initial rates
+      const lifeM = Math.max(1, Number(useful_life_months) || 36);
+      const lifeH = Math.max(1, Number(useful_life_hours) || 6000);
+      const mRate = depBase / lifeM;
+      const hRate = lifeH > 0 ? (depBase / lifeH) : (mRate / 160);
+
+      db.run(`
+        INSERT INTO machine_assets (
+          id, code, name, category, printer_id, printer_name, brand, model, serial_number,
+          purchase_date, supplier, invoice_number, acquisition_cost, freight_and_installation,
+          initial_total_cost, residual_value, depreciable_base, depreciation_method,
+          useful_life_months, useful_life_hours, accumulated_hours, current_status,
+          hourly_rate, monthly_rate, accumulated_depreciation, current_book_value,
+          location, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id, finalCode, name.trim(), category, printer_id || null, printerName,
+        brand ? brand.trim() : '', model ? model.trim() : '', serial_number ? serial_number.trim() : '',
+        pDate, supplier ? supplier.trim() : '', invoice_number ? invoice_number.trim() : '',
+        acqCost, freight, initialTotal, resVal, depBase, depreciation_method,
+        lifeM, lifeH, Number(accumulated_hours) || 0, current_status,
+        Math.round(hRate * 100) / 100, Math.round(mRate * 100) / 100, 0, initialTotal,
+        location ? location.trim() : 'Oficina Principal', notes ? notes.trim() : '', now, now
+      ]);
+
+      // If tied to a printer, sync hourly depreciation
+      if (printer_id && hRate > 0) {
+        db.run('UPDATE printers SET hourly_depreciation = ? WHERE id = ?', [Math.round(hRate * 100) / 100, printer_id]);
+      }
+
+      saveDb();
+      const raw = queryOne(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      res.status(201).json(computeAssetDepreciation(raw));
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 5. Update asset
+  app.put('/api/machine-assets/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const existing = queryOne<any>(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Equipamento patrimonial não encontrado.' });
+      }
+
+      const {
+        code,
+        name,
+        category,
+        printer_id,
+        brand,
+        model,
+        serial_number,
+        purchase_date,
+        supplier,
+        invoice_number,
+        acquisition_cost,
+        freight_and_installation,
+        residual_value,
+        depreciation_method,
+        useful_life_months,
+        useful_life_hours,
+        accumulated_hours,
+        current_status,
+        location,
+        notes,
+      } = req.body;
+
+      const now = new Date().toISOString();
+      const finalCode = (code !== undefined ? code : existing.code).trim().toUpperCase();
+
+      // Check unique code if changed
+      if (finalCode !== existing.code) {
+        const dup = queryOne(db, 'SELECT id FROM machine_assets WHERE code = ? AND id != ?', [finalCode, id]);
+        if (dup) {
+          return res.status(400).json({ error: `O código patrimonial "${finalCode}" já está em uso.` });
+        }
+      }
+
+      const acqCost = acquisition_cost !== undefined ? Number(acquisition_cost) : Number(existing.acquisition_cost);
+      const freight = freight_and_installation !== undefined ? Number(freight_and_installation) : Number(existing.freight_and_installation);
+      const initialTotal = acqCost + freight;
+      const resVal = residual_value !== undefined ? Number(residual_value) : Number(existing.residual_value);
+      const depBase = Math.max(0, initialTotal - resVal);
+
+      let printerIdVal = printer_id !== undefined ? printer_id : existing.printer_id;
+      let printerName = existing.printer_name;
+      if (printerIdVal) {
+        const p = queryOne<{ name: string }>(db, 'SELECT name FROM printers WHERE id = ?', [printerIdVal]);
+        if (p) printerName = p.name;
+      } else {
+        printerName = null;
+      }
+
+      const lifeM = Math.max(1, useful_life_months !== undefined ? Number(useful_life_months) : Number(existing.useful_life_months) || 36);
+      const lifeH = Math.max(1, useful_life_hours !== undefined ? Number(useful_life_hours) : Number(existing.useful_life_hours) || 6000);
+      const mRate = depBase / lifeM;
+      const hRate = lifeH > 0 ? (depBase / lifeH) : (mRate / 160);
+
+      db.run(`
+        UPDATE machine_assets SET
+          code = ?,
+          name = ?,
+          category = ?,
+          printer_id = ?,
+          printer_name = ?,
+          brand = ?,
+          model = ?,
+          serial_number = ?,
+          purchase_date = ?,
+          supplier = ?,
+          invoice_number = ?,
+          acquisition_cost = ?,
+          freight_and_installation = ?,
+          initial_total_cost = ?,
+          residual_value = ?,
+          depreciable_base = ?,
+          depreciation_method = ?,
+          useful_life_months = ?,
+          useful_life_hours = ?,
+          accumulated_hours = ?,
+          current_status = ?,
+          hourly_rate = ?,
+          monthly_rate = ?,
+          location = ?,
+          notes = ?,
+          updated_at = ?
+        WHERE id = ?
+      `, [
+        finalCode,
+        name !== undefined ? name.trim() : existing.name,
+        category !== undefined ? category : existing.category,
+        printerIdVal || null,
+        printerName,
+        brand !== undefined ? brand.trim() : existing.brand,
+        model !== undefined ? model.trim() : existing.model,
+        serial_number !== undefined ? serial_number.trim() : existing.serial_number,
+        purchase_date !== undefined ? purchase_date : existing.purchase_date,
+        supplier !== undefined ? supplier.trim() : existing.supplier,
+        invoice_number !== undefined ? invoice_number.trim() : existing.invoice_number,
+        acqCost,
+        freight,
+        initialTotal,
+        resVal,
+        depBase,
+        depreciation_method !== undefined ? depreciation_method : existing.depreciation_method,
+        lifeM,
+        lifeH,
+        accumulated_hours !== undefined ? Number(accumulated_hours) : existing.accumulated_hours,
+        current_status !== undefined ? current_status : existing.current_status,
+        Math.round(hRate * 100) / 100,
+        Math.round(mRate * 100) / 100,
+        location !== undefined ? location.trim() : existing.location,
+        notes !== undefined ? notes.trim() : existing.notes,
+        now,
+        id
+      ]);
+
+      // If tied to a printer, sync hourly depreciation
+      if (printerIdVal && hRate > 0) {
+        db.run('UPDATE printers SET hourly_depreciation = ? WHERE id = ?', [Math.round(hRate * 100) / 100, printerIdVal]);
+      }
+
+      saveDb();
+      const updatedRaw = queryOne(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      res.json(computeAssetDepreciation(updatedRaw));
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 6. Delete asset
+  app.delete('/api/machine-assets/:id', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      db.run('DELETE FROM depreciation_logs WHERE asset_id = ?', [id]);
+      db.run('DELETE FROM machine_assets WHERE id = ?', [id]);
+      saveDb();
+      res.json({ success: true, id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 7. Disposal / Alienation of Asset (Baixa, Venda ou Sucateamento)
+  app.post('/api/machine-assets/:id/disposal', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const raw = queryOne<any>(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      if (!raw) {
+        return res.status(404).json({ error: 'Equipamento patrimonial não encontrado.' });
+      }
+
+      const computed = computeAssetDepreciation(raw);
+      const {
+        disposal_date = new Date().toISOString().split('T')[0],
+        disposal_value = 0,
+        disposal_reason = 'Venda por renovação de parque',
+        create_receivable = false
+      } = req.body;
+
+      const saleValue = Number(disposal_value) || 0;
+      const bookValueAtDisposal = computed.current_book_value;
+      const capitalGainOrLoss = saleValue - bookValueAtDisposal;
+      const now = new Date().toISOString();
+
+      db.run(`
+        UPDATE machine_assets SET
+          current_status = 'disposed',
+          disposal_date = ?,
+          disposal_value = ?,
+          disposal_reason = ?,
+          updated_at = ?
+        WHERE id = ?
+      `, [disposal_date, saleValue, disposal_reason.trim(), now, id]);
+
+      // If requested and saleValue > 0, create receivable in financial accounts
+      let createdAccountId = null;
+      if (create_receivable && saleValue > 0) {
+        createdAccountId = 'acc-' + Date.now();
+        db.run(`
+          INSERT INTO financial_accounts (
+            id, type, description, category, entity_name, document_ref, amount,
+            due_date, payment_date, payment_method, status, notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          createdAccountId,
+          'receivable',
+          `Alienação de Ativo: ${computed.name} (${computed.code})`,
+          'other',
+          'Comprador de Ativo',
+          computed.code,
+          saleValue,
+          disposal_date,
+          null,
+          'PIX',
+          'pending',
+          `Venda de equipamento. Valor Contábil Líquido na baixa: R$ ${bookValueAtDisposal.toFixed(2)}. ${capitalGainOrLoss >= 0 ? `Ganho de capital: R$ ${capitalGainOrLoss.toFixed(2)}` : `Perda contábil: R$ ${Math.abs(capitalGainOrLoss).toFixed(2)}`}`,
+          now,
+          now
+        ]);
+      }
+
+      saveDb();
+      res.json({
+        success: true,
+        id,
+        disposal_date,
+        disposal_value: saleValue,
+        book_value_at_disposal: bookValueAtDisposal,
+        capital_gain_or_loss: Math.round(capitalGainOrLoss * 100) / 100,
+        receivable_account_id: createdAccountId
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 8. Bulk Sync All Linked Printers with Calculated Hourly Depreciation
+  app.post('/api/machine-assets/sync-printers', (req: Request, res: Response) => {
+    try {
+      const rawAssets = queryAll<any>(db, "SELECT * FROM machine_assets WHERE category = '3d_printer' AND printer_id IS NOT NULL AND current_status != 'disposed'");
+      let syncedCount = 0;
+
+      for (const raw of rawAssets) {
+        const computed = computeAssetDepreciation(raw);
+        if (computed.printer_id && computed.hourly_rate > 0) {
+          db.run('UPDATE printers SET hourly_depreciation = ? WHERE id = ?', [computed.hourly_rate, computed.printer_id]);
+          syncedCount++;
+        }
+      }
+
+      saveDb();
+      res.json({
+        success: true,
+        synced_count: syncedCount,
+        message: `${syncedCount} impressoras 3D tiveram suas taxas horárias de depreciação sincronizadas com precisão contábil.`
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 9. Auto-Import Unregistered Printers into Assets Catalog
+  app.post('/api/machine-assets/import-printers', (req: Request, res: Response) => {
+    try {
+      const allPrinters = queryAll<any>(db, 'SELECT * FROM printers');
+      const existingAssets = queryAll<any>(db, 'SELECT printer_id FROM machine_assets WHERE printer_id IS NOT NULL');
+      const registeredIds = new Set(existingAssets.map(a => a.printer_id));
+
+      const unimported = allPrinters.filter(p => !registeredIds.has(p.id));
+      if (unimported.length === 0) {
+        return res.json({ success: true, imported_count: 0, message: 'Todas as impressoras cadastradas já possuem registro patrimonial ativo.' });
+      }
+
+      const now = new Date().toISOString();
+      const todayStr = now.split('T')[0];
+      let importedCount = 0;
+
+      const currentCountRow = queryOne<{ c: number }>(db, 'SELECT COUNT(*) as c FROM machine_assets');
+      let nextNum = (currentCountRow?.c || 0) + 1;
+
+      for (const p of unimported) {
+        const code = `PAT-${String(nextNum++).padStart(3, '0')}`;
+        const id = 'ast-' + Date.now() + '-' + importedCount;
+
+        // Realistic estimated acquisition cost based on brand/name
+        let estCost = 2800;
+        let estLifeMonths = 36;
+        let estLifeHours = 5000;
+        const pName = (p.name || '').toLowerCase();
+
+        if (pName.includes('bambu') || pName.includes('x1') || pName.includes('p1s')) {
+          estCost = 5800;
+          estLifeHours = 7000;
+        } else if (pName.includes('k1') || pName.includes('corexy')) {
+          estCost = 3900;
+          estLifeHours = 6000;
+        } else if (pName.includes('ender') || pName.includes('artillery') || pName.includes('neptune')) {
+          estCost = 2400;
+          estLifeHours = 4500;
+        }
+
+        const residualVal = Math.round(estCost * 0.20);
+        const depBase = estCost - residualVal;
+        const mRate = depBase / estLifeMonths;
+        const hRate = depBase / estLifeHours;
+
+        db.run(`
+          INSERT INTO machine_assets (
+            id, code, name, category, printer_id, printer_name, brand, model, serial_number,
+            purchase_date, supplier, invoice_number, acquisition_cost, freight_and_installation,
+            initial_total_cost, residual_value, depreciable_base, depreciation_method,
+            useful_life_months, useful_life_hours, accumulated_hours, current_status,
+            hourly_rate, monthly_rate, accumulated_depreciation, current_book_value,
+            location, notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id, code, p.name, '3d_printer', p.id, p.name, p.brand || 'Fabricante 3D', p.model || p.name, '',
+          todayStr, 'Revenda Especializada 3D', '', estCost, 0,
+          estCost, residualVal, depBase, 'linear_time',
+          estLifeMonths, estLifeHours, 0, 'active',
+          Math.round(hRate * 100) / 100, Math.round(mRate * 100) / 100, 0, estCost,
+          'Oficina Principal', 'Importado automaticamente a partir do parque de impressoras 3D.', now, now
+        ]);
+
+        importedCount++;
+      }
+
+      saveDb();
+      res.json({
+        success: true,
+        imported_count: importedCount,
+        message: `${importedCount} impressoras foram incorporadas ao inventário patrimonial com sucesso.`
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 10. Record Periodic Monthly Depreciation Log (with optional financial accounts provision)
+  app.post('/api/machine-assets/:id/log-depreciation', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const raw = queryOne<any>(db, 'SELECT * FROM machine_assets WHERE id = ?', [id]);
+      if (!raw) {
+        return res.status(404).json({ error: 'Equipamento patrimonial não encontrado.' });
+      }
+
+      const computed = computeAssetDepreciation(raw);
+      const {
+        period_month = new Date().toISOString().slice(0, 7), // YYYY-MM
+        amount = computed.monthly_rate,
+        hours_in_period = 0,
+        notes = '',
+        create_financial_provision = false
+      } = req.body;
+
+      const depAmount = Math.max(0, Number(amount) || computed.monthly_rate);
+      const newAccum = Math.min(computed.depreciable_base, (Number(computed.accumulated_depreciation) || 0) + depAmount);
+      const newBookVal = Math.max(computed.residual_value, computed.initial_total_cost - newAccum);
+      const logId = 'dlog-' + Date.now();
+      const now = new Date().toISOString();
+
+      db.run(`
+        INSERT INTO depreciation_logs (
+          id, asset_id, period_month, depreciation_amount, accumulated_to_date, book_value_after,
+          method_used, hours_in_period, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        logId, id, period_month, depAmount, newAccum, newBookVal,
+        computed.depreciation_method, Number(hours_in_period) || 0, notes ? notes.trim() : 'Lançamento de quota de depreciação mensal', now
+      ]);
+
+      // If user specified hours in period, update accumulated_hours on asset
+      if (hours_in_period && Number(hours_in_period) > 0) {
+        db.run('UPDATE machine_assets SET accumulated_hours = accumulated_hours + ? WHERE id = ?', [Number(hours_in_period), id]);
+      }
+
+      // If requested, create a financial expense provision in financial_accounts (Fundo de Reposição / Amortização)
+      let finAccountId = null;
+      if (create_financial_provision && depAmount > 0) {
+        finAccountId = 'acc-' + Date.now();
+        const dueDate = `${period_month}-28`;
+        db.run(`
+          INSERT INTO financial_accounts (
+            id, type, description, category, entity_name, document_ref, amount,
+            due_date, payment_date, payment_method, status, notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          finAccountId,
+          'payable',
+          `Provisão Depreciação / Fundo Reposição: ${computed.name} (${period_month})`,
+          'other',
+          'Fundo Reserva de Reequipamento (Caixa Interno)',
+          computed.code,
+          depAmount,
+          dueDate,
+          null,
+          'Reserva de Caixa',
+          'pending',
+          `Quota contábil não-desembolsável para amortização e futura substituição do equipamento ${computed.code}.`,
+          now,
+          now
+        ]);
+      }
+
+      saveDb();
+      res.status(201).json({
+        success: true,
+        log_id: logId,
+        period_month,
+        depreciation_amount: depAmount,
+        new_accumulated: newAccum,
+        new_book_value: newBookVal,
+        financial_provision_account_id: finAccountId
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Sales Management API (Controle de Vendas de Produtos Prontos: Plataformas, CNPJ, PF)
   app.get('/api/sales', (req: Request, res: Response) => {
     try {
@@ -4815,7 +6402,15 @@ async function startServer() {
         customer_name = null,
         platform_fee_percent = 0,
         payment_method = null,
-        notes = null
+        notes = null,
+        delivery_status = 'pending',
+        tracking_code = '',
+        shipping_carrier = '',
+        shipping_cost = 0,
+        delivery_address = '',
+        estimated_delivery_date = '',
+        delivered_at = '',
+        delivery_notes = ''
       } = req.body;
 
       const qty = Math.max(1, Number(quantity) || 1);
@@ -4852,14 +6447,18 @@ async function startServer() {
           id, product_id, product_name, quantity, unit_price, total_revenue,
           unit_cost, total_cost, profit, channel_type, channel_name,
           customer_document, customer_name, platform_fee_percent, platform_fee_amount,
-          payment_method, notes, created_at
+          payment_method, notes, created_at,
+          delivery_status, tracking_code, shipping_carrier, shipping_cost,
+          delivery_address, estimated_delivery_date, delivered_at, delivery_notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         saleId, product_id || null, targetProdName, qty, price, totalRevenue,
         unitCost, totalCost, profit, channel_type || 'platform', channel_name || 'Plataforma',
         customer_document, customer_name, feePercent, platformFeeAmount,
-        payment_method, notes, createdAt
+        payment_method, notes, createdAt,
+        delivery_status || 'pending', tracking_code || '', shipping_carrier || '', Number(shipping_cost) || 0,
+        delivery_address || '', estimated_delivery_date || '', delivered_at || '', delivery_notes || ''
       ]);
 
       saveDb();
@@ -4872,6 +6471,120 @@ async function startServer() {
         sale: createdSale,
         updatedProduct
       });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Atualizar acompanhamento de entrega e despacho
+  app.put('/api/sales/:id/delivery', (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const {
+        delivery_status,
+        tracking_code,
+        shipping_carrier,
+        shipping_cost,
+        delivery_address,
+        estimated_delivery_date,
+        delivered_at,
+        delivery_notes
+      } = req.body;
+
+      const existing = queryOne<any>(db, 'SELECT * FROM product_sales WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Venda não encontrada' });
+      }
+
+      let newDeliveredAt = delivered_at !== undefined ? delivered_at : existing.delivered_at;
+      if (delivery_status === 'delivered' && !newDeliveredAt) {
+        newDeliveredAt = new Date().toISOString();
+      }
+
+      db.run(`
+        UPDATE product_sales SET
+          delivery_status = COALESCE(?, delivery_status),
+          tracking_code = COALESCE(?, tracking_code),
+          shipping_carrier = COALESCE(?, shipping_carrier),
+          shipping_cost = COALESCE(?, shipping_cost),
+          delivery_address = COALESCE(?, delivery_address),
+          estimated_delivery_date = COALESCE(?, estimated_delivery_date),
+          delivered_at = COALESCE(?, delivered_at),
+          delivery_notes = COALESCE(?, delivery_notes)
+        WHERE id = ?
+      `, [
+        delivery_status !== undefined ? delivery_status : null,
+        tracking_code !== undefined ? tracking_code : null,
+        shipping_carrier !== undefined ? shipping_carrier : null,
+        shipping_cost !== undefined ? Number(shipping_cost) : null,
+        delivery_address !== undefined ? delivery_address : null,
+        estimated_delivery_date !== undefined ? estimated_delivery_date : null,
+        newDeliveredAt !== undefined ? newDeliveredAt : null,
+        delivery_notes !== undefined ? delivery_notes : null,
+        id
+      ]);
+
+      saveDb();
+
+      const updatedSale = queryOne(db, 'SELECT * FROM product_sales WHERE id = ?', [id]);
+      res.json({ success: true, sale: updatedSale });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch('/api/sales/:id/delivery', (req: Request, res: Response) => {
+    // Forward to PUT handler
+    const { id } = req.params;
+    const {
+      delivery_status,
+      tracking_code,
+      shipping_carrier,
+      shipping_cost,
+      delivery_address,
+      estimated_delivery_date,
+      delivered_at,
+      delivery_notes
+    } = req.body;
+
+    try {
+      const existing = queryOne<any>(db, 'SELECT * FROM product_sales WHERE id = ?', [id]);
+      if (!existing) {
+        return res.status(404).json({ error: 'Venda não encontrada' });
+      }
+
+      let newDeliveredAt = delivered_at !== undefined ? delivered_at : existing.delivered_at;
+      if (delivery_status === 'delivered' && !newDeliveredAt) {
+        newDeliveredAt = new Date().toISOString();
+      }
+
+      db.run(`
+        UPDATE product_sales SET
+          delivery_status = COALESCE(?, delivery_status),
+          tracking_code = COALESCE(?, tracking_code),
+          shipping_carrier = COALESCE(?, shipping_carrier),
+          shipping_cost = COALESCE(?, shipping_cost),
+          delivery_address = COALESCE(?, delivery_address),
+          estimated_delivery_date = COALESCE(?, estimated_delivery_date),
+          delivered_at = COALESCE(?, delivered_at),
+          delivery_notes = COALESCE(?, delivery_notes)
+        WHERE id = ?
+      `, [
+        delivery_status !== undefined ? delivery_status : null,
+        tracking_code !== undefined ? tracking_code : null,
+        shipping_carrier !== undefined ? shipping_carrier : null,
+        shipping_cost !== undefined ? Number(shipping_cost) : null,
+        delivery_address !== undefined ? delivery_address : null,
+        estimated_delivery_date !== undefined ? estimated_delivery_date : null,
+        newDeliveredAt !== undefined ? newDeliveredAt : null,
+        delivery_notes !== undefined ? delivery_notes : null,
+        id
+      ]);
+
+      saveDb();
+
+      const updatedSale = queryOne(db, 'SELECT * FROM product_sales WHERE id = ?', [id]);
+      res.json({ success: true, sale: updatedSale });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

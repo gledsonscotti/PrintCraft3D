@@ -296,6 +296,9 @@ export function RegisterSaleModal({
             platform_fee_percent: channelType === 'platform' ? platformFeePercent : 0,
             payment_method: channelType === 'platform' ? `Marketplace (${finalChannelName})` : paymentMethod,
             shipping_cost: Number(shippingCost) || 0,
+            shipping_carrier: selectedCarrier?.name || (shippingCost > 0 ? 'Frete Personalizado' : (channelType === 'platform' ? 'Mercado Envios / Plataforma' : 'Pendente')),
+            delivery_status: 'pending',
+            delivery_address: selectedClient?.address || '',
             carrier_name: selectedCarrier?.name || (shippingCost > 0 ? 'Outro' : null),
             notes: [
               invoiceNumber ? `NF: ${invoiceNumber}` : '',
