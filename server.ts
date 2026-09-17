@@ -16,6 +16,7 @@ import {
 } from './server/multiDbManager';
 import { GoogleGenAI } from '@google/genai';
 import { analyzePieceWithGemini, generateDynamicFallbackAdvice } from './server/aiAdvisor';
+import { getDispatchSettings, sendSupplierQuoteEmail, sendSupplierQuoteWhatsApp, testSmtpConnection, testWhatsappConnection } from './server/dispatchService';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -4626,6 +4627,361 @@ async function startServer() {
         shipping_cost: finalShippingCost,
         total_quote: totalQuote,
         submitted_at: submittedAt
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ================= AUTOMATED EMAIL & WHATSAPP DISPATCH API =================
+  // Get dispatch settings
+  app.get('/api/dispatch/settings', (req: Request, res: Response) => {
+    try {
+      const cfg = getDispatchSettings(db);
+      res.json({
+        ...cfg,
+        smtp_pass: cfg.smtp_pass ? '••••••••' : '',
+        is_smtp_configured: Boolean(cfg.smtp_host && cfg.smtp_user),
+        is_whatsapp_configured: Boolean(cfg.whatsapp_api_url)
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Save dispatch settings
+  app.post('/api/dispatch/settings', (req: Request, res: Response) => {
+    try {
+      const {
+        smtp_host,
+        smtp_port,
+        smtp_user,
+        smtp_pass,
+        smtp_from,
+        smtp_secure,
+        whatsapp_api_url,
+        whatsapp_api_token,
+        whatsapp_instance,
+        company_name
+      } = req.body;
+
+      if (smtp_host !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_host', String(smtp_host || '')]);
+      if (smtp_port !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_port', String(smtp_port || 587)]);
+      if (smtp_user !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_user', String(smtp_user || '')]);
+      if (smtp_pass !== undefined && smtp_pass !== '••••••••') db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_pass', String(smtp_pass || '')]);
+      if (smtp_from !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_from', String(smtp_from || '')]);
+      if (smtp_secure !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['smtp_secure', String(Boolean(smtp_secure))]);
+      if (whatsapp_api_url !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['whatsapp_api_url', String(whatsapp_api_url || '')]);
+      if (whatsapp_api_token !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['whatsapp_api_token', String(whatsapp_api_token || '')]);
+      if (whatsapp_instance !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['whatsapp_instance', String(whatsapp_instance || '')]);
+      if (company_name !== undefined) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['company_name', String(company_name || '')]);
+
+      saveDb();
+      res.json({ success: true, message: 'Configurações de disparo salvas com sucesso!' });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Test SMTP connection and dispatch
+  app.post('/api/dispatch/test-smtp', async (req: Request, res: Response) => {
+    try {
+      const { test_email, config } = req.body;
+      const result = await testSmtpConnection({
+        testEmail: test_email,
+        config,
+        db
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(400).json({ error: e.message || 'Falha ao testar conexão SMTP' });
+    }
+  });
+
+  // Test WhatsApp gateway connection
+  app.post('/api/dispatch/test-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const { test_phone, config } = req.body;
+      const result = await testWhatsappConnection({
+        testPhone: test_phone,
+        config,
+        db
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(400).json({ error: e.message || 'Falha ao testar integração com WhatsApp' });
+    }
+  });
+
+  // Automated Email Dispatch via App
+  app.post('/api/quote-rounds/:id/send-email', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { supplier_id, all = false } = req.body;
+
+      const round = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!round) {
+        return res.status(404).json({ error: 'Rodada de cotação não encontrada' });
+      }
+
+      let items = [];
+      let suppliers: any[] = [];
+      try { items = JSON.parse(round.items_json || '[]'); } catch {}
+      try { suppliers = JSON.parse(round.invited_suppliers_json || '[]'); } catch {}
+
+      const roundObj = { ...round, items };
+      const baseUrl = (req.headers.origin as string) || (req.headers.referer as string) || `http://${req.headers.host}`;
+
+      const targets = all
+        ? suppliers.filter((s: any) => s.supplier_email && s.supplier_email.trim())
+        : suppliers.filter((s: any) => s.supplier_id === supplier_id);
+
+      if (targets.length === 0) {
+        return res.status(400).json({ error: 'Nenhum fornecedor com e-mail válido encontrado para disparo.' });
+      }
+
+      const results: any[] = [];
+      const now = new Date().toISOString();
+
+      for (const target of targets) {
+        try {
+          const dispatchRes = await sendSupplierQuoteEmail({
+            round: roundObj,
+            supplier: target,
+            baseUrl,
+            db
+          });
+
+          target.email_sent_at = now;
+          target.email_status = 'sent';
+          target.last_dispatch_channel = target.whatsapp_status === 'sent' ? 'both' : 'email';
+          if (!target.dispatch_logs) target.dispatch_logs = [];
+          target.dispatch_logs.unshift({
+            timestamp: now,
+            channel: 'email',
+            status: 'success',
+            recipient: target.supplier_email,
+            details: dispatchRes.message
+          });
+
+          results.push({
+            supplier_id: target.supplier_id,
+            supplier_name: target.supplier_name,
+            success: true,
+            message: dispatchRes.message,
+            mode: dispatchRes.mode
+          });
+        } catch (err: any) {
+          target.email_status = 'failed';
+          if (!target.dispatch_logs) target.dispatch_logs = [];
+          target.dispatch_logs.unshift({
+            timestamp: now,
+            channel: 'email',
+            status: 'failed',
+            recipient: target.supplier_email,
+            details: err.message
+          });
+
+          results.push({
+            supplier_id: target.supplier_id,
+            supplier_name: target.supplier_name,
+            success: false,
+            error: err.message
+          });
+        }
+      }
+
+      // Update database with updated supplier list
+      db.run('UPDATE quote_rounds SET invited_suppliers_json = ?, updated_at = ? WHERE id = ?', [
+        JSON.stringify(suppliers),
+        now,
+        id
+      ]);
+      saveDb();
+
+      res.json({
+        success: true,
+        sent_count: results.filter(r => r.success).length,
+        total_targets: targets.length,
+        results,
+        updated_suppliers: suppliers
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Automated WhatsApp Dispatch via App
+  app.post('/api/quote-rounds/:id/send-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { supplier_id, all = false } = req.body;
+
+      const round = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!round) {
+        return res.status(404).json({ error: 'Rodada de cotação não encontrada' });
+      }
+
+      let items = [];
+      let suppliers: any[] = [];
+      try { items = JSON.parse(round.items_json || '[]'); } catch {}
+      try { suppliers = JSON.parse(round.invited_suppliers_json || '[]'); } catch {}
+
+      const roundObj = { ...round, items };
+      const baseUrl = (req.headers.origin as string) || (req.headers.referer as string) || `http://${req.headers.host}`;
+
+      const targets = all
+        ? suppliers.filter((s: any) => s.supplier_phone && s.supplier_phone.trim())
+        : suppliers.filter((s: any) => s.supplier_id === supplier_id);
+
+      if (targets.length === 0) {
+        return res.status(400).json({ error: 'Nenhum fornecedor com telefone válido encontrado para envio de WhatsApp.' });
+      }
+
+      const results: any[] = [];
+      const now = new Date().toISOString();
+
+      for (const target of targets) {
+        try {
+          const dispatchRes = await sendSupplierQuoteWhatsApp({
+            round: roundObj,
+            supplier: target,
+            baseUrl,
+            db
+          });
+
+          target.whatsapp_sent_at = now;
+          target.whatsapp_status = 'sent';
+          target.last_dispatch_channel = target.email_status === 'sent' ? 'both' : 'whatsapp';
+          if (!target.dispatch_logs) target.dispatch_logs = [];
+          target.dispatch_logs.unshift({
+            timestamp: now,
+            channel: 'whatsapp',
+            status: 'success',
+            recipient: target.supplier_phone,
+            details: dispatchRes.message
+          });
+
+          results.push({
+            supplier_id: target.supplier_id,
+            supplier_name: target.supplier_name,
+            success: true,
+            message: dispatchRes.message,
+            mode: dispatchRes.mode,
+            whatsapp_url: dispatchRes.whatsappUrl
+          });
+        } catch (err: any) {
+          target.whatsapp_status = 'failed';
+          if (!target.dispatch_logs) target.dispatch_logs = [];
+          target.dispatch_logs.unshift({
+            timestamp: now,
+            channel: 'whatsapp',
+            status: 'failed',
+            recipient: target.supplier_phone,
+            details: err.message
+          });
+
+          results.push({
+            supplier_id: target.supplier_id,
+            supplier_name: target.supplier_name,
+            success: false,
+            error: err.message
+          });
+        }
+      }
+
+      // Update database
+      db.run('UPDATE quote_rounds SET invited_suppliers_json = ?, updated_at = ? WHERE id = ?', [
+        JSON.stringify(suppliers),
+        now,
+        id
+      ]);
+      saveDb();
+
+      res.json({
+        success: true,
+        sent_count: results.filter(r => r.success).length,
+        total_targets: targets.length,
+        results,
+        updated_suppliers: suppliers
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Automated Bulk Dispatch (both channels or selected)
+  app.post('/api/quote-rounds/:id/dispatch-all', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { channels = ['email', 'whatsapp'] } = req.body;
+
+      const round = queryOne<any>(db, 'SELECT * FROM quote_rounds WHERE id = ?', [id]);
+      if (!round) {
+        return res.status(404).json({ error: 'Rodada não encontrada' });
+      }
+
+      let items = [];
+      let suppliers: any[] = [];
+      try { items = JSON.parse(round.items_json || '[]'); } catch {}
+      try { suppliers = JSON.parse(round.invited_suppliers_json || '[]'); } catch {}
+
+      const roundObj = { ...round, items };
+      const baseUrl = (req.headers.origin as string) || (req.headers.referer as string) || `http://${req.headers.host}`;
+      const now = new Date().toISOString();
+
+      let emailSentCount = 0;
+      let whatsappSentCount = 0;
+      const dispatchSummary: any[] = [];
+
+      for (const sup of suppliers) {
+        const supSummary: any = { supplier_id: sup.supplier_id, supplier_name: sup.supplier_name };
+
+        // 1. Email
+        if (channels.includes('email') && sup.supplier_email) {
+          try {
+            const eRes = await sendSupplierQuoteEmail({ round: roundObj, supplier: sup, baseUrl, db });
+            sup.email_sent_at = now;
+            sup.email_status = 'sent';
+            emailSentCount++;
+            supSummary.email = { success: true, message: eRes.message };
+          } catch (eErr: any) {
+            sup.email_status = 'failed';
+            supSummary.email = { success: false, error: eErr.message };
+          }
+        }
+
+        // 2. WhatsApp
+        if (channels.includes('whatsapp') && sup.supplier_phone) {
+          try {
+            const wRes = await sendSupplierQuoteWhatsApp({ round: roundObj, supplier: sup, baseUrl, db });
+            sup.whatsapp_sent_at = now;
+            sup.whatsapp_status = 'sent';
+            whatsappSentCount++;
+            supSummary.whatsapp = { success: true, message: wRes.message, whatsapp_url: wRes.whatsappUrl };
+          } catch (wErr: any) {
+            sup.whatsapp_status = 'failed';
+            supSummary.whatsapp = { success: false, error: wErr.message };
+          }
+        }
+
+        sup.last_dispatch_channel = sup.email_status === 'sent' && sup.whatsapp_status === 'sent' ? 'both' : (sup.email_status === 'sent' ? 'email' : 'whatsapp');
+        dispatchSummary.push(supSummary);
+      }
+
+      db.run('UPDATE quote_rounds SET invited_suppliers_json = ?, updated_at = ? WHERE id = ?', [
+        JSON.stringify(suppliers),
+        now,
+        id
+      ]);
+      saveDb();
+
+      res.json({
+        success: true,
+        email_sent_count: emailSentCount,
+        whatsapp_sent_count: whatsappSentCount,
+        summary: dispatchSummary,
+        updated_suppliers: suppliers
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

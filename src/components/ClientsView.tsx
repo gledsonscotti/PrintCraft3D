@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Shield,
-  Truck
+  Truck,
+  Send
 } from 'lucide-react';
 import { Client, AppUser, Company, Filament, Supply } from '../types';
 import { CompanyTeamView } from './CompanyTeamView';
@@ -31,6 +32,7 @@ interface ClientsViewProps {
   currentUser?: AppUser | null;
   currentCompany?: Company | null;
   isSuperadmin?: boolean;
+  onNavigateToQuotes?: () => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -42,6 +44,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   currentUser,
   currentCompany,
   isSuperadmin = false,
+  onNavigateToQuotes,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'suppliers' | 'team'>('clients');
   const [searchQuery, setSearchQuery] = useState('');
@@ -627,6 +630,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           supplies={supplies}
           onRefreshData={onRefreshData}
           theme={theme}
+          mode="directory_only"
+          onNavigateToQuotes={onNavigateToQuotes}
         />
       ) : (
         <CompanyTeamView

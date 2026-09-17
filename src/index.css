@@ -42,6 +42,30 @@ body {
   scrollbar-width: none;
 }
 
+/* Subtabs containers: strictly enforce single-line horizontal layout to prevent wrapping */
+.settings-subtabs-container,
+.stock-subtabs-container,
+.suppliers-subtabs-container,
+.clients-subtabs-container,
+.finance-subtabs-container {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-width: 100% !important;
+}
+
+.settings-subtab-btn,
+.stock-subtab-btn,
+.suppliers-subtab-btn,
+.clients-subtab-btn,
+.finance-subtab-btn {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -285,7 +309,8 @@ html[data-theme="high-contrast-light"] nav button:hover {
 }
 
 html[data-theme="high-contrast-light"] nav button.bg-sky-500,
-html[data-theme="high-contrast-light"] #main-nav-clients.bg-sky-500 {
+html[data-theme="high-contrast-light"] #main-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-light"] #main-nav-quotes.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #075985 !important;
@@ -317,7 +342,8 @@ html[data-theme="high-contrast-light"] .mobile-nav-bar button:hover {
 }
 
 html[data-theme="high-contrast-light"] .mobile-nav-bar button.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 {
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #075985 !important;
@@ -340,7 +366,9 @@ html[data-theme="high-contrast-light"] .suppliers-subtabs-container {
 
 html[data-theme="high-contrast-light"] .finance-subtab-btn,
 html[data-theme="high-contrast-light"] .clients-subtab-btn,
-html[data-theme="high-contrast-light"] .suppliers-subtab-btn {
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn,
+html[data-theme="high-contrast-light"] .settings-subtab-btn,
+html[data-theme="high-contrast-light"] .stock-subtab-btn {
   background-color: #FFFFFF !important;
   border: 1.5px solid #CBD5E1 !important;
   color: #09090B !important;
@@ -349,7 +377,9 @@ html[data-theme="high-contrast-light"] .suppliers-subtab-btn {
 
 html[data-theme="high-contrast-light"] .finance-subtab-btn:hover,
 html[data-theme="high-contrast-light"] .clients-subtab-btn:hover,
-html[data-theme="high-contrast-light"] .suppliers-subtab-btn:hover {
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .settings-subtab-btn:hover,
+html[data-theme="high-contrast-light"] .stock-subtab-btn:hover {
   background-color: #E2E8F0 !important;
 }
 
@@ -380,9 +410,9 @@ html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active
 }
 
 html[data-theme="high-contrast-light"] #tab-sub-suppliers.clients-subtab-active {
-  background-color: #D97706 !important;
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 2px solid #B45309 !important;
+  border: 2px solid #075985 !important;
 }
 
 html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
@@ -392,15 +422,23 @@ html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
 }
 
 html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active,
-html[data-theme="high-contrast-light"] .suppliers-subtab-active {
-  background-color: #D97706 !important;
+html[data-theme="high-contrast-light"] .suppliers-subtab-active,
+html[data-theme="high-contrast-light"] .settings-subtab-btn.settings-subtab-active,
+html[data-theme="high-contrast-light"] .settings-subtab-active,
+html[data-theme="high-contrast-light"] .stock-subtab-btn.stock-subtab-active,
+html[data-theme="high-contrast-light"] .stock-subtab-active {
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 2px solid #B45309 !important;
+  border: 2px solid #075985 !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active span,
-html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active svg,
+html[data-theme="high-contrast-light"] .settings-subtab-btn.settings-subtab-active span,
+html[data-theme="high-contrast-light"] .settings-subtab-btn.settings-subtab-active svg,
+html[data-theme="high-contrast-light"] .stock-subtab-btn.stock-subtab-active span,
+html[data-theme="high-contrast-light"] .stock-subtab-btn.stock-subtab-active svg {
   color: #FFFFFF !important;
 }
 
@@ -830,6 +868,7 @@ html[data-theme="sage-bento"] nav button:hover {
 html[data-theme="sage-bento"] nav button.bg-sky-500,
 html[data-theme="sage-bento"] nav button.bg-emerald-500,
 html[data-theme="sage-bento"] #main-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] #main-nav-quotes.bg-sky-500,
 html[data-theme="sage-bento"] #main-nav-finance.bg-emerald-500 {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
@@ -854,10 +893,12 @@ html[data-theme="sage-bento"] .mobile-nav-bar button:hover {
   color: #192C23 !important;
 }
 
-/* Sage Bento: Menu Principal Finanças e Pessoas (Desktop e Mobile) */
+/* Sage Bento: Menu Principal Finanças, Pessoas e Cotações (Desktop e Mobile) */
 html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] header nav button#main-nav-quotes.bg-sky-500,
 html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500,
 html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500,
+html[data-theme="sage-bento"] #mobile-nav-quotes.bg-sky-500,
 html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500,
 html[data-theme="sage-bento"] .mobile-nav-bar button.bg-sky-500,
 html[data-theme="sage-bento"] .mobile-nav-bar button.bg-emerald-500 {
@@ -868,34 +909,42 @@ html[data-theme="sage-bento"] .mobile-nav-bar button.bg-emerald-500 {
 }
 
 html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500 svg,
+html[data-theme="sage-bento"] header nav button#main-nav-quotes.bg-sky-500 svg,
 html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500 svg,
 html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500 svg,
+html[data-theme="sage-bento"] #mobile-nav-quotes.bg-sky-500 svg,
 html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500 svg {
   color: #FFFFFF !important;
 }
 
 html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500),
+html[data-theme="sage-bento"] header nav button#main-nav-quotes:not(.bg-sky-500),
 html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500) {
   color: #465B51 !important;
 }
 
 html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
+html[data-theme="sage-bento"] header nav button#main-nav-quotes:not(.bg-sky-500):hover,
 html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
   background-color: rgba(86, 125, 107, 0.12) !important;
   color: #192C23 !important;
 }
 
-/* Sage Bento: Finance & Pessoas sub-elements */
+/* Sage Bento: Finance, Pessoas, Fornecedores, Ajustes e Estoque sub-elements */
 html[data-theme="sage-bento"] .finance-subtabs-container,
 html[data-theme="sage-bento"] .clients-subtabs-container,
-html[data-theme="sage-bento"] .suppliers-subtabs-container {
+html[data-theme="sage-bento"] .suppliers-subtabs-container,
+html[data-theme="sage-bento"] .settings-subtabs-container,
+html[data-theme="sage-bento"] .stock-subtabs-container {
   border-color: #DFD9CB !important;
   background-color: #EDE7DC !important;
 }
 
 html[data-theme="sage-bento"] .finance-subtab-btn,
 html[data-theme="sage-bento"] .clients-subtab-btn,
-html[data-theme="sage-bento"] .suppliers-subtab-btn {
+html[data-theme="sage-bento"] .suppliers-subtab-btn,
+html[data-theme="sage-bento"] .settings-subtab-btn,
+html[data-theme="sage-bento"] .stock-subtab-btn {
   background-color: #FFFFFF !important;
   border: 1px solid #DFD9CB !important;
   color: #4A6054 !important;
@@ -904,13 +953,19 @@ html[data-theme="sage-bento"] .suppliers-subtab-btn {
 
 html[data-theme="sage-bento"] .finance-subtab-btn:hover,
 html[data-theme="sage-bento"] .clients-subtab-btn:hover,
-html[data-theme="sage-bento"] .suppliers-subtab-btn:hover {
+html[data-theme="sage-bento"] .suppliers-subtab-btn:hover,
+html[data-theme="sage-bento"] .settings-subtab-btn:hover,
+html[data-theme="sage-bento"] .stock-subtab-btn:hover {
   background-color: #F8F6F1 !important;
   color: #192C23 !important;
 }
 
 html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active,
-html[data-theme="sage-bento"] .finance-subtab-active {
+html[data-theme="sage-bento"] .finance-subtab-active,
+html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active,
+html[data-theme="sage-bento"] .settings-subtab-active,
+html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active,
+html[data-theme="sage-bento"] .stock-subtab-active {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
   border: 1px solid #446857 !important;
@@ -918,7 +973,11 @@ html[data-theme="sage-bento"] .finance-subtab-active {
 }
 
 html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active span,
-html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active svg {
+html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active svg,
+html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active span,
+html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active svg,
+html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active span,
+html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active svg {
   color: #FFFFFF !important;
 }
 
@@ -1524,21 +1583,21 @@ html[data-theme="sage-bento"] .integration-btn-primary svg {
 /* Botão "Simular Pedido de Teste" */
 html[data-theme="sage-bento"] .integration-btn-simulate,
 html[data-theme="sage-bento"] button.integration-btn-simulate {
-  background-color: #D48B38 !important;
+  background-color: #567D6B !important;
   background-image: none !important;
-  border: 1px solid #B57125 !important;
+  border: 1px solid #446857 !important;
   color: #FFFFFF !important;
   font-weight: 700 !important;
   border-radius: 0.875rem !important;
-  box-shadow: 0 4px 14px -2px rgba(212, 139, 56, 0.28) !important;
+  box-shadow: 0 4px 14px -2px rgba(86, 125, 107, 0.3) !important;
   transition: all 0.15s ease-in-out !important;
 }
 
 html[data-theme="sage-bento"] .integration-btn-simulate:hover,
 html[data-theme="sage-bento"] button.integration-btn-simulate:hover {
-  background-color: #BE772A !important;
+  background-color: #446857 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 6px 18px -2px rgba(212, 139, 56, 0.38) !important;
+  box-shadow: 0 6px 18px -2px rgba(86, 125, 107, 0.38) !important;
 }
 
 html[data-theme="sage-bento"] .integration-btn-simulate svg {
@@ -1696,8 +1755,8 @@ html[data-theme="high-contrast-light"] .integration-btn-primary {
 }
 
 html[data-theme="high-contrast-light"] .integration-btn-simulate {
-  background-color: #D97706 !important;
-  border: 2px solid #92400E !important;
+  background-color: #0284C7 !important;
+  border: 2px solid #075985 !important;
   color: #FFFFFF !important;
   font-weight: 800 !important;
 }
@@ -4115,7 +4174,8 @@ html[data-theme="high-contrast-dark"] nav button:hover {
 }
 
 html[data-theme="high-contrast-dark"] nav button.bg-sky-500,
-html[data-theme="high-contrast-dark"] #main-nav-clients.bg-sky-500 {
+html[data-theme="high-contrast-dark"] #main-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-dark"] #main-nav-quotes.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 1.5px solid #38BDF8 !important;
@@ -4147,7 +4207,8 @@ html[data-theme="high-contrast-dark"] .mobile-nav-bar button:hover {
 }
 
 html[data-theme="high-contrast-dark"] .mobile-nav-bar button.bg-sky-500,
-html[data-theme="high-contrast-dark"] #mobile-nav-clients.bg-sky-500 {
+html[data-theme="high-contrast-dark"] #mobile-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-dark"] #mobile-nav-quotes.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 1.5px solid #38BDF8 !important;
@@ -4160,17 +4221,21 @@ html[data-theme="high-contrast-dark"] #mobile-nav-finance.bg-emerald-500 {
   border: 1.5px solid #34D399 !important;
 }
 
-/* High Contrast Dark: Finance & Pessoas sub-elements */
+/* High Contrast Dark: Finance, Pessoas, Fornecedores, Ajustes e Estoque sub-elements */
 html[data-theme="high-contrast-dark"] .finance-subtabs-container,
 html[data-theme="high-contrast-dark"] .clients-subtabs-container,
-html[data-theme="high-contrast-dark"] .suppliers-subtabs-container {
+html[data-theme="high-contrast-dark"] .suppliers-subtabs-container,
+html[data-theme="high-contrast-dark"] .settings-subtabs-container,
+html[data-theme="high-contrast-dark"] .stock-subtabs-container {
   border-color: #3F3F46 !important;
   background-color: #09090B !important;
 }
 
 html[data-theme="high-contrast-dark"] .finance-subtab-btn,
 html[data-theme="high-contrast-dark"] .clients-subtab-btn,
-html[data-theme="high-contrast-dark"] .suppliers-subtab-btn {
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn,
+html[data-theme="high-contrast-dark"] .settings-subtab-btn,
+html[data-theme="high-contrast-dark"] .stock-subtab-btn {
   background-color: #121215 !important;
   border: 1px solid #27272A !important;
   color: #A1A1AA !important;
@@ -4179,7 +4244,9 @@ html[data-theme="high-contrast-dark"] .suppliers-subtab-btn {
 
 html[data-theme="high-contrast-dark"] .finance-subtab-btn:hover,
 html[data-theme="high-contrast-dark"] .clients-subtab-btn:hover,
-html[data-theme="high-contrast-dark"] .suppliers-subtab-btn:hover {
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn:hover,
+html[data-theme="high-contrast-dark"] .settings-subtab-btn:hover,
+html[data-theme="high-contrast-dark"] .stock-subtab-btn:hover {
   background-color: #27272A !important;
   color: #FFFFFF !important;
 }
@@ -4193,7 +4260,7 @@ html[data-theme="high-contrast-dark"] .finance-subtab-active {
 }
 
 html[data-theme="high-contrast-dark"] .finance-subtab-btn.finance-subtab-active span,
-html[data-theme="high-contrast-dark"] .finance-subtab-btn.finance-subtab-active svg {
+html[data-theme="high-contrast-dark"] .finance-subtab-active svg {
   color: #FFFFFF !important;
 }
 
@@ -4206,14 +4273,14 @@ html[data-theme="high-contrast-dark"] .clients-subtab-active {
 }
 
 html[data-theme="high-contrast-dark"] .clients-subtab-btn.clients-subtab-active span,
-html[data-theme="high-contrast-dark"] .clients-subtab-btn.clients-subtab-active svg {
+html[data-theme="high-contrast-dark"] .clients-subtab-active svg {
   color: #FFFFFF !important;
 }
 
 html[data-theme="high-contrast-dark"] #tab-sub-suppliers.clients-subtab-active {
-  background-color: #D97706 !important;
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 1.5px solid #FBBF24 !important;
+  border: 1.5px solid #38BDF8 !important;
 }
 
 html[data-theme="high-contrast-dark"] #tab-sub-team.clients-subtab-active {
@@ -4223,15 +4290,23 @@ html[data-theme="high-contrast-dark"] #tab-sub-team.clients-subtab-active {
 }
 
 html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active,
-html[data-theme="high-contrast-dark"] .suppliers-subtab-active {
-  background-color: #D97706 !important;
+html[data-theme="high-contrast-dark"] .suppliers-subtab-active,
+html[data-theme="high-contrast-dark"] .settings-subtab-btn.settings-subtab-active,
+html[data-theme="high-contrast-dark"] .settings-subtab-active,
+html[data-theme="high-contrast-dark"] .stock-subtab-btn.stock-subtab-active,
+html[data-theme="high-contrast-dark"] .stock-subtab-active {
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 1.5px solid #FBBF24 !important;
-  box-shadow: 0 0 10px rgba(217, 119, 6, 0.35) !important;
+  border: 1.5px solid #38BDF8 !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.35) !important;
 }
 
 html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active span,
-html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active svg {
+html[data-theme="high-contrast-dark"] .suppliers-subtab-btn.suppliers-subtab-active svg,
+html[data-theme="high-contrast-dark"] .settings-subtab-btn.settings-subtab-active span,
+html[data-theme="high-contrast-dark"] .settings-subtab-btn.settings-subtab-active svg,
+html[data-theme="high-contrast-dark"] .stock-subtab-btn.stock-subtab-active span,
+html[data-theme="high-contrast-dark"] .stock-subtab-btn.stock-subtab-active svg {
   color: #FFFFFF !important;
 }
 
@@ -4290,7 +4365,9 @@ html[data-theme="high-contrast-dark"] .clients-filter-active {
 
 /* Header Nav Buttons (Desktop & Mobile) */
 html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 {
+html[data-theme="high-contrast-light"] header nav button#main-nav-quotes.bg-sky-500,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500,
+html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #0369A1 !important;
@@ -4298,7 +4375,9 @@ html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 {
 }
 
 html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500 svg,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 svg {
+html[data-theme="high-contrast-light"] header nav button#main-nav-quotes.bg-sky-500 svg,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 svg,
+html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 svg {
   color: #FFFFFF !important;
 }
 
@@ -4316,12 +4395,14 @@ html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 svg {
 }
 
 html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500),
+html[data-theme="high-contrast-light"] header nav button#main-nav-quotes:not(.bg-sky-500),
 html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500) {
   color: #334155 !important;
   font-weight: 700 !important;
 }
 
 html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
+html[data-theme="high-contrast-light"] header nav button#main-nav-quotes:not(.bg-sky-500):hover,
 html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
   background-color: #F1F5F9 !important;
   color: #0F172A !important;
@@ -4376,9 +4457,9 @@ html[data-theme="high-contrast-light"] .clients-subtab-btn.clients-subtab-active
 }
 
 html[data-theme="high-contrast-light"] #tab-sub-suppliers.clients-subtab-active {
-  background-color: #D97706 !important;
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 2px solid #B45309 !important;
+  border: 2px solid #075985 !important;
 }
 
 html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
@@ -4389,9 +4470,9 @@ html[data-theme="high-contrast-light"] #tab-sub-team.clients-subtab-active {
 
 html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active,
 html[data-theme="high-contrast-light"] .suppliers-subtab-active {
-  background-color: #D97706 !important;
+  background-color: #0284C7 !important;
   color: #FFFFFF !important;
-  border: 2px solid #B45309 !important;
+  border: 2px solid #075985 !important;
 }
 
 html[data-theme="high-contrast-light"] .suppliers-subtab-btn.suppliers-subtab-active span,

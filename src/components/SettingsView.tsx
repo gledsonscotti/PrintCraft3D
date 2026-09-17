@@ -24,13 +24,15 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   Layers,
-  ShieldCheck
+  ShieldCheck,
+  Mail
 } from 'lucide-react';
 import { AppSettings, AppTheme, Product, ProductSale, Printer } from '../types';
 import { IntegrationsView } from './IntegrationsView';
 import { PrintersView } from './PrintersView';
 import { CarriersView } from './CarriersView';
 import { CategoriesView } from './CategoriesView';
+import { DispatchSettingsView } from './DispatchSettingsView';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -41,7 +43,7 @@ interface SettingsViewProps {
   products: Product[];
   sales: ProductSale[];
   onNavigateToSales: () => void;
-  initialSubTab?: 'costs' | 'printers' | 'carriers' | 'categories' | 'integrations';
+  initialSubTab?: 'costs' | 'printers' | 'carriers' | 'categories' | 'integrations' | 'smtp_whatsapp';
   printers?: Printer[];
   isCompanyAdmin?: boolean;
   companyName?: string;
@@ -61,7 +63,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isCompanyAdmin = true,
   companyName,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'carriers' | 'categories' | 'integrations'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'costs' | 'printers' | 'carriers' | 'categories' | 'integrations' | 'smtp_whatsapp'>(initialSubTab);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -156,29 +158,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Linha 2: Menus de Ajustes do Sistema na próxima linha */}
-        <div className="pt-2 border-t border-white/[0.06] flex items-center">
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#0A0A0B] rounded-2xl border border-white/[0.08] w-fit shadow-sm">
+        <div className="pt-2 border-t border-white/[0.06] flex items-center w-full max-w-full overflow-hidden">
+          <div className="settings-subtabs-container flex flex-nowrap items-center gap-1 sm:gap-1.5 p-1 bg-[#0A0A0B] rounded-2xl border border-white/[0.08] shadow-sm overflow-x-auto max-w-full no-scrollbar shrink-0">
             <button
               type="button"
               id="tab-btn-global-costs"
               onClick={() => setActiveSubTab('costs')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeSubTab === 'costs'
-                  ? 'bg-sky-500 text-white shadow-sm font-bold'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Configurações Globais de Custos</span>
+              <span>Configurações Globais</span>
             </button>
 
             <button
               type="button"
               id="tab-btn-printers"
               onClick={() => setActiveSubTab('printers')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeSubTab === 'printers'
-                  ? 'bg-sky-500 text-white shadow-sm font-bold'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -193,9 +195,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               id="tab-btn-carriers"
               onClick={() => setActiveSubTab('carriers')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeSubTab === 'carriers'
-                  ? 'bg-sky-500 text-white shadow-sm font-bold'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -207,9 +209,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               id="tab-btn-categories"
               onClick={() => setActiveSubTab('categories')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeSubTab === 'categories'
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -221,15 +223,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               id="tab-btn-integrations"
               onClick={() => setActiveSubTab('integrations')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeSubTab === 'integrations'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-amber-300'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
               <span>Integrações</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+
+            <button
+              type="button"
+              id="tab-btn-smtp-whatsapp"
+              onClick={() => setActiveSubTab('smtp_whatsapp')}
+              className={`settings-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                activeSubTab === 'smtp_whatsapp'
+                  ? 'settings-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Configurar SMTP & WhatsApp</span>
             </button>
           </div>
         </div>
@@ -378,7 +394,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="submit"
                     id="btn-save-cost-settings"
                     disabled={isSaving}
-                    className="bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs px-6 py-2.5 rounded-2xl shadow-sm shadow-sky-500/25 flex items-center gap-2 transition cursor-pointer"
+                    className="integration-btn-primary bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs px-6 py-2.5 rounded-2xl shadow-sm shadow-sky-500/25 flex items-center gap-2 transition cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>{isSaving ? 'Salvando...' : 'Salvar Alterações Globais'}</span>
@@ -525,6 +541,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             sales={sales}
             onRefreshAllData={onRefreshData}
             onNavigateToSales={onNavigateToSales}
+          />
+        </div>
+      )}
+
+      {/* SUB-TAB 5: Configurar SMTP & WhatsApp */}
+      {activeSubTab === 'smtp_whatsapp' && (
+        <div className="space-y-4">
+          <DispatchSettingsView
+            onSettingsSaved={onRefreshData}
+            defaultCompany={companyName}
           />
         </div>
       )}

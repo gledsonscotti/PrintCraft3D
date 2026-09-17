@@ -19,7 +19,8 @@ import {
   FileText,
   Info,
   CheckCircle2,
-  Tag
+  Tag,
+  Send
 } from 'lucide-react';
 import { Filament, Supply, Product, ProductSale, ProductionOrder } from '../types';
 
@@ -40,6 +41,7 @@ export interface SmartShoppingAlertProps {
   onQuickAddSupplyStock: (id: string, deltaQty: number) => Promise<void> | void;
   onQuickAddProductStock?: (product: Product, delta: number) => Promise<void> | void;
   onRefreshData?: () => void | Promise<void>;
+  onNavigateToQuotes?: () => void;
 }
 
 export interface ShoppingSuggestionItem {
@@ -400,6 +402,7 @@ export const SmartShoppingAlert: React.FC<SmartShoppingAlertProps> = ({
   onQuickAddSupplyStock,
   onQuickAddProductStock,
   onRefreshData,
+  onNavigateToQuotes,
 }) => {
   const [coverageHorizon, setCoverageHorizon] = useState<15 | 30 | 60>(30); // Horizon in days
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'filaments' | 'supplies' | 'products'>('all');
@@ -629,12 +632,25 @@ export const SmartShoppingAlert: React.FC<SmartShoppingAlertProps> = ({
           <button
             type="button"
             onClick={() => setShowPrintModal(true)}
-            className="smart-alert-primary-btn bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-            title="Abrir visualização completa para impressão/cotação"
+            className="smart-alert-primary-btn bg-[#1c1c20] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] px-3.5 py-2 rounded-2xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            title="Abrir visualização para conferência/impressão"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Ver Cotação</span>
+            <span>Ver / Imprimir</span>
           </button>
+
+          {/* Central de Cotações Shortcut */}
+          {onNavigateToQuotes && (
+            <button
+              type="button"
+              onClick={onNavigateToQuotes}
+              className="smart-alert-primary-btn bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+              title="Abrir Central de Cotações (RFP) para negociar reposição de estoque com fornecedores parceiros"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Cotar em Lote (RFP)</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -853,23 +869,37 @@ export const SmartShoppingAlert: React.FC<SmartShoppingAlertProps> = ({
                     </div>
                   </div>
 
-                  {/* Quick Entry Action */}
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAdd(item)}
-                    disabled={adjustingItemId === item.id}
-                    className="smart-alert-btn-entry bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
-                    title={
-                      isFilament
-                        ? `Dar entrada de +${item.suggestedBuyQty * 1000}g diretamente no estoque`
-                        : isSupply
-                        ? `Dar entrada de +${item.suggestedBuyQty} ${item.stockUnit} no estoque`
-                        : `Adicionar +${item.suggestedBuyQty} un. ao estoque pronto`
-                    }
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{adjustingItemId === item.id ? 'Salvando...' : '+ Entrada'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {onNavigateToQuotes && (
+                      <button
+                        type="button"
+                        onClick={onNavigateToQuotes}
+                        className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                        title="Cotar este insumo com fornecedores na Central de Cotações"
+                      >
+                        <Send className="w-3 h-3 text-amber-400" />
+                        <span>Cotar</span>
+                      </button>
+                    )}
+
+                    {/* Quick Entry Action */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd(item)}
+                      disabled={adjustingItemId === item.id}
+                      className="smart-alert-btn-entry bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                      title={
+                        isFilament
+                          ? `Dar entrada de +${item.suggestedBuyQty * 1000}g diretamente no estoque`
+                          : isSupply
+                          ? `Dar entrada de +${item.suggestedBuyQty} ${item.stockUnit} no estoque`
+                          : `Adicionar +${item.suggestedBuyQty} un. ao estoque pronto`
+                      }
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{adjustingItemId === item.id ? 'Salvando...' : '+ Entrada'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

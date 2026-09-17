@@ -19,11 +19,13 @@ import {
   ShoppingBag,
   Play,
   Minus,
-  Sparkles
+  Sparkles,
+  ShoppingCart
 } from 'lucide-react';
-import { Filament, Supply, Product, ProductSale, ProductionOrder } from '../types';
+import { Filament, Supply, Product, ProductSale, ProductionOrder, MaterialPurchase } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 import { SmartShoppingAlert, calculateSmartShoppingSuggestions } from './SmartShoppingAlert';
+import { StockPurchaseModal } from './StockPurchaseModal';
 
 interface StockManagementViewProps {
   filaments: Filament[];
@@ -33,6 +35,8 @@ interface StockManagementViewProps {
   productionOrders?: ProductionOrder[];
   onRefreshData: () => void | Promise<void>;
   onOpenSaleModal?: (product: Product) => void;
+  onNavigateToQuotes?: () => void;
+  initialTab?: 'filaments' | 'supplies' | 'smart_alerts' | 'products' | 'entries';
 }
 
 export const StockManagementView: React.FC<StockManagementViewProps> = ({
@@ -43,9 +47,51 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
   productionOrders = [],
   onRefreshData,
   onOpenSaleModal,
+  onNavigateToQuotes,
+  initialTab = 'filaments',
 }) => {
-  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies' | 'smart_alerts' | 'products'>('filaments');
+  const [activeTab, setActiveTab] = useState<'filaments' | 'supplies' | 'smart_alerts' | 'products' | 'entries'>(initialTab);
   const [stockAdjustingId, setStockAdjustingId] = useState<string | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+
+  // Stock Entries / Material Purchases State
+  const [purchases, setPurchases] = useState<MaterialPurchase[]>([]);
+  const [purchaseFilter, setPurchaseFilter] = useState<'all' | 'filament' | 'supply' | 'other'>('all');
+  const [purchaseSearch, setPurchaseSearch] = useState('');
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
+
+  const fetchPurchases = async () => {
+    try {
+      setIsLoadingPurchases(true);
+      const res = await fetch('/api/material-purchases');
+      if (res.ok) {
+        const data = await res.json();
+        setPurchases(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar histórico de entradas de estoque:', err);
+    } finally {
+      setIsLoadingPurchases(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPurchases();
+  }, []);
+
+  const filteredPurchases = useMemo(() => {
+    return purchases.filter((p) => {
+      if (purchaseFilter !== 'all' && p.item_type !== purchaseFilter) return false;
+      if (purchaseSearch.trim()) {
+        const q = purchaseSearch.toLowerCase();
+        const matchName = (p.item_name || '').toLowerCase().includes(q);
+        const matchSupplier = (p.supplier || '').toLowerCase().includes(q);
+        const matchNotes = (p.notes || '').toLowerCase().includes(q);
+        if (!matchName && !matchSupplier && !matchNotes) return false;
+      }
+      return true;
+    });
+  }, [purchases, purchaseFilter, purchaseSearch]);
 
   // Pre-calculate smart shopping alerts count for the tab badge
   const { suggestions: smartSuggestions, criticalCount: smartCriticalCount } = useMemo(() => {
@@ -54,7 +100,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
 
   // Deletion Modal State
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'supply' | 'filament';
+    type: 'supply' | 'filament' | 'purchase';
     id: string;
     name: string;
   } | null>(null);
@@ -322,19 +368,38 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
       const endpoint =
         deleteTarget.type === 'supply'
           ? `/api/supplies/${encodeURIComponent(deleteTarget.id)}`
-          : `/api/filaments/${encodeURIComponent(deleteTarget.id)}`;
+          : deleteTarget.type === 'filament'
+          ? `/api/filaments/${encodeURIComponent(deleteTarget.id)}`
+          : `/api/material-purchases/${encodeURIComponent(deleteTarget.id)}`;
 
       const res = await fetch(endpoint, { method: 'DELETE' });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `Falha ao remover ${deleteTarget.type === 'supply' ? 'o insumo' : 'o filamento'}`);
+        throw new Error(
+          errJson.error ||
+            `Falha ao remover ${
+              deleteTarget.type === 'supply'
+                ? 'o insumo'
+                : deleteTarget.type === 'filament'
+                ? 'o filamento'
+                : 'o registro de entrada'
+            }`
+        );
       }
 
       setNotification({
         type: 'success',
-        message: `${deleteTarget.type === 'supply' ? 'Insumo' : 'Filamento'} "${deleteTarget.name}" excluído com sucesso!`
+        message:
+          deleteTarget.type === 'supply'
+            ? `Insumo "${deleteTarget.name}" excluído com sucesso!`
+            : deleteTarget.type === 'filament'
+            ? `Filamento "${deleteTarget.name}" excluído com sucesso!`
+            : `Registro de entrada "${deleteTarget.name}" removido com sucesso!`
       });
       setDeleteTarget(null);
+      if (deleteTarget.type === 'purchase') {
+        fetchPurchases();
+      }
       await onRefreshData();
     } catch (err: any) {
       setNotification({
@@ -445,83 +510,108 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
       </div>
 
       {/* Tabs Switcher and Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#121215] p-1.5 rounded-2xl border border-white/[0.08] w-fit shadow-sm">
-          {/* Aba 1: Filamentos 3D */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('filaments')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-              activeTab === 'filaments'
-                ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Flame className="w-4 h-4" />
-            Filamentos 3D ({filaments.length})
-          </button>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+        <div className="w-full xl:w-auto max-w-full overflow-hidden">
+          <div className="stock-subtabs-container flex flex-nowrap items-center gap-1 sm:gap-1.5 bg-[#121215] p-1.5 rounded-2xl border border-white/[0.08] shadow-sm overflow-x-auto max-w-full no-scrollbar shrink-0">
+            {/* Aba 1: Filamentos 3D */}
+            <button
+              type="button"
+              id="tab-stock-filaments"
+              onClick={() => setActiveTab('filaments')}
+              className={`stock-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'filaments'
+                  ? 'stock-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Flame className="w-4 h-4" />
+              <span>Filamentos 3D ({filaments.length})</span>
+            </button>
 
-          {/* Aba 2: Insumos & Acessórios */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('supplies')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-              activeTab === 'supplies'
-                ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            Insumos & Acessórios ({supplies.length})
-          </button>
+            {/* Aba 2: Insumos & Acessórios */}
+            <button
+              type="button"
+              id="tab-stock-supplies"
+              onClick={() => setActiveTab('supplies')}
+              className={`stock-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'supplies'
+                  ? 'stock-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>Insumos & Acessórios ({supplies.length})</span>
+            </button>
 
-          {/* Aba 3: Alerta Inteligente (Posicionado logo após Insumos & Acessórios) */}
-          <button
-            type="button"
-            id="tab-smart-shopping-alert"
-            onClick={() => setActiveTab('smart_alerts')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-              activeTab === 'smart_alerts'
-                ? 'bg-amber-500/20 border border-amber-400/40 text-amber-300 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Alerta Inteligente</span>
-            {smartSuggestions.length > 0 && (
-              <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
-                  smartCriticalCount > 0
-                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                }`}
-              >
-                {smartSuggestions.length}
-              </span>
-            )}
-          </button>
+            {/* Aba 3: Alerta Inteligente */}
+            <button
+              type="button"
+              id="tab-smart-shopping-alert"
+              onClick={() => setActiveTab('smart_alerts')}
+              className={`stock-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'smart_alerts'
+                  ? 'stock-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Alerta Inteligente</span>
+              {smartSuggestions.length > 0 && (
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
+                    smartCriticalCount > 0
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                      : 'bg-white/10 text-white/90 border-white/20'
+                  }`}
+                >
+                  {smartSuggestions.length}
+                </span>
+              )}
+            </button>
 
-          {/* Aba 4: Produtos Acabados */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-              activeTab === 'products'
-                ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Tag className="w-4 h-4" />
-            Produtos Acabados ({totalFinishedUnits} un.)
-          </button>
+            {/* Aba 4: Produtos Acabados */}
+            <button
+              type="button"
+              id="tab-stock-products"
+              onClick={() => setActiveTab('products')}
+              className={`stock-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'products'
+                  ? 'stock-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Tag className="w-4 h-4" />
+              <span>Produtos Acabados ({totalFinishedUnits} un.)</span>
+            </button>
+
+            {/* Aba 5: Entrada no Estoque (ao lado de Produtos Acabados) */}
+            <button
+              type="button"
+              id="tab-stock-entries"
+              onClick={() => setActiveTab('entries')}
+              className={`stock-subtab-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'entries'
+                  ? 'stock-subtab-active bg-sky-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>Entrada no Estoque</span>
+              {purchases.length > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold bg-white/15 text-white">
+                  {purchases.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {activeTab === 'filaments' ? (
             <button
               type="button"
               onClick={() => handleOpenFilamentModal()}
-              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer"
+              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               Adicionar Carretel de Filamento
@@ -530,20 +620,31 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenSupplyModal()}
-              className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer"
+              className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               Cadastrar Novo Insumo
             </button>
           ) : activeTab === 'smart_alerts' ? (
-            <div className="text-xs text-amber-300 font-medium flex items-center gap-1.5 bg-amber-500/10 px-3.5 py-2 rounded-2xl border border-amber-500/25">
+            <div className="hidden sm:flex text-xs text-amber-300 font-medium items-center gap-1.5 bg-amber-500/10 px-3.5 py-2 rounded-2xl border border-amber-500/25 whitespace-nowrap">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Previsão de Ruptura & Sugestão de Compras
+              Previsão & Sugestão de Reposição
             </div>
-          ) : (
-            <div className="text-xs text-slate-400 font-mono">
+          ) : activeTab === 'products' ? (
+            <div className="hidden sm:flex text-xs text-slate-400 font-mono whitespace-nowrap">
               Resultado da produção prontas para envio/venda
             </div>
+          ) : (
+            <button
+              type="button"
+              id="btn-stock-entry-action"
+              onClick={() => setIsPurchaseModalOpen(true)}
+              className="integration-btn-primary bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-sm cursor-pointer whitespace-nowrap"
+              title="Registrar nova entrada de insumo ou filamento no estoque"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nova Entrada no Estoque</span>
+            </button>
           )}
         </div>
       </div>
@@ -602,9 +703,21 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                     <span className="text-slate-400 flex items-center gap-1 font-sans">
                       Estoque em Tempo Real:
                       {isLow && (
-                        <span className="text-rose-400 flex items-center gap-0.5 text-[10px] font-semibold">
-                          <AlertTriangle className="w-3 h-3" /> Baixo!
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-rose-400 flex items-center gap-0.5 text-[10px] font-semibold">
+                            <AlertTriangle className="w-3 h-3" /> Baixo!
+                          </span>
+                          {onNavigateToQuotes && (
+                            <button
+                              type="button"
+                              onClick={onNavigateToQuotes}
+                              className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+                              title="Cotar reposição na Central de Cotações"
+                            >
+                              Cotar
+                            </button>
+                          )}
+                        </div>
                       )}
                     </span>
                     <span className="font-bold text-white">
@@ -737,9 +850,21 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
                 <div className="flex items-center justify-between text-[11px] font-mono">
                   <span className="text-slate-400">Mínimo: {s.min_stock_alert} {s.unit}</span>
                   {isLow && (
-                    <span className="text-rose-400 font-semibold flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Reposição Necessária!
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-rose-400 font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Reposição Necessária!
+                      </span>
+                      {onNavigateToQuotes && (
+                        <button
+                          type="button"
+                          onClick={onNavigateToQuotes}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+                          title="Cotar reposição na Central de Cotações"
+                        >
+                          Cotar
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -789,6 +914,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
             onQuickAddSupplyStock={handleAdjustSupplyStock}
             onQuickAddProductStock={handleQuickStockAdjustProduct}
             onRefreshData={onRefreshData}
+            onNavigateToQuotes={onNavigateToQuotes}
           />
         </div>
       )}
@@ -887,6 +1013,208 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Tab 5: Entradas no Estoque (Histórico e Gestão de Aquisições) */}
+      {activeTab === 'entries' && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-[#121215] border border-white/[0.08] p-4 rounded-2xl">
+              <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+                <ShoppingCart className="w-3.5 h-3.5 text-sky-400" />
+                Total de Entradas
+              </span>
+              <span className="text-xl font-bold text-white mt-1 block font-mono">
+                {purchases.length} {purchases.length === 1 ? 'registro' : 'registros'}
+              </span>
+            </div>
+
+            <div className="bg-[#121215] border border-white/[0.08] p-4 rounded-2xl">
+              <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+                <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />
+                Total Investido em Entradas
+              </span>
+              <span className="text-xl font-bold text-emerald-400 mt-1 block font-mono">
+                R$ {purchases.reduce((acc, p) => acc + Number(p.total_cost || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="bg-[#121215] border border-white/[0.08] p-4 rounded-2xl">
+              <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 text-indigo-400" />
+                Itens Movimentados
+              </span>
+              <span className="text-xl font-bold text-white mt-1 block font-mono">
+                {purchases.reduce((acc, p) => acc + Number(p.quantity || 0), 0)} un./itens
+              </span>
+            </div>
+          </div>
+
+          {/* Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121215] p-3.5 rounded-2xl border border-white/[0.08]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">Filtrar:</span>
+              {(['all', 'filament', 'supply', 'other'] as const).map((filterType) => (
+                <button
+                  key={filterType}
+                  type="button"
+                  onClick={() => setPurchaseFilter(filterType)}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    purchaseFilter === filterType
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
+                      : 'bg-[#1c1c20] text-slate-400 hover:text-white border border-white/[0.04]'
+                  }`}
+                >
+                  {filterType === 'all'
+                    ? 'Todos'
+                    : filterType === 'filament'
+                    ? 'Filamentos'
+                    : filterType === 'supply'
+                    ? 'Insumos'
+                    : 'Outros'}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <input
+                  type="text"
+                  value={purchaseSearch}
+                  onChange={(e) => setPurchaseSearch(e.target.value)}
+                  placeholder="Buscar por item, fornecedor..."
+                  className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400 transition"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPurchaseModalOpen(true)}
+                className="integration-btn-primary flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-sm cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Registrar Entrada</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-[#121215] rounded-2xl border border-white/[0.08] overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#1c1c20] text-slate-400 font-bold border-b border-white/[0.06]">
+                    <th className="py-3 px-4">Data</th>
+                    <th className="py-3 px-4">Item / Material</th>
+                    <th className="py-3 px-4">Tipo</th>
+                    <th className="py-3 px-4">Fornecedor</th>
+                    <th className="py-3 px-4 text-center">Qtd.</th>
+                    <th className="py-3 px-4 text-right">Custo Unit.</th>
+                    <th className="py-3 px-4 text-right">Total</th>
+                    <th className="py-3 px-4">Pagamento</th>
+                    <th className="py-3 px-4 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {filteredPurchases.map((purchase) => {
+                    const isFilament = purchase.item_type === 'filament';
+                    const isSupply = purchase.item_type === 'supply';
+
+                    return (
+                      <tr key={purchase.id} className="hover:bg-white/[0.02] transition">
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap font-mono">
+                          {purchase.purchase_date}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-white flex items-center gap-2">
+                            <span>{purchase.item_name}</span>
+                          </div>
+                          {purchase.notes && (
+                            <span className="text-[10px] text-slate-500 block truncate max-w-xs">
+                              {purchase.notes}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isFilament
+                                ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
+                                : isSupply
+                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                : 'bg-slate-500/15 text-slate-300 border border-slate-500/30'
+                            }`}
+                          >
+                            {isFilament ? 'Filamento' : isSupply ? 'Insumo' : 'Geral'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-300 font-medium">
+                          {purchase.supplier || 'Não informado'}
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-white font-mono">
+                          {purchase.quantity} {purchase.unit}
+                        </td>
+                        <td className="py-3 px-4 text-right text-slate-300 font-mono">
+                          R$ {Number(purchase.unit_cost || 0).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-emerald-400 font-mono">
+                          R$ {Number(purchase.total_cost || 0).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 text-slate-400">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.06] text-slate-300">
+                            {purchase.payment_method || 'PIX'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteTarget({
+                                type: 'purchase',
+                                id: purchase.id,
+                                name: `${purchase.item_name} (${purchase.quantity} ${purchase.unit})`,
+                              })
+                            }
+                            className="p-1.5 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                            title="Remover Registro de Entrada"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredPurchases.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="text-center py-12 text-slate-500">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <ShoppingCart className="w-8 h-8 text-slate-600" />
+                          <p className="text-sm font-medium text-slate-400">
+                            {purchases.length === 0
+                              ? 'Nenhuma entrada no estoque registrada até o momento.'
+                              : 'Nenhum registro encontrado com os filtros selecionados.'}
+                          </p>
+                          {purchases.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setIsPurchaseModalOpen(true)}
+                              className="mt-2 flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-sm cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Registrar Primeira Entrada</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1129,15 +1457,36 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
           </div>
         </div>
       )}
+      {/* Modal: Registrar Aquisição / Entrada no Estoque */}
+      <StockPurchaseModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        filaments={filaments}
+        supplies={supplies}
+        onSuccess={(msg) => {
+          setNotification({ type: 'success', message: msg });
+          fetchPurchases();
+          onRefreshData();
+        }}
+      />
+
       {/* Confirmation Modal for deletion (replaces window.confirm) */}
       <ConfirmModal
         isOpen={deleteTarget !== null}
-        title={deleteTarget?.type === 'supply' ? 'Excluir Insumo do Estoque' : 'Excluir Carretel de Filamento'}
+        title={
+          deleteTarget?.type === 'supply'
+            ? 'Excluir Insumo do Estoque'
+            : deleteTarget?.type === 'filament'
+            ? 'Excluir Carretel de Filamento'
+            : 'Excluir Registro de Entrada'
+        }
         itemName={deleteTarget?.name}
         message={
           deleteTarget?.type === 'supply'
             ? 'Tem certeza que deseja excluir este insumo? Ele deixará de constar nas opções de montagem e BOM de produtos.'
-            : 'Tem certeza que deseja excluir este carretel? Os dados de pesagem e saldo em estoque serão apagados permanentemente.'
+            : deleteTarget?.type === 'filament'
+            ? 'Tem certeza que deseja excluir este carretel? Os dados de pesagem e saldo em estoque serão apagados permanentemente.'
+            : 'Tem certeza que deseja excluir este registro de entrada no estoque? O histórico desta aquisição será removido.'
         }
         confirmLabel="Sim, Excluir"
         cancelLabel="Cancelar"

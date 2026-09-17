@@ -36,6 +36,10 @@ interface SuppliersViewProps {
   supplies: Supply[];
   onRefreshData?: () => void;
   theme?: string;
+  initialSection?: 'suppliers' | 'purchases' | 'quotes' | 'batch_quotes';
+  mode?: 'all' | 'directory_only' | 'procurement_only';
+  onNavigateToQuotes?: () => void;
+  onNavigateToSettings?: (subTab?: string) => void;
 }
 
 export const SuppliersView: React.FC<SuppliersViewProps> = ({
@@ -43,8 +47,24 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   supplies,
   onRefreshData,
   theme = 'standard',
+  initialSection = 'suppliers',
+  mode = 'all',
+  onNavigateToQuotes,
+  onNavigateToSettings,
 }) => {
-  const [activeSection, setActiveSection] = useState<'suppliers' | 'purchases' | 'quotes' | 'batch_quotes'>('suppliers');
+  const [activeSection, setActiveSection] = useState<'suppliers' | 'purchases' | 'quotes' | 'batch_quotes'>(
+    mode === 'directory_only' ? 'suppliers' : mode === 'procurement_only' ? (initialSection === 'suppliers' ? 'batch_quotes' : initialSection) : initialSection
+  );
+
+  useEffect(() => {
+    if (mode === 'directory_only') {
+      setActiveSection('suppliers');
+    } else if (mode === 'procurement_only' && initialSection === 'suppliers') {
+      setActiveSection('batch_quotes');
+    } else if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection, mode]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [quotes, setQuotes] = useState<SupplierQuote[]>([]);
   const [purchases, setPurchases] = useState<MaterialPurchase[]>([]);
@@ -528,175 +548,260 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         </div>
       )}
 
-      {/* Header & Main Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#131316] border border-white/[0.08] p-5 rounded-2xl">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-            <Truck className="w-6 h-6" />
+      {/* ================= HEADER: DIRECTORY ONLY MODE ================= */}
+      {mode === 'directory_only' ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131316] border border-white/[0.08] p-5 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                Cadastro de Fornecedores
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  {suppliers.length} Cadastrado(s)
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400">
+                Catálogo comercial de parceiros, dados fiscais, contatos de compras e canais de atendimento direto.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              Gestão de Fornecedores & Insumos
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Compras & Estoque
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">
-              Contatos de compras, histórico de aquisições de insumos e cotações vinculadas ao estoque de filamentos e peças.
-            </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {onNavigateToQuotes && (
+              <button
+                type="button"
+                onClick={onNavigateToQuotes}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1c1c20] hover:bg-white/[0.06] text-sky-300 border border-sky-500/30 font-bold text-xs rounded-xl transition cursor-pointer"
+                title="Abrir Central de Cotações em Lote e RFP"
+              >
+                <Send className="w-3.5 h-3.5 text-sky-400" />
+                <span>Central de Cotações</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              id="btn-new-supplier-top"
+              onClick={handleOpenCreateSupplier}
+              className="integration-btn-primary flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-sky-500/20 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Fornecedor</span>
+            </button>
           </div>
         </div>
+      ) : mode === 'procurement_only' ? (
+        /* Header limpo para economizar espaço e manter consistência com o tema */
+        null
+      ) : (
+        /* ================= HEADER: ALL / FULL MODE ================= */
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#131316] border border-white/[0.08] p-5 rounded-2xl">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white flex items-center gap-2">
+                Gestão de Fornecedores & Insumos
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  Compras & Estoque
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400">
+                Contatos de compras, histórico de aquisições de insumos e cotações vinculadas ao estoque de filamentos e peças.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            id="btn-new-quote-top"
-            onClick={() => handleOpenCreateQuote()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#1c1c20] hover:bg-white/[0.06] text-amber-300 border border-amber-500/30 font-bold text-xs rounded-xl transition cursor-pointer"
-          >
-            <Tag className="w-3.5 h-3.5 text-amber-400" />
-            <span>Nova Cotação</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-batch-quotes-top"
+              onClick={() => setActiveSection('batch_quotes')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeSection === 'batch_quotes'
+                  ? 'bg-sky-500 text-white font-bold shadow-md shadow-sky-500/20'
+                  : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
+              }`}
+              title="Acessar rodadas de cotação em lote e envio automatizado de links aos fornecedores"
+            >
+              <Send className="w-3.5 h-3.5 text-sky-400" />
+              <span>Cotações em Lote (RFP)</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-400/25 text-sky-300">Novo</span>
+            </button>
 
-          <button
-            type="button"
-            id="btn-new-purchase-top"
-            onClick={() => handleOpenCreatePurchase()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#1c1c20] hover:bg-white/[0.06] text-emerald-300 border border-emerald-500/30 font-bold text-xs rounded-xl transition cursor-pointer"
-          >
-            <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Entrada no Estoque</span>
-          </button>
-
-          <button
-            type="button"
-            id="btn-new-supplier-top"
-            onClick={handleOpenCreateSupplier}
-            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition shadow-lg shadow-amber-500/20 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo Fornecedor</span>
-          </button>
+            <button
+              type="button"
+              id="btn-new-supplier-top"
+              onClick={handleOpenCreateSupplier}
+              className="integration-btn-primary flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-sky-500/20 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Fornecedor</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Bento Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
-          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-            <Building2 className="w-3 h-3 text-amber-400" /> Fornecedores Ativos
-          </span>
-          <span className="text-xl font-bold text-white mt-0.5 block">{suppliers.length}</span>
+      {/* Bento Metrics Bar (Ocultado em directory_only e procurement_only para despoluir a tela) */}
+      {mode !== 'directory_only' && mode !== 'procurement_only' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
+            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-sky-400" /> Fornecedores Ativos
+            </span>
+            <span className="text-xl font-bold text-white mt-0.5 block">{suppliers.length}</span>
+          </div>
+
+          <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
+            <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+              <DollarSign className="w-3 h-3" /> Aquisições Registradas
+            </span>
+            <span className="text-xl font-bold text-white mt-0.5 block">
+              R$ {totalPurchasesAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+
+          <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
+            <span className="text-[11px] text-sky-400 font-medium flex items-center gap-1">
+              <Tag className="w-3 h-3" /> Cotações Ativas
+            </span>
+            <span className="text-xl font-bold text-white mt-0.5 block">{activeQuotesCount}</span>
+          </div>
+
+          <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
+            <span className="text-[11px] text-purple-400 font-medium flex items-center gap-1">
+              <Boxes className="w-3 h-3" /> Itens no Catálogo
+            </span>
+            <span className="text-xl font-bold text-white mt-0.5 block">
+              {filaments.length + supplies.length} insumos
+            </span>
+          </div>
         </div>
+      )}
 
-        <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
-          <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-            <DollarSign className="w-3 h-3" /> Aquisições Registradas
-          </span>
-          <span className="text-xl font-bold text-white mt-0.5 block">
-            R$ {totalPurchasesAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </span>
+      {/* Navigation Sub-Tabs inside Fornecedores / Cotações */}
+      {mode === 'directory_only' ? (
+        /* In directory_only, show direct search & filter bar without redundant tabs */
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#131316] border border-white/[0.08] p-3 rounded-xl">
+          <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 sm:pb-0">
+            <span className="text-slate-400 font-medium text-xs mr-1">Categoria:</span>
+            {['all', 'Filamentos', 'Insumos & Fixação', 'Embalagens', 'Peças & Hotends', 'Resinas', 'Outros'].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition cursor-pointer text-xs ${
+                  categoryFilter === cat
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
+                    : 'bg-[#1c1c20] text-slate-400 hover:text-white border border-white/[0.06]'
+                }`}
+              >
+                {cat === 'all' ? 'Todas' : cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar fornecedor, CNPJ ou contato..."
+              className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400 transition"
+            />
+          </div>
         </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+          <div className="flex items-center gap-2 p-1 bg-[#131316] rounded-xl border border-white/[0.08] suppliers-subtabs-container">
+            {mode !== 'procurement_only' && (
+              <button
+                type="button"
+                id="sub-tab-suppliers-list"
+                onClick={() => setActiveSection('suppliers')}
+                className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeSection === 'suppliers'
+                    ? 'suppliers-subtab-active bg-sky-500 text-white font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>Contatos & Fornecedores</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/15 text-white">{suppliers.length}</span>
+              </button>
+            )}
 
-        <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
-          <span className="text-[11px] text-sky-400 font-medium flex items-center gap-1">
-            <Tag className="w-3 h-3" /> Cotações Ativas
-          </span>
-          <span className="text-xl font-bold text-white mt-0.5 block">{activeQuotesCount}</span>
+            <button
+              type="button"
+              id="sub-tab-batch-quotes"
+              onClick={() => setActiveSection('batch_quotes')}
+              className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeSection === 'batch_quotes'
+                  ? 'suppliers-subtab-active bg-sky-500 text-white font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Cotações em Lote (RFP)</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-400/20 text-sky-300">Novo</span>
+            </button>
+
+            <button
+              type="button"
+              id="sub-tab-quotes-matrix"
+              onClick={() => setActiveSection('quotes')}
+              className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeSection === 'quotes'
+                  ? 'suppliers-subtab-active bg-sky-500 text-white font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>Cotações por Item</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/15 text-white">{quotes.length}</span>
+            </button>
+
+            {mode !== 'procurement_only' && (
+              <button
+                type="button"
+                id="sub-tab-purchases-history"
+                onClick={() => setActiveSection('purchases')}
+                className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeSection === 'purchases'
+                    ? 'suppliers-subtab-active bg-sky-500 text-white font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Boxes className="w-3.5 h-3.5" />
+                <span>Histórico de Aquisições</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/15 text-white">{purchases.length}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                activeSection === 'suppliers'
+                  ? 'Buscar fornecedor ou contato...'
+                  : activeSection === 'purchases'
+                  ? 'Buscar no histórico de compras...'
+                  : 'Buscar cotação de insumo...'
+              }
+              className="w-full bg-[#131316] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition"
+            />
+          </div>
         </div>
-
-        <div className="bg-[#131316] border border-white/[0.08] p-3.5 rounded-xl">
-          <span className="text-[11px] text-purple-400 font-medium flex items-center gap-1">
-            <Boxes className="w-3 h-3" /> Itens no Catálogo
-          </span>
-          <span className="text-xl font-bold text-white mt-0.5 block">
-            {filaments.length + supplies.length} insumos
-          </span>
-        </div>
-      </div>
-
-      {/* Navigation Sub-Tabs inside Fornecedores */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
-        <div className="flex items-center gap-2 p-1 bg-[#131316] rounded-xl border border-white/[0.08] suppliers-subtabs-container">
-          <button
-            type="button"
-            id="sub-tab-suppliers-list"
-            onClick={() => setActiveSection('suppliers')}
-            className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSection === 'suppliers'
-                ? 'suppliers-subtab-active bg-amber-500 text-slate-950 font-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5" />
-            <span>Contatos & Fornecedores</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-950/20">{suppliers.length}</span>
-          </button>
-
-          <button
-            type="button"
-            id="sub-tab-purchases-history"
-            onClick={() => setActiveSection('purchases')}
-            className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSection === 'purchases'
-                ? 'suppliers-subtab-active bg-amber-500 text-slate-950 font-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Boxes className="w-3.5 h-3.5" />
-            <span>Histórico de Aquisições</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-950/20">{purchases.length}</span>
-          </button>
-
-          <button
-            type="button"
-            id="sub-tab-quotes-matrix"
-            onClick={() => setActiveSection('quotes')}
-            className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSection === 'quotes'
-                ? 'suppliers-subtab-active bg-amber-500 text-slate-950 font-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>Cotações por Item</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-950/20">{quotes.length}</span>
-          </button>
-
-          <button
-            type="button"
-            id="sub-tab-batch-quotes"
-            onClick={() => setActiveSection('batch_quotes')}
-            className={`suppliers-subtab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSection === 'batch_quotes'
-                ? 'suppliers-subtab-active bg-amber-500 text-slate-950 font-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Cotações em Lote (RFP)</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-400/20 text-amber-300">Novo</span>
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              activeSection === 'suppliers'
-                ? 'Buscar fornecedor ou contato...'
-                : activeSection === 'purchases'
-                ? 'Buscar no histórico de compras...'
-                : 'Buscar cotação de insumo...'
-            }
-            className="w-full bg-[#131316] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition"
-          />
-        </div>
-      </div>
+      )}
 
       {/* ================= SECTION 1: FORNECEDORES & CONTATOS DE COMPRAS ================= */}
       {activeSection === 'suppliers' && (
@@ -1041,7 +1146,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   onClick={() => setQuoteStatusFilter(st)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
                     quoteStatusFilter === st
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
                       : 'bg-[#1c1c20] text-slate-400 hover:text-white border border-white/[0.04]'
                   }`}
                 >
@@ -1061,7 +1166,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenCreateQuote()}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer shrink-0 shadow-sm"
+              className="integration-btn-primary flex items-center justify-center gap-2 px-3.5 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0 shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Nova Cotação por Item</span>
@@ -1106,7 +1211,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         <td className="py-3 px-4 font-medium text-slate-300">
                           {quote.supplier_name}
                         </td>
-                        <td className="py-3 px-4 text-right font-black text-amber-300">
+                        <td className="py-3 px-4 text-right font-black text-white">
                           R$ {Number(quote.unit_price || 0).toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">/{quote.unit}</span>
                         </td>
                         <td className="py-3 px-4 text-center text-slate-300">
@@ -1131,7 +1236,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                               isApproved
                                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                                 : isActive
-                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
                                 : isRejected
                                 ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                                 : 'bg-slate-500/15 text-slate-300 border border-slate-500/30'
@@ -1148,7 +1253,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 type="button"
                                 onClick={() => handleConvertToPurchase(quote)}
                                 disabled={isConverting}
-                                className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black rounded-lg transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                className="integration-btn-primary px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                 title="Converter em compra e dar entrada no estoque físico"
                               >
                                 <ShoppingCart className="w-3 h-3" />
@@ -1159,7 +1264,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenEditQuote(quote)}
-                              className="p-1.5 text-slate-400 hover:text-amber-300 transition cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-sky-300 transition cursor-pointer"
                               title="Editar Cotação"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -1201,6 +1306,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           supplies={supplies}
           onPurchasesUpdated={onRefreshData}
           theme={theme}
+          onNavigateToSettings={onNavigateToSettings}
         />
       )}
 
@@ -1210,7 +1316,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="bg-[#131316] border border-white/[0.08] w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl my-8">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl">
                   <Truck className="w-5 h-5" />
                 </div>
                 <h3 className="font-bold text-white text-base">
@@ -1380,7 +1486,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-md shadow-amber-500/20 cursor-pointer"
+                  className="integration-btn-primary px-5 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl transition shadow-md shadow-sky-500/20 cursor-pointer"
                 >
                   {editingSupplier ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}
                 </button>
@@ -1655,7 +1761,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="bg-[#131316] border border-white/[0.08] w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl my-8">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl">
                   <Tag className="w-5 h-5" />
                 </div>
                 <div>
@@ -1913,7 +2019,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-md shadow-amber-500/20 cursor-pointer"
+                  className="integration-btn-primary px-5 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl transition shadow-md shadow-sky-500/20 cursor-pointer"
                 >
                   {editingQuote ? 'Salvar Cotação' : 'Registrar Cotação'}
                 </button>

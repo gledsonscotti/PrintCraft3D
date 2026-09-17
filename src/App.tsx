@@ -27,7 +27,8 @@ import {
   Lock,
   ShieldCheck,
   ShieldAlert,
-  DollarSign
+  DollarSign,
+  Send
 } from 'lucide-react';
 import { AppSettings, AppTheme, Filament, Printer, PrintJob, Product, ProductSale, Supply, ProductionOrder, Client } from './types';
 import { ModelAnalyzerView } from './components/ModelAnalyzerView';
@@ -40,6 +41,7 @@ import { SalesManagementView } from './components/SalesManagementView';
 import { FinanceView } from './components/FinanceView';
 import { ProductionControlView } from './components/ProductionControlView';
 import { ClientsView } from './components/ClientsView';
+import { QuotesManagementView } from './components/QuotesManagementView';
 import { SettingsView } from './components/SettingsView';
 import { RegisterSaleModal } from './components/RegisterSaleModal';
 import { AdminView } from './components/admin/AdminView';
@@ -48,9 +50,9 @@ import { CompanyTeamModal } from './components/auth/CompanyTeamModal';
 import { safeFetchJson } from './utils/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'finance' | 'clients' | 'history' | 'settings'>('analyzer');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'finance' | 'clients' | 'quotes' | 'history' | 'settings'>('analyzer');
   const [calculatorInitialParams, setCalculatorInitialParams] = useState<any>(null);
-  const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'integrations'>('costs');
+  const [settingsSubTab, setSettingsSubTab] = useState<'costs' | 'printers' | 'carriers' | 'categories' | 'integrations' | 'smtp_whatsapp'>('costs');
   const [loading, setLoading] = useState(true);
 
   // Authentication & Multi-Tenant Company Session State
@@ -90,14 +92,15 @@ export default function App() {
     if (permissions.includes('all')) return true;
     if (moduleKey === 'plates') return permissions.includes('plates') || permissions.includes('analyzer') || permissions.includes('products');
     if (moduleKey === 'finance') return permissions.includes('finance') || permissions.includes('financial') || permissions.includes('sales');
+    if (moduleKey === 'quotes') return permissions.includes('quotes') || permissions.includes('stock') || permissions.includes('clients');
     return permissions.includes(moduleKey);
   };
 
   // Auto-switch to first authorized tab if user doesn't have access to active tab
   useEffect(() => {
     if (currentUser && !canAccess(activeTab)) {
-      const validTabs: Array<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'finance' | 'clients' | 'settings'> = [
-        'analyzer', 'calculator', 'stock', 'products', 'production', 'sales', 'finance', 'clients', 'settings'
+      const validTabs: Array<'analyzer' | 'calculator' | 'stock' | 'products' | 'production' | 'sales' | 'finance' | 'clients' | 'quotes' | 'settings'> = [
+        'analyzer', 'calculator', 'stock', 'products', 'production', 'sales', 'finance', 'clients', 'quotes', 'settings'
       ];
       const firstAllowed = validTabs.find((t) => canAccess(t));
       if (firstAllowed) {
@@ -608,13 +611,13 @@ export default function App() {
                 {!canAccess('products') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
-              {/* Pessoas */}
+              {/* Cadastros (Clientes, Fornecedores, Equipe) */}
               <button
                 type="button"
                 id="main-nav-clients"
                 disabled={!canAccess('clients')}
                 onClick={() => canAccess('clients') && setActiveTab('clients')}
-                title={canAccess('clients') ? 'Gestão de Pessoas (Clientes e Equipe)' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                title={canAccess('clients') ? 'Cadastros: Clientes & Lojas, Fornecedores e Equipe da Oficina' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
                 className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('clients')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
@@ -624,7 +627,7 @@ export default function App() {
                 }`}
               >
                 <Users className="w-4 h-4" />
-                <span>Pessoas</span>
+                <span>Cadastros</span>
                 {!canAccess('clients') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
@@ -633,7 +636,7 @@ export default function App() {
                 type="button"
                 disabled={!canAccess('stock')}
                 onClick={() => canAccess('stock') && setActiveTab('stock')}
-                title={canAccess('stock') ? 'Estoque de Insumos & Matéria-prima' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                title={canAccess('stock') ? 'Estoque de Filamentos, Insumos, Alerta Inteligente e Cotações' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
                 className={`relative px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('stock')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
@@ -653,6 +656,26 @@ export default function App() {
                     </span>
                   )
                 )}
+              </button>
+
+              {/* Cotações */}
+              <button
+                type="button"
+                id="main-nav-quotes"
+                disabled={!canAccess('quotes')}
+                onClick={() => canAccess('quotes') && setActiveTab('quotes')}
+                title={canAccess('quotes') ? 'Central de Cotações em Lote (RFP), Propostas e Reposição' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
+                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                  !canAccess('quotes')
+                    ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
+                    : activeTab === 'quotes'
+                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                <span>Cotações</span>
+                {!canAccess('quotes') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
               {/* Produção */}
@@ -904,13 +927,13 @@ export default function App() {
               {!canAccess('products') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
-            {/* Pessoas */}
+            {/* Cadastros */}
             <button
               type="button"
               id="mobile-nav-clients"
               disabled={!canAccess('clients')}
               onClick={() => canAccess('clients') && setActiveTab('clients')}
-              title={canAccess('clients') ? 'Pessoas (Clientes e Equipe)' : 'Módulo restrito'}
+              title={canAccess('clients') ? 'Cadastros (Clientes, Fornecedores, Equipe)' : 'Módulo restrito'}
               className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('clients')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
@@ -920,7 +943,7 @@ export default function App() {
               }`}
             >
               <Users className="w-3 h-3 shrink-0" />
-              <span>Pessoas</span>
+              <span>Cadastros</span>
               {!canAccess('clients') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
@@ -949,6 +972,26 @@ export default function App() {
                   </span>
                 )
               )}
+            </button>
+
+            {/* Cotações */}
+            <button
+              type="button"
+              id="mobile-nav-quotes"
+              disabled={!canAccess('quotes')}
+              onClick={() => canAccess('quotes') && setActiveTab('quotes')}
+              title={canAccess('quotes') ? 'Cotações em Lote (RFP)' : 'Módulo restrito'}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                !canAccess('quotes')
+                  ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
+                  : activeTab === 'quotes'
+                  ? 'bg-sky-500 text-white font-bold'
+                  : 'text-slate-400 bg-white/[0.03]'
+              }`}
+            >
+              <Send className="w-3 h-3 shrink-0" />
+              <span>Cotações</span>
+              {!canAccess('quotes') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
             {/* Produção */}
@@ -1078,6 +1121,7 @@ export default function App() {
                   setSelectedProductForSale(product);
                   setIsSaleModalOpen(true);
                 }}
+                onNavigateToQuotes={() => setActiveTab('quotes')}
               />
             )}
 
@@ -1168,6 +1212,20 @@ export default function App() {
                 currentUser={currentUser}
                 currentCompany={currentCompany}
                 isSuperadmin={isSuperadmin}
+                onNavigateToQuotes={() => setActiveTab('quotes')}
+              />
+            )}
+
+            {activeTab === 'quotes' && (
+              <QuotesManagementView
+                filaments={filaments}
+                supplies={supplies}
+                onRefreshData={fetchData}
+                theme={companyTheme}
+                onNavigateToSettings={(subTab) => {
+                  if (subTab) setSettingsSubTab(subTab as any);
+                  setActiveTab('settings');
+                }}
               />
             )}
 

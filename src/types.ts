@@ -295,6 +295,31 @@ export interface QuoteRoundSupplier {
   invited_at: string;
   responded_at?: string;
   status: 'invited' | 'opened' | 'submitted' | 'declined';
+  email_sent_at?: string;
+  email_status?: 'pending' | 'sent' | 'failed';
+  whatsapp_sent_at?: string;
+  whatsapp_status?: 'pending' | 'sent' | 'failed';
+  last_dispatch_channel?: 'email' | 'whatsapp' | 'both';
+  dispatch_logs?: Array<{
+    timestamp: string;
+    channel: 'email' | 'whatsapp';
+    status: 'success' | 'failed';
+    recipient: string;
+    details?: string;
+  }>;
+}
+
+export interface DispatchSettings {
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_pass?: string;
+  smtp_from?: string;
+  smtp_secure?: boolean;
+  whatsapp_api_url?: string;
+  whatsapp_api_token?: string;
+  whatsapp_instance?: string;
+  company_name?: string;
 }
 
 export interface ProposalItemResponse {

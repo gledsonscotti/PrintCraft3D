@@ -25,7 +25,12 @@ import {
   Building2,
   Printer,
   Eye,
-  DollarSign
+  DollarSign,
+  Settings,
+  Loader2,
+  Sparkles,
+  Sliders,
+  ShieldCheck
 } from 'lucide-react';
 import { QuoteRound, QuoteRoundItem, QuoteRoundSupplier, QuoteProposal, Supplier, Filament, Supply } from '../types';
 import { SupplierQuotePortal } from './SupplierQuotePortal';
@@ -36,6 +41,7 @@ interface BatchQuoteRoundsViewProps {
   supplies: Supply[];
   onPurchasesUpdated?: () => void;
   theme?: string;
+  onNavigateToSettings?: (subTab?: string) => void;
 }
 
 export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
@@ -44,6 +50,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
   supplies,
   onPurchasesUpdated,
   theme = 'standard',
+  onNavigateToSettings,
 }) => {
   const [rounds, setRounds] = useState<QuoteRound[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,6 +63,45 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
   const [activeSimulationToken, setActiveSimulationToken] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [awardingProposal, setAwardingProposal] = useState<string | null>(null);
+
+  // Internal suppliers fallback
+  const [internalSuppliers, setInternalSuppliers] = useState<Supplier[]>(suppliers || []);
+
+  useEffect(() => {
+    if (suppliers && suppliers.length > 0) {
+      setInternalSuppliers(suppliers);
+    } else {
+      fetch('/api/suppliers')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setInternalSuppliers(data);
+        })
+        .catch((err) => console.error('Error fetching suppliers in BatchQuoteRoundsView:', err));
+    }
+  }, [suppliers]);
+
+  const effectiveSuppliers = internalSuppliers.length > 0 ? internalSuppliers : suppliers;
+
+  // Automated Dispatch State
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'smtp' | 'whatsapp'>('smtp');
+  const [dispatchSettings, setDispatchSettings] = useState<any>({
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_from: '',
+    smtp_secure: false,
+    whatsapp_api_url: '',
+    whatsapp_api_token: '',
+    whatsapp_instance: '',
+    company_name: 'Oficina 3D - Gestão de Suprimentos',
+    is_smtp_configured: false,
+    is_whatsapp_configured: false
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // New Round Form State
   const [roundTitle, setRoundTitle] = useState('');
@@ -106,13 +152,14 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
 
   useEffect(() => {
     fetchRounds();
+    fetchDispatchSettings();
   }, []);
 
   // Pre-select all suppliers when opening modal
   const handleOpenCreateModal = () => {
     setRoundTitle(`Cotação de Suprimentos - ${new Date().toLocaleDateString('pt-BR', { month: 'long' })}`);
     setRoundDesc('Solicitação de cotação de insumos para reposição do estoque da oficina. Gentileza informar preços unitários, disponibilidade, condições de parcelamento e frete.');
-    setSelectedSupplierIds(suppliers.slice(0, 4).map((s) => s.id));
+    setSelectedSupplierIds(effectiveSuppliers.slice(0, 4).map((s) => s.id));
     setRoundItems([
       {
         id: `item-${Date.now()}-1`,
@@ -196,7 +243,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
       return;
     }
 
-    const invitedSuppliers = suppliers.filter((s) => selectedSupplierIds.includes(s.id));
+    const invitedSuppliers = effectiveSuppliers.filter((s) => selectedSupplierIds.includes(s.id));
 
     try {
       const res = await fetch('/api/quote-rounds', {
@@ -296,6 +343,172 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
     window.open(url, '_blank');
   };
 
+  // Fetch dispatch settings
+  const fetchDispatchSettings = async () => {
+    try {
+      const res = await fetch('/api/dispatch/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setDispatchSettings(data);
+      }
+    } catch (e) {
+      console.error('Error fetching dispatch settings:', e);
+    }
+  };
+
+  // Save dispatch settings
+  const handleSaveDispatchSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/dispatch/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dispatchSettings)
+      });
+      if (res.ok) {
+        setFeedback({ type: 'success', text: 'Configurações de disparo salvas com sucesso!' });
+        setIsSettingsModalOpen(false);
+        fetchDispatchSettings();
+      } else {
+        throw new Error('Falha ao salvar configurações.');
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Erro ao salvar configurações.' });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  // Automated Email via App
+  const handleSendEmailViaApp = async (round: QuoteRound, sup: QuoteRoundSupplier) => {
+    if (!sup.supplier_email) {
+      setFeedback({ type: 'error', text: `O fornecedor "${sup.supplier_name}" não possui e-mail cadastrado.` });
+      return;
+    }
+
+    setSendingEmailId(sup.supplier_id);
+    try {
+      const res = await fetch(`/api/quote-rounds/${round.id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier_id: sup.supplier_id })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao disparar e-mail');
+      }
+
+      setFeedback({
+        type: 'success',
+        text: `✓ E-mail com link exclusivo enviado com sucesso via app para "${sup.supplier_name}" (${sup.supplier_email})!`
+      });
+
+      if (data.updated_suppliers) {
+        const updatedRound = { ...round, invited_suppliers: data.updated_suppliers };
+        setRounds((prev) => prev.map((r) => (r.id === round.id ? updatedRound : r)));
+        if (selectedRoundForLinks?.id === round.id) {
+          setSelectedRoundForLinks(updatedRound);
+        }
+      } else {
+        fetchRounds();
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Erro ao enviar e-mail via app.' });
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
+
+  // Automated WhatsApp via App
+  const handleSendWhatsAppViaApp = async (round: QuoteRound, sup: QuoteRoundSupplier) => {
+    if (!sup.supplier_phone) {
+      setFeedback({ type: 'error', text: `O fornecedor "${sup.supplier_name}" não possui telefone/WhatsApp cadastrado.` });
+      return;
+    }
+
+    setSendingWhatsAppId(sup.supplier_id);
+    try {
+      const res = await fetch(`/api/quote-rounds/${round.id}/send-whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier_id: sup.supplier_id })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao disparar WhatsApp');
+      }
+
+      setFeedback({
+        type: 'success',
+        text: `✓ Mensagem WhatsApp despachada automaticamente via app para "${sup.supplier_name}"!`
+      });
+
+      if (data.updated_suppliers) {
+        const updatedRound = { ...round, invited_suppliers: data.updated_suppliers };
+        setRounds((prev) => prev.map((r) => (r.id === round.id ? updatedRound : r)));
+        if (selectedRoundForLinks?.id === round.id) {
+          setSelectedRoundForLinks(updatedRound);
+        }
+      } else {
+        fetchRounds();
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Erro ao despachar WhatsApp via app.' });
+    } finally {
+      setSendingWhatsAppId(null);
+    }
+  };
+
+  // Automated Bulk Dispatch (All suppliers in round)
+  const handleDispatchAll = async (round: QuoteRound, channel: 'email' | 'whatsapp' | 'both') => {
+    const channels = channel === 'both' ? ['email', 'whatsapp'] : [channel];
+    const isEmail = channels.includes('email');
+    const isWa = channels.includes('whatsapp');
+
+    if (isEmail) setSendingEmailId('all');
+    if (isWa) setSendingWhatsAppId('all');
+
+    try {
+      const res = await fetch(`/api/quote-rounds/${round.id}/dispatch-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channels })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha no disparo em lote via app');
+      }
+
+      const parts: string[] = [];
+      if (data.email_sent_count !== undefined && isEmail) parts.push(`${data.email_sent_count} e-mail(s)`);
+      if (data.whatsapp_sent_count !== undefined && isWa) parts.push(`${data.whatsapp_sent_count} WhatsApp(s)`);
+
+      setFeedback({
+        type: 'success',
+        text: `✓ Disparo automatizado concluído via app! Enviados: ${parts.join(' e ')} diretamente aos fornecedores.`
+      });
+
+      if (data.updated_suppliers) {
+        const updatedRound = { ...round, invited_suppliers: data.updated_suppliers };
+        setRounds((prev) => prev.map((r) => (r.id === round.id ? updatedRound : r)));
+        if (selectedRoundForLinks?.id === round.id) {
+          setSelectedRoundForLinks(updatedRound);
+        }
+      } else {
+        fetchRounds();
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Erro no disparo em lote via app.' });
+    } finally {
+      setSendingEmailId(null);
+      setSendingWhatsAppId(null);
+    }
+  };
+
   // Award winning proposal
   const handleAwardProposal = async (roundId: string, proposalId: string, supplierName: string) => {
     if (!confirm(`Confirmar a aprovação da proposta de "${supplierName}" como vencedora desta cotação? Os itens cotados serão lançados automaticamente no histórico de compras da oficina.`)) return;
@@ -347,31 +560,28 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Action Button */}
-      <div className="bg-[#131316] border border-white/[0.08] p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-        <div className="space-y-1">
+      {/* Header Limpo e Despoluído */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold rounded-full uppercase tracking-wider">
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Cotações em Lote (RFP)
-            </span>
-            <span className="text-xs text-slate-400">
-              {rounds.length} rodada(s) registrada(s)
+            </h2>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/[0.06] text-slate-400 border border-white/[0.08]">
+              {rounds.length} {rounds.length === 1 ? 'rodada' : 'rodadas'}
             </span>
           </div>
-          <h2 className="text-lg font-bold text-white">
-            Cotação de Conjunto de Itens com Seleção de Fornecedores
-          </h2>
-          <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Crie requisições de compras coletivas, convide fornecedores homologados por e-mail/WhatsApp com link seguro exclusivo. Os fornecedores preenchem preços, opções de parcelamento ("quantas vezes"), frete e prazos diretamente no portal.
+          <p className="text-xs text-slate-400 hidden sm:block">
+            Solicitações coletivas de compras com envio de convites e cotação direta por fornecedores.
           </p>
         </div>
 
         <button
           onClick={handleOpenCreateModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl transition shadow-md cursor-pointer whitespace-nowrap"
+          className="batch-btn-primary flex items-center justify-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl transition shadow-sm cursor-pointer whitespace-nowrap self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          Nova Cotação de Conjunto
+          <span>Nova Cotação de Conjunto</span>
         </button>
       </div>
 
@@ -393,21 +603,21 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
       {/* Quote Rounds List */}
       {loading ? (
         <div className="py-12 text-center text-slate-400 space-y-3">
-          <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-3 border-sky-400 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm">Carregando cotações em lote...</p>
         </div>
       ) : rounds.length === 0 ? (
-        <div className="bg-[#131316] border border-dashed border-white/[0.1] rounded-2xl p-10 text-center space-y-4">
-          <Package className="w-12 h-12 text-slate-500 mx-auto" />
+        <div className="batch-quote-card bg-[#131316] border border-dashed border-white/[0.1] rounded-2xl p-8 text-center space-y-3">
+          <Package className="w-10 h-10 text-slate-500 mx-auto" />
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-white">Nenhuma Cotação em Lote Criada</h3>
+            <h3 className="text-sm font-bold text-white">Nenhuma Cotação em Lote Criada</h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Inicie uma nova rodada selecionando um lote de filamentos ou insumos e convide seus fornecedores para informarem seus valores e condições de pagamento.
+              Inicie uma nova rodada selecionando itens e convide fornecedores para preencherem preços e condições.
             </p>
           </div>
           <button
             onClick={handleOpenCreateModal}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition cursor-pointer"
+            className="batch-btn-primary px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold rounded-xl transition cursor-pointer"
           >
             Criar Primeira Cotação
           </button>
@@ -423,30 +633,30 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
             return (
               <div
                 key={round.id}
-                className={`bg-[#131316] border rounded-2xl p-5 transition space-y-4 shadow-sm hover:border-amber-500/40 ${
+                className={`batch-quote-card bg-[#131316] border rounded-2xl p-4.5 transition space-y-3.5 shadow-sm hover:border-sky-500/30 ${
                   isAwarded ? 'border-emerald-500/40' : 'border-white/[0.08]'
                 }`}
               >
                 {/* Round Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider border ${
                         isAwarded
-                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                           : isClosed
-                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
-                          : 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                       }`}>
                         {isAwarded ? 'Vencedor Aprovado' : isClosed ? 'Prazo Encerrado' : 'Cotação Aberta'}
                       </span>
                       <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-3.5 h-3.5 opacity-70" />
                         Limite: {new Date(round.deadline).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-bold text-white truncate">
                       {round.title}
                     </h3>
                     {round.description && (
@@ -455,48 +665,48 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                   </div>
 
                   {/* Primary Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <button
                       onClick={() => setSelectedRoundForAnalysis(round)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-xl transition cursor-pointer"
+                      className="batch-btn-analysis flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition cursor-pointer"
                       title="Ver tabela comparativa com todos os fornecedores lado a lado"
                     >
-                      <TrendingDown className="w-4 h-4" />
+                      <TrendingDown className="w-3.5 h-3.5" />
                       Análise de Resultados ({proposalsCount})
                     </button>
 
                     <button
                       onClick={() => setSelectedRoundForLinks(round)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c20] hover:bg-white/10 text-slate-300 border border-white/[0.08] text-xs font-medium rounded-xl transition cursor-pointer"
-                      title="Copiar links ou enviar por e-mail/WhatsApp aos fornecedores"
+                      className="batch-btn-dispatch flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 text-xs font-bold rounded-xl transition cursor-pointer"
+                      title="Disparo automatizado por E-mail/WhatsApp via App e cópia de links seguros exclusivos"
                     >
-                      <Send className="w-3.5 h-3.5 text-amber-400" />
-                      Links & Convites ({suppliersCount})
+                      <Send className="w-3.5 h-3.5" />
+                      Disparo Automático & Links ({suppliersCount})
                     </button>
 
                     <button
                       onClick={() => handleDeleteRound(round.id, round.title)}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 bg-[#1c1c20] hover:bg-white/10 rounded-xl transition cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-rose-400 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl transition cursor-pointer"
                       title="Excluir Cotação"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Items & Suppliers Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   {/* Items list */}
-                  <div className="bg-[#0c0c0e] p-3.5 rounded-xl border border-white/[0.04] space-y-2">
+                  <div className="batch-quote-subbox bg-[#0c0c0e] p-3.5 rounded-xl border border-white/[0.04] space-y-2">
                     <div className="flex items-center justify-between text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
-                      <span className="flex items-center gap-1">
-                        <Package className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-sky-400" />
                         Itens Solicitados ({round.items.length})
                       </span>
                     </div>
                     <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                       {round.items.map((item, idx) => (
-                        <div key={item.id || idx} className="flex justify-between items-center text-slate-300 border-b border-white/[0.02] pb-1">
+                        <div key={item.id || idx} className="flex justify-between items-center text-slate-300 border-b border-white/[0.03] pb-1">
                           <span className="font-medium text-white truncate max-w-[200px]" title={item.name}>
                             {idx + 1}. {item.name}
                           </span>
@@ -509,10 +719,10 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                   </div>
 
                   {/* Suppliers response status */}
-                  <div className="bg-[#0c0c0e] p-3.5 rounded-xl border border-white/[0.04] space-y-2">
+                  <div className="batch-quote-subbox bg-[#0c0c0e] p-3.5 rounded-xl border border-white/[0.04] space-y-2">
                     <div className="flex items-center justify-between text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-sky-400" />
                         Fornecedores Convidados ({round.invited_suppliers.length})
                       </span>
                       <span className="text-emerald-400 font-bold">
@@ -528,8 +738,8 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                         return (
                           <div key={sup.supplier_id} className="flex justify-between items-center text-slate-300">
                             <span className="font-medium truncate max-w-[180px] flex items-center gap-1.5">
-                              {isWinner && <Award className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
-                              <span className={isWinner ? 'text-amber-300 font-bold' : 'text-slate-200'}>
+                              {isWinner && <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                              <span className={isWinner ? 'text-emerald-400 font-bold' : 'text-slate-200'}>
                                 {sup.supplier_name}
                               </span>
                             </span>
@@ -541,14 +751,14 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                                   R$ {Number(proposal.total_quote).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-medium rounded-full">
+                                <span className="px-2 py-0.5 bg-white/[0.04] text-slate-400 text-[10px] font-medium rounded-full border border-white/[0.06]">
                                   Pendente
                                 </span>
                               )}
 
                               <button
                                 onClick={() => setActiveSimulationToken(sup.access_token)}
-                                className="text-[10px] text-slate-400 hover:text-amber-300 underline cursor-pointer"
+                                className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold underline cursor-pointer"
                                 title="Acessar como Fornecedor"
                               >
                                 Preencher
@@ -572,7 +782,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
           <div className="bg-[#131316] border border-white/[0.08] w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl my-8">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
               <div className="flex items-center gap-2">
-                <Package className="w-6 h-6 text-amber-400" />
+                <Package className="w-6 h-6 text-sky-400" />
                 <h2 className="text-xl font-bold text-white">Nova Cotação de Conjunto de Itens (RFP)</h2>
               </div>
               <button
@@ -596,7 +806,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                     value={roundTitle}
                     onChange={(e) => setRoundTitle(e.target.value)}
                     placeholder="Ex: Compra Mensal de Filamentos & Embalagens - Outubro"
-                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
                   />
                 </div>
 
@@ -609,7 +819,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                     required
                     value={roundDeadline}
                     onChange={(e) => setRoundDeadline(e.target.value)}
-                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
                   />
                 </div>
 
@@ -622,7 +832,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                     value={roundDesc}
                     onChange={(e) => setRoundDesc(e.target.value)}
                     placeholder="Especificações técnicas, tolerâncias, formato de entrega esperado..."
-                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
                   />
                 </div>
               </div>
@@ -631,7 +841,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
               <div className="space-y-3 pt-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
                   <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Package className="w-4 h-4 text-amber-400" />
+                    <Package className="w-4 h-4 text-sky-400" />
                     Itens que serão cotados ({roundItems.length})
                   </label>
 
@@ -639,7 +849,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddItem('filament')}
-                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-lg text-xs font-medium transition cursor-pointer"
+                      className="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/20 rounded-lg text-xs font-medium transition cursor-pointer"
                     >
                       + Filamento
                     </button>
@@ -667,7 +877,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                       className="bg-[#1c1c20] border border-white/[0.06] p-3 rounded-xl space-y-2 text-xs"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-amber-400 text-[11px]">Item #{idx + 1}</span>
+                        <span className="font-bold text-sky-400 text-[11px]">Item #{idx + 1}</span>
 
                         {/* Presets from catalog */}
                         <div className="flex items-center gap-2">
@@ -721,7 +931,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                               updated[idx].name = e.target.value;
                               setRoundItems(updated);
                             }}
-                            className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                            className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-400"
                           />
                         </div>
 
@@ -738,7 +948,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                                 updated[idx].quantity = parseFloat(e.target.value) || 1;
                                 setRoundItems(updated);
                               }}
-                              className="w-20 bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-amber-400"
+                              className="w-20 bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-sky-400"
                             />
                             <input
                               type="text"
@@ -749,7 +959,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                                 updated[idx].unit = e.target.value;
                                 setRoundItems(updated);
                               }}
-                              className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                              className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-sky-400"
                             />
                           </div>
                         </div>
@@ -764,7 +974,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                               updated[idx].notes = e.target.value;
                               setRoundItems(updated);
                             }}
-                            className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                            className="w-full bg-[#131316] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
                           />
                         </div>
                       </div>
@@ -777,15 +987,15 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
                   <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-amber-400" />
-                    Fornecedores que receberão o link ({selectedSupplierIds.length} de {suppliers.length})
+                    <Users className="w-4 h-4 text-sky-400" />
+                    Fornecedores que receberão o link ({selectedSupplierIds.length} de {effectiveSuppliers.length})
                   </label>
 
                   <div className="flex items-center gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => setSelectedSupplierIds(suppliers.map((s) => s.id))}
-                      className="text-amber-400 hover:underline cursor-pointer"
+                      onClick={() => setSelectedSupplierIds(effectiveSuppliers.map((s) => s.id))}
+                      className="text-sky-400 hover:underline cursor-pointer font-medium"
                     >
                       Marcar Todos
                     </button>
@@ -801,14 +1011,14 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
-                  {suppliers.map((sup) => {
+                  {effectiveSuppliers.map((sup) => {
                     const isSelected = selectedSupplierIds.includes(sup.id);
                     return (
                       <label
                         key={sup.id}
                         className={`flex items-start gap-3 p-2.5 rounded-xl border transition cursor-pointer ${
                           isSelected
-                            ? 'bg-amber-500/10 border-amber-500/40 text-white'
+                            ? 'bg-sky-500/10 border-sky-500/40 text-white'
                             : 'bg-[#1c1c20] border-white/[0.04] text-slate-400 hover:bg-white/5'
                         }`}
                       >
@@ -822,7 +1032,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                               setSelectedSupplierIds(selectedSupplierIds.filter((id) => id !== sup.id));
                             }
                           }}
-                          className="w-4 h-4 mt-0.5 rounded border-slate-700 text-amber-500 focus:ring-amber-400"
+                          className="w-4 h-4 mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-400"
                         />
                         <div className="space-y-0.5 min-w-0">
                           <div className="font-bold text-xs text-white truncate">{sup.name}</div>
@@ -848,7 +1058,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer"
+                  className="batch-btn-primary px-6 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
                   Criar Rodada & Gerar Links de Acesso
                 </button>
@@ -858,52 +1068,120 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
         </div>
       )}
 
-      {/* ================= MODAL: LINKS & CONVITES DOS FORNECEDORES ================= */}
+      {/* ================= MODAL: LINKS & CONVITES DOS FORNECEDORES (COM AUTOMAÇÃO DIRETA) ================= */}
       {selectedRoundForLinks && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#131316] border border-white/[0.08] w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl my-8">
+          <div className="bg-[#131316] border border-white/[0.08] w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl my-8">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
               <div>
-                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Links Exclusivos de Participação</span>
+                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Links Exclusivos & Disparo Automatizado via App
+                </span>
                 <h2 className="text-lg font-bold text-white">{selectedRoundForLinks.title}</h2>
               </div>
-              <button
-                onClick={() => setSelectedRoundForLinks(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (onNavigateToSettings) {
+                      setSelectedRoundForLinks(null);
+                      onNavigateToSettings('smtp_whatsapp');
+                    } else {
+                      fetchDispatchSettings();
+                      setIsSettingsModalOpen(true);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c20] hover:bg-white/10 text-slate-300 hover:text-white border border-white/[0.08] rounded-xl text-xs font-semibold transition cursor-pointer"
+                  title="Configurar SMTP ou Gateway WhatsApp nos Ajustes do Sistema"
+                >
+                  <Settings className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Configurar SMTP & WhatsApp</span>
+                </button>
+                <button
+                  onClick={() => setSelectedRoundForLinks(null)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Cada fornecedor convidado possui um <strong>token de acesso individual e seguro</strong>. Ao acessar o link, o fornecedor visualiza a lista dos materiais e preenche valores, parcelamento e frete sem precisar de senha.
-            </p>
+            {/* Quick Automation Banner for Batch Dispatch */}
+            <div className="bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-emerald-500/10 border border-white/10 p-4 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Sparkles className="w-4 h-4 text-sky-400" />
+                    <span>Disparo Automatizado em Lote (Direto pelo App)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    O app envia os e-mails e WhatsApps automaticamente em segundo plano, sem necessidade de abrir programas de terceiros.
+                  </p>
+                </div>
 
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    disabled={sendingEmailId === 'all' || sendingWhatsAppId === 'all'}
+                    onClick={() => handleDispatchAll(selectedRoundForLinks, 'email')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer"
+                    title="Enviar e-mail para todos os fornecedores da rodada"
+                  >
+                    {sendingEmailId === 'all' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                    Disparar E-mails (Todos)
+                  </button>
+
+                  <button
+                    disabled={sendingEmailId === 'all' || sendingWhatsAppId === 'all'}
+                    onClick={() => handleDispatchAll(selectedRoundForLinks, 'whatsapp')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer"
+                    title="Enviar WhatsApp para todos os fornecedores da rodada"
+                  >
+                    {sendingWhatsAppId === 'all' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                    Disparar WhatsApp (Todos)
+                  </button>
+
+                  <button
+                    disabled={sendingEmailId === 'all' || sendingWhatsAppId === 'all'}
+                    onClick={() => handleDispatchAll(selectedRoundForLinks, 'both')}
+                    className="batch-btn-primary flex items-center gap-1.5 px-3.5 py-1.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer"
+                    title="Disparar tanto E-mail quanto WhatsApp para todos com 1 clique"
+                  >
+                    {sendingEmailId === 'all' && sendingWhatsAppId === 'all' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    Disparar Ambos (1 Clique)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 max-h-[26rem] overflow-y-auto pr-1">
               {selectedRoundForLinks.invited_suppliers.map((sup) => {
                 const origin = typeof window !== 'undefined' ? window.location.origin : '';
                 const linkUrl = `${origin}?quote_token=${sup.access_token}`;
                 const isCopied = copiedToken === sup.access_token;
                 const proposal = (selectedRoundForLinks.proposals || []).find((p) => p.supplier_id === sup.supplier_id);
+                const isSendingEmail = sendingEmailId === sup.supplier_id || sendingEmailId === 'all';
+                const isSendingWa = sendingWhatsAppId === sup.supplier_id || sendingWhatsAppId === 'all';
 
                 return (
                   <div
                     key={sup.supplier_id}
                     className="bg-[#1c1c20] border border-white/[0.06] p-4 rounded-2xl space-y-3"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <div className="font-bold text-sm text-white flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-amber-400" />
-                          {sup.supplier_name}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="font-bold text-sm text-white flex items-center gap-2 flex-wrap">
+                          <Building2 className="w-4 h-4 text-sky-400" />
+                          <span>{sup.supplier_name}</span>
                           {proposal && (
-                            <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-300 text-[10px] font-bold rounded-full">
-                              Já respondeu (R$ {Number(proposal.total_quote).toFixed(2)})
+                            <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded-full">
+                              Proposta Recebida: R$ {Number(proposal.total_quote).toFixed(2)}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-400">
-                          {sup.supplier_email || 'Sem e-mail cadastrado'} • {sup.supplier_phone || 'Sem telefone'}
+                        <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+                          <span>{sup.supplier_email || 'Sem e-mail'}</span>
+                          <span>•</span>
+                          <span>{sup.supplier_phone || 'Sem telefone'}</span>
                         </div>
                       </div>
 
@@ -913,13 +1191,31 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                           setSelectedRoundForLinks(null);
                           setActiveSimulationToken(sup.access_token);
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-lg text-xs font-semibold transition cursor-pointer"
-                        title="Simular visualização do fornecedor"
+                        className="flex items-center gap-1 px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/20 rounded-lg text-xs font-semibold transition cursor-pointer self-start"
+                        title="Simular visualização do portal do fornecedor"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Simular / Preencher
                       </button>
                     </div>
+
+                    {/* Status Badges if dispatched via app */}
+                    {(sup.email_sent_at || sup.whatsapp_sent_at) && (
+                      <div className="flex items-center gap-2 flex-wrap text-[11px] pt-0.5">
+                        {sup.email_sent_at && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-full font-semibold">
+                            <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                            E-mail enviado via app ({new Date(sup.email_sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        )}
+                        {sup.whatsapp_sent_at && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full font-semibold">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            WhatsApp enviado via app ({new Date(sup.whatsapp_sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* URL box with Copy button */}
                     <div className="flex items-center gap-2">
@@ -931,10 +1227,10 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                       />
                       <button
                         onClick={() => handleCopyLink(sup.access_token)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`batch-btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
                           isCopied
-                            ? 'bg-emerald-500 text-slate-950'
-                            : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-sky-500 hover:bg-sky-400 text-white'
                         }`}
                       >
                         {isCopied ? (
@@ -949,28 +1245,290 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                       </button>
                     </div>
 
-                    {/* Send buttons */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => handleSendEmailMailto(selectedRoundForLinks, sup)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#131316] hover:bg-white/10 text-slate-200 border border-white/[0.06] rounded-xl text-xs font-semibold transition cursor-pointer"
-                      >
-                        <Mail className="w-3.5 h-3.5 text-blue-400" />
-                        Abrir E-mail Pré-formatado
-                      </button>
+                    {/* Automated Direct Action Buttons */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Send Email via App (Automated) */}
+                        <button
+                          disabled={!sup.supplier_email || isSendingEmail}
+                          onClick={() => handleSendEmailViaApp(selectedRoundForLinks, sup)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            sup.email_status === 'sent'
+                              ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/40'
+                              : 'bg-blue-600 hover:bg-blue-500 text-white shadow'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          title={sup.supplier_email ? "Enviar e-mail automaticamente pelo aplicativo sem abrir nenhum programa externo" : "Fornecedor sem e-mail"}
+                        >
+                          {isSendingEmail ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Enviando E-mail...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-3.5 h-3.5" />
+                              <span>{sup.email_status === 'sent' ? 'Reenviar E-mail via App' : 'Enviar E-mail via App'}</span>
+                            </>
+                          )}
+                        </button>
 
-                      <button
-                        onClick={() => handleSendWhatsApp(selectedRoundForLinks, sup)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-semibold transition cursor-pointer"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                        Enviar por WhatsApp
-                      </button>
+                        {/* Send WhatsApp via App (Automated) */}
+                        <button
+                          disabled={!sup.supplier_phone || isSendingWa}
+                          onClick={() => handleSendWhatsAppViaApp(selectedRoundForLinks, sup)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            sup.whatsapp_status === 'sent'
+                              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/40'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          title={sup.supplier_phone ? "Disparar WhatsApp automaticamente pelo aplicativo" : "Fornecedor sem telefone"}
+                        >
+                          {isSendingWa ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Enviando WhatsApp...</span>
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>{sup.whatsapp_status === 'sent' ? 'Reenviar WhatsApp via App' : 'Enviar WhatsApp via App'}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Fallback external client openers */}
+                      <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                        <span className="text-slate-600">|</span>
+                        <button
+                          onClick={() => handleSendEmailMailto(selectedRoundForLinks, sup)}
+                          className="hover:text-slate-200 underline cursor-pointer"
+                          title="Abrir no cliente de e-mail padrão do sistema operacional"
+                        >
+                          Abrir no Webmail
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleSendWhatsApp(selectedRoundForLinks, sup)}
+                          className="hover:text-slate-200 underline cursor-pointer"
+                          title="Abrir WhatsApp Web no navegador"
+                        >
+                          Abrir no WhatsApp Web
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: CONFIGURAÇÃO DE DISPARO (SMTP & WHATSAPP GATEWAY) ================= */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#131316] border border-white/[0.08] w-full max-w-xl rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl my-8">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+              <div>
+                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5" />
+                  Automação de Comunicação
+                </span>
+                <h2 className="text-lg font-bold text-white">Configurações de Disparo (E-mail & WhatsApp)</h2>
+              </div>
+              <button
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+              <button
+                type="button"
+                onClick={() => setSettingsActiveTab('smtp')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  settingsActiveTab === 'smtp'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'bg-[#1c1c20] text-slate-400 hover:text-white'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Servidor de E-mail (SMTP)
+                {dispatchSettings?.is_smtp_configured && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 ml-1" title="Configurado" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSettingsActiveTab('whatsapp')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  settingsActiveTab === 'whatsapp'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'bg-[#1c1c20] text-slate-400 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                WhatsApp API / Gateway
+                {dispatchSettings?.is_whatsapp_configured && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 ml-1" title="Configurado" />
+                )}
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDispatchSettings} className="space-y-4">
+              {settingsActiveTab === 'smtp' ? (
+                <div className="space-y-3.5">
+                  <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-xs text-blue-300 leading-relaxed">
+                    Configure seu servidor SMTP (Gmail, Outlook, Hostinger, AWS SES ou SMTP corporativo). 
+                    Se não preenchido, o sistema executa o envio direto em modo simulado/automático com logs de auditoria.
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Servidor SMTP (Host)</label>
+                      <input
+                        type="text"
+                        placeholder="ex: smtp.gmail.com ou mail.suaempresa.com.br"
+                        value={dispatchSettings.smtp_host || ''}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_host: e.target.value })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Porta</label>
+                      <input
+                        type="number"
+                        placeholder="587 ou 465"
+                        value={dispatchSettings.smtp_port || 587}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_port: Number(e.target.value) })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Usuário / Login SMTP</label>
+                      <input
+                        type="text"
+                        placeholder="ex: compras@suaempresa.com.br"
+                        value={dispatchSettings.smtp_user || ''}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_user: e.target.value })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Senha / Senha de App</label>
+                      <input
+                        type="password"
+                        placeholder="Senha de aplicativo (16 dígitos)"
+                        value={dispatchSettings.smtp_pass || ''}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_pass: e.target.value })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">E-mail do Remetente (From)</label>
+                    <input
+                      type="text"
+                      placeholder="ex: Suprimentos 3D <compras@suaempresa.com.br>"
+                      value={dispatchSettings.smtp_from || ''}
+                      onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_from: e.target.value })}
+                      className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="smtp_secure"
+                      checked={Boolean(dispatchSettings.smtp_secure)}
+                      onChange={(e) => setDispatchSettings({ ...dispatchSettings, smtp_secure: e.target.checked })}
+                      className="rounded border-white/20 text-sky-500 focus:ring-0 cursor-pointer"
+                    />
+                    <label htmlFor="smtp_secure" className="text-xs text-slate-300 cursor-pointer">
+                      Conexão Segura SSL/TLS direta (geralmente Porta 465)
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-xs text-emerald-300 leading-relaxed">
+                    Integre sua API do WhatsApp (Evolution API, Z-API, Z-Stack, WhatsApp Cloud API ou webhook HTTP próprio) para envio 100% automático direto pelo servidor.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Endpoint / URL da API do WhatsApp</label>
+                    <input
+                      type="text"
+                      placeholder="ex: https://api.suaempresa.com/message/sendText"
+                      value={dispatchSettings.whatsapp_api_url || ''}
+                      onChange={(e) => setDispatchSettings({ ...dispatchSettings, whatsapp_api_url: e.target.value })}
+                      className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Token de Autenticação / Bearer</label>
+                      <input
+                        type="password"
+                        placeholder="Chave de API / Token"
+                        value={dispatchSettings.whatsapp_api_token || ''}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, whatsapp_api_token: e.target.value })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Nome da Instância (Opcional)</label>
+                      <input
+                        type="text"
+                        placeholder="ex: default ou oficina3d"
+                        value={dispatchSettings.whatsapp_instance || ''}
+                        onChange={(e) => setDispatchSettings({ ...dispatchSettings, whatsapp_instance: e.target.value })}
+                        className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Nome da Empresa nas Mensagens</label>
+                    <input
+                      type="text"
+                      placeholder="ex: Oficina 3D Pro"
+                      value={dispatchSettings.company_name || ''}
+                      onChange={(e) => setDispatchSettings({ ...dispatchSettings, company_name: e.target.value })}
+                      className="w-full bg-[#1c1c20] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="px-4 py-2 bg-[#1c1c20] hover:bg-white/10 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Fechar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="batch-btn-primary flex items-center gap-1.5 px-6 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer"
+                >
+                  {savingSettings ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  Salvar Configurações
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1018,7 +1576,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
             {/* Check if any proposals received */}
             {(!selectedRoundForAnalysis.proposals || selectedRoundForAnalysis.proposals.length === 0) ? (
               <div className="bg-[#1c1c20] border border-dashed border-white/[0.08] rounded-2xl p-8 text-center space-y-3">
-                <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
+                <AlertCircle className="w-10 h-10 text-sky-400 mx-auto" />
                 <h3 className="text-base font-bold text-white">Nenhum Fornecedor Respondeu Ainda</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Os fornecedores convidados ainda não enviaram suas propostas. Você pode enviar os links de convite ou simular o preenchimento agora mesmo.
@@ -1028,7 +1586,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                     const firstSup = selectedRoundForAnalysis.invited_suppliers[0];
                     if (firstSup) setActiveSimulationToken(firstSup.access_token);
                   }}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition cursor-pointer"
+                  className="batch-btn-primary px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold rounded-xl transition cursor-pointer"
                 >
                   Preencher Cotação Manualmente
                 </button>
@@ -1048,7 +1606,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-white text-sm">{prop.supplier_name}</span>
                               {prop.is_winner && (
-                                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold rounded-full flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold rounded-full flex items-center gap-1">
                                   <Award className="w-3 h-3" /> Vencedor
                                 </span>
                               )}
@@ -1079,7 +1637,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                             <td className="py-3 px-4 align-top">
                               <div className="font-bold text-white">{item.name}</div>
                               <div className="text-[11px] text-slate-400 mt-0.5">
-                                Qtd: <strong className="text-amber-300">{item.quantity} {item.unit}</strong>
+                                Qtd: <strong className="text-sky-300">{item.quantity} {item.unit}</strong>
                                 {item.notes && <span className="text-slate-500 italic block">({item.notes})</span>}
                               </div>
                             </td>
@@ -1112,7 +1670,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                                       </div>
 
                                       {pItem.brand_model && (
-                                        <div className="text-[10px] text-amber-300/80 font-medium">
+                                        <div className="text-[10px] text-sky-300/80 font-medium">
                                           Oferta: {pItem.brand_model}
                                         </div>
                                       )}
@@ -1145,7 +1703,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                       {/* Frete / Transportadora */}
                       <tr className="bg-[#1c1c20]/40">
                         <td className="py-3 px-4 text-slate-300 flex items-center gap-1.5">
-                          <Truck className="w-3.5 h-3.5 text-amber-400" />
+                          <Truck className="w-3.5 h-3.5 text-sky-400" />
                           Frete / Transportadora
                         </td>
                         {selectedRoundForAnalysis.proposals?.map((prop) => (
@@ -1180,12 +1738,12 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                       {/* Condições de Parcelamento ("Quantas Vezes") */}
                       <tr className="bg-[#1c1c20]/40">
                         <td className="py-3 px-4 text-slate-300 flex items-center gap-1.5">
-                          <CreditCard className="w-3.5 h-3.5 text-amber-400" />
+                          <CreditCard className="w-3.5 h-3.5 text-sky-400" />
                           Parcelamento ("Quantas Vezes")
                         </td>
                         {selectedRoundForAnalysis.proposals?.map((prop) => (
                           <td key={prop.id} className="py-3 px-4 border-l border-white/[0.06]">
-                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold rounded-lg inline-block">
+                            <span className="px-2 py-0.5 bg-sky-500/10 text-sky-300 border border-sky-500/20 text-xs font-bold rounded-lg inline-block">
                               {prop.installments_count}x ({prop.payment_terms || 'À combinar'})
                             </span>
                             {prop.installments_details && (
@@ -1240,7 +1798,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                               <button
                                 onClick={() => handleAwardProposal(selectedRoundForAnalysis.id, prop.id, prop.supplier_name)}
                                 disabled={awardingProposal === prop.id}
-                                className="w-full px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-1.5"
+                                className="batch-btn-primary w-full px-3 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-1.5"
                               >
                                 <Award className="w-3.5 h-3.5" />
                                 {awardingProposal === prop.id ? 'Aprovando...' : 'Aprovar Vencedor'}
@@ -1256,7 +1814,7 @@ export const BatchQuoteRoundsView: React.FC<BatchQuoteRoundsViewProps> = ({
                 {/* 2. DECISION INTELLIGENCE SUMMARY CARD */}
                 <div className="bg-[#1c1c20] border border-white/[0.08] p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
                   <div className="space-y-1">
-                    <span className="text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
+                    <span className="text-sky-400 font-bold uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
                       <Award className="w-4 h-4" />
                       Recomendação de Compra da Oficina
                     </span>

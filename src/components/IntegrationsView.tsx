@@ -515,7 +515,7 @@ export function IntegrationsView({
             <button
               type="button"
               onClick={() => setShowSimulateOrderModal(true)}
-              className="integration-btn-simulate flex items-center gap-2 px-4 py-2 text-xs font-bold cursor-pointer"
+              className="integration-btn-simulate flex items-center gap-2 px-4 py-2 text-xs font-bold cursor-pointer rounded-xl bg-sky-500 hover:bg-sky-400 text-white shadow-sm transition"
               title="Simula a chegada de um pedido de marketplace dando baixa automática no estoque"
             >
               <Zap className="w-3.5 h-3.5" />
@@ -1710,7 +1710,7 @@ export function IntegrationsView({
                 type="button"
                 onClick={handleSimulateIncomingOrder}
                 disabled={isSimulatingOrder}
-                className="integration-btn-simulate flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                className="integration-btn-simulate flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 rounded-xl bg-sky-500 hover:bg-sky-400 text-white shadow-sm transition"
               >
                 <Zap className="w-3.5 h-3.5" />
                 <span>{isSimulatingOrder ? 'Processando Webhook...' : 'Disparar Pedido de Teste'}</span>
