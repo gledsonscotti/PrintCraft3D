@@ -296,67 +296,234 @@ html[data-theme="high-contrast-light"] input[type="range"] {
   height: 8px !important;
 }
 
-/* Bento Navigation Segmented Control */
-html[data-theme="high-contrast-light"] nav {
+/* Base Navigation Segmented Control - Active State Hover Protection */
+.main-nav-btn.main-nav-active:hover,
+.main-nav-active:hover,
+.mobile-nav-btn.mobile-nav-active:hover,
+.mobile-nav-active:hover,
+.main-nav-btn.main-nav-active:focus,
+.main-nav-active:focus,
+.mobile-nav-btn.mobile-nav-active:focus,
+.mobile-nav-active:focus {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+}
+
+.main-nav-btn.main-nav-active:hover svg,
+.main-nav-btn.main-nav-active:hover span,
+.main-nav-active:hover svg,
+.main-nav-active:hover span,
+.mobile-nav-btn.mobile-nav-active:hover svg,
+.mobile-nav-btn.mobile-nav-active:hover span,
+.mobile-nav-active:hover svg,
+.mobile-nav-active:hover span {
+  color: #FFFFFF !important;
+}
+
+/* Bento Navigation Segmented Control - Standardized to High Contrast Light Palette */
+html[data-theme="high-contrast-light"] nav,
+html[data-theme="high-contrast-light"] .main-nav-container {
   background-color: #E2E8F0 !important;
   border: 2px solid #09090B !important;
 }
 
-html[data-theme="high-contrast-light"] nav button {
+/* Inactive Nav Buttons */
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active),
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active) {
   color: #18181B !important;
+  background-color: transparent !important;
+  border: 2px solid transparent !important;
+  box-shadow: none !important;
   font-weight: 700 !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-light"] nav button:hover {
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active) svg,
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active) span,
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active) svg,
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active) span {
+  color: #18181B !important;
+}
+
+/* Inactive Nav Buttons - Hover */
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active):not(:disabled):hover,
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover {
   background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  border: 2px solid #94A3B8 !important;
 }
 
-html[data-theme="high-contrast-light"] nav button.bg-sky-500,
-html[data-theme="high-contrast-light"] #main-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-light"] #main-nav-quotes.bg-sky-500 {
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-light"] nav button:not(.main-nav-active):not(:disabled):hover span,
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-light"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover span {
+  color: #0F172A !important;
+}
+
+/* Inactive Disabled Nav Buttons */
+html[data-theme="high-contrast-light"] nav button:disabled,
+html[data-theme="high-contrast-light"] .main-nav-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  background-color: transparent !important;
+  color: #64748B !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Active Nav Button: Resting, Hover, Focus, Active - VIBRANT BLUE, NEVER TURNS GRAY/WHITE */
+html[data-theme="high-contrast-light"] nav button.main-nav-active,
+html[data-theme="high-contrast-light"] .main-nav-btn.main-nav-active,
+html[data-theme="high-contrast-light"] .main-nav-active,
+html[data-theme="high-contrast-light"] #btn-open-settings.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-analyzer.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-calculator.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-products.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-clients.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-stock.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-quotes.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-production.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-sales.main-nav-active,
+html[data-theme="high-contrast-light"] #main-nav-finance.main-nav-active {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #075985 !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-light"] nav button.bg-emerald-500,
-html[data-theme="high-contrast-light"] #main-nav-finance.bg-emerald-500 {
-  background-color: #059669 !important;
+/* Active Nav Button - Hover / Mouse Over - Retains Darker High-Contrast Blue */
+html[data-theme="high-contrast-light"] nav button.main-nav-active:hover,
+html[data-theme="high-contrast-light"] .main-nav-btn.main-nav-active:hover,
+html[data-theme="high-contrast-light"] .main-nav-active:hover,
+html[data-theme="high-contrast-light"] #btn-open-settings.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-analyzer.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-calculator.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-products.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-clients.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-stock.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-quotes.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-production.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-sales.main-nav-active:hover,
+html[data-theme="high-contrast-light"] #main-nav-finance.main-nav-active:hover,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:focus,
+html[data-theme="high-contrast-light"] .main-nav-btn.main-nav-active:focus,
+html[data-theme="high-contrast-light"] .main-nav-active:focus,
+html[data-theme="high-contrast-light"] #btn-open-settings.main-nav-active:focus,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:active,
+html[data-theme="high-contrast-light"] .main-nav-btn.main-nav-active:active,
+html[data-theme="high-contrast-light"] .main-nav-active:active {
+  background-color: #0369A1 !important;
   color: #FFFFFF !important;
-  border: 2px solid #065F46 !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  border: 2px solid #0C4A6E !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+  outline: none !important;
 }
 
+html[data-theme="high-contrast-light"] .main-nav-active svg,
+html[data-theme="high-contrast-light"] .main-nav-active span,
+html[data-theme="high-contrast-light"] nav button.main-nav-active svg,
+html[data-theme="high-contrast-light"] nav button.main-nav-active span,
+html[data-theme="high-contrast-light"] .main-nav-active:hover svg,
+html[data-theme="high-contrast-light"] .main-nav-active:hover span,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:hover svg,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:hover span,
+html[data-theme="high-contrast-light"] .main-nav-active:focus svg,
+html[data-theme="high-contrast-light"] .main-nav-active:focus span,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:focus svg,
+html[data-theme="high-contrast-light"] nav button.main-nav-active:focus span {
+  color: #FFFFFF !important;
+}
+
+/* HIGH CONTRAST LIGHT: Mobile Navigation Bar */
 html[data-theme="high-contrast-light"] .mobile-nav-bar {
   background-color: #E2E8F0 !important;
   border-top: 2px solid #09090B !important;
 }
 
-html[data-theme="high-contrast-light"] .mobile-nav-bar button {
+/* Inactive Mobile Nav Buttons */
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active),
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active) {
   color: #18181B !important;
   background-color: #FFFFFF !important;
   border: 1.5px solid #CBD5E1 !important;
   font-weight: 700 !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-light"] .mobile-nav-bar button:hover {
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active) svg,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active) span,
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active) svg,
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active) span {
+  color: #18181B !important;
+}
+
+/* Inactive Mobile Nav Buttons - Hover */
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover,
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover {
   background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  border: 1.5px solid #94A3B8 !important;
 }
 
-html[data-theme="high-contrast-light"] .mobile-nav-bar button.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 {
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover span,
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-light"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover span {
+  color: #0F172A !important;
+}
+
+/* Active Mobile Nav Buttons - VIBRANT BLUE, NEVER TURNS GRAY/WHITE */
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active,
+html[data-theme="high-contrast-light"] .mobile-nav-btn.mobile-nav-active,
+html[data-theme="high-contrast-light"] .mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-analyzer.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-calculator.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-products.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-stock.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-quotes.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-production.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-sales.mobile-nav-active,
+html[data-theme="high-contrast-light"] #mobile-nav-finance.mobile-nav-active {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 2px solid #075985 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-light"] .mobile-nav-bar button.bg-emerald-500,
-html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 {
-  background-color: #059669 !important;
+/* Active Mobile Nav Buttons - Hover / Mouse Over */
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] .mobile-nav-btn.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] .mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-analyzer.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-calculator.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-products.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-clients.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-stock.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-quotes.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-production.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-sales.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] #mobile-nav-finance.mobile-nav-active:hover,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active:focus,
+html[data-theme="high-contrast-light"] .mobile-nav-btn.mobile-nav-active:focus,
+html[data-theme="high-contrast-light"] .mobile-nav-active:focus {
+  background-color: #0369A1 !important;
   color: #FFFFFF !important;
-  border: 2px solid #065F46 !important;
+  border: 2px solid #0C4A6E !important;
+  outline: none !important;
+}
+
+html[data-theme="high-contrast-light"] .mobile-nav-active svg,
+html[data-theme="high-contrast-light"] .mobile-nav-active span,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active svg,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active span,
+html[data-theme="high-contrast-light"] .mobile-nav-active:hover svg,
+html[data-theme="high-contrast-light"] .mobile-nav-active:hover span,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active:hover svg,
+html[data-theme="high-contrast-light"] .mobile-nav-bar button.mobile-nav-active:hover span {
+  color: #FFFFFF !important;
 }
 
 /* High Contrast Light: Finance & Pessoas sub-elements */
@@ -853,85 +1020,211 @@ html[data-theme="sage-bento"] .bg-emerald-500 {
   border: 1px solid #446857 !important;
 }
 
-/* Bento Navigation Segmented Control */
-html[data-theme="sage-bento"] nav {
+/* Bento Navigation Segmented Control - Standardized to Sage Bento Palette */
+html[data-theme="sage-bento"] nav,
+html[data-theme="sage-bento"] .main-nav-container {
   background-color: #EDE7DC !important;
   border: 1.5px solid #DFD9CB !important;
 }
 
-html[data-theme="sage-bento"] nav button {
+/* Inactive Nav Buttons */
+html[data-theme="sage-bento"] nav button:not(.main-nav-active),
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active) {
   color: #4A6054 !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
   font-weight: 600 !important;
+  outline: none !important;
 }
 
-html[data-theme="sage-bento"] nav button:hover {
-  background-color: rgba(255, 255, 255, 0.65) !important;
+html[data-theme="sage-bento"] nav button:not(.main-nav-active) svg,
+html[data-theme="sage-bento"] nav button:not(.main-nav-active) span,
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active) svg,
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active) span {
+  color: #4A6054 !important;
+}
+
+/* Inactive Nav Buttons - Hover */
+html[data-theme="sage-bento"] nav button:not(.main-nav-active):not(:disabled):hover,
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  color: #192C23 !important;
+  border: 1px solid rgba(223, 217, 203, 0.9) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+html[data-theme="sage-bento"] nav button:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="sage-bento"] nav button:not(.main-nav-active):not(:disabled):hover span,
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="sage-bento"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover span {
   color: #192C23 !important;
 }
 
-html[data-theme="sage-bento"] nav button.bg-sky-500,
-html[data-theme="sage-bento"] nav button.bg-emerald-500,
-html[data-theme="sage-bento"] #main-nav-clients.bg-sky-500,
-html[data-theme="sage-bento"] #main-nav-quotes.bg-sky-500,
-html[data-theme="sage-bento"] #main-nav-finance.bg-emerald-500 {
+/* Inactive Disabled Nav Buttons */
+html[data-theme="sage-bento"] nav button:disabled,
+html[data-theme="sage-bento"] .main-nav-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  background-color: transparent !important;
+  color: #7A8F83 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Active Nav Button: Resting, Hover, Focus, Active - SAGE GREEN, NEVER TURNS WHITE */
+html[data-theme="sage-bento"] nav button.main-nav-active,
+html[data-theme="sage-bento"] .main-nav-btn.main-nav-active,
+html[data-theme="sage-bento"] .main-nav-active,
+html[data-theme="sage-bento"] #btn-open-settings.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-analyzer.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-calculator.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-products.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-clients.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-stock.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-quotes.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-production.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-sales.main-nav-active,
+html[data-theme="sage-bento"] #main-nav-finance.main-nav-active {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
   border: 1px solid #446857 !important;
   box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+  outline: none !important;
 }
 
+/* Active Nav Button - Hover / Mouse Over - Retains Sage Green */
+html[data-theme="sage-bento"] nav button.main-nav-active:hover,
+html[data-theme="sage-bento"] .main-nav-btn.main-nav-active:hover,
+html[data-theme="sage-bento"] .main-nav-active:hover,
+html[data-theme="sage-bento"] #btn-open-settings.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-analyzer.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-calculator.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-products.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-clients.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-stock.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-quotes.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-production.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-sales.main-nav-active:hover,
+html[data-theme="sage-bento"] #main-nav-finance.main-nav-active:hover,
+html[data-theme="sage-bento"] nav button.main-nav-active:focus,
+html[data-theme="sage-bento"] .main-nav-btn.main-nav-active:focus,
+html[data-theme="sage-bento"] .main-nav-active:focus,
+html[data-theme="sage-bento"] #btn-open-settings.main-nav-active:focus,
+html[data-theme="sage-bento"] nav button.main-nav-active:active,
+html[data-theme="sage-bento"] .main-nav-btn.main-nav-active:active,
+html[data-theme="sage-bento"] .main-nav-active:active {
+  background-color: #476A5A !important;
+  color: #FFFFFF !important;
+  border: 1px solid #3B5A4C !important;
+  box-shadow: 0 3px 10px rgba(86, 125, 107, 0.35) !important;
+  outline: none !important;
+}
+
+html[data-theme="sage-bento"] .main-nav-active svg,
+html[data-theme="sage-bento"] .main-nav-active span,
+html[data-theme="sage-bento"] nav button.main-nav-active svg,
+html[data-theme="sage-bento"] nav button.main-nav-active span,
+html[data-theme="sage-bento"] .main-nav-active:hover svg,
+html[data-theme="sage-bento"] .main-nav-active:hover span,
+html[data-theme="sage-bento"] nav button.main-nav-active:hover svg,
+html[data-theme="sage-bento"] nav button.main-nav-active:hover span,
+html[data-theme="sage-bento"] .main-nav-active:focus svg,
+html[data-theme="sage-bento"] .main-nav-active:focus span,
+html[data-theme="sage-bento"] nav button.main-nav-active:focus svg,
+html[data-theme="sage-bento"] nav button.main-nav-active:focus span {
+  color: #FFFFFF !important;
+}
+
+/* SAGE BENTO: Mobile Navigation Bar */
 html[data-theme="sage-bento"] .mobile-nav-bar {
   background-color: #EDE7DC !important;
   border-top: 1.5px solid #DFD9CB !important;
 }
 
-html[data-theme="sage-bento"] .mobile-nav-bar button {
+/* Inactive Mobile Nav Buttons */
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active),
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active) {
   color: #4A6054 !important;
   background-color: #FBF9F5 !important;
   border: 1px solid #DFD9CB !important;
   font-weight: 600 !important;
+  outline: none !important;
 }
 
-html[data-theme="sage-bento"] .mobile-nav-bar button:hover {
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active) svg,
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active) span,
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active) svg,
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active) span {
+  color: #4A6054 !important;
+}
+
+/* Inactive Mobile Nav Buttons - Hover */
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover,
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover {
   background-color: #FFFFFF !important;
+  color: #192C23 !important;
+  border: 1px solid #C8C1B2 !important;
+}
+
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="sage-bento"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover span,
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="sage-bento"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover span {
   color: #192C23 !important;
 }
 
-/* Sage Bento: Menu Principal Finanças, Pessoas e Cotações (Desktop e Mobile) */
-html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500,
-html[data-theme="sage-bento"] header nav button#main-nav-quotes.bg-sky-500,
-html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500,
-html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500,
-html[data-theme="sage-bento"] #mobile-nav-quotes.bg-sky-500,
-html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500,
-html[data-theme="sage-bento"] .mobile-nav-bar button.bg-sky-500,
-html[data-theme="sage-bento"] .mobile-nav-bar button.bg-emerald-500 {
+/* Active Mobile Nav Buttons - SAGE GREEN, NEVER TURNS WHITE */
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active,
+html[data-theme="sage-bento"] .mobile-nav-btn.mobile-nav-active,
+html[data-theme="sage-bento"] .mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-analyzer.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-calculator.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-products.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-clients.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-stock.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-quotes.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-production.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-sales.mobile-nav-active,
+html[data-theme="sage-bento"] #mobile-nav-finance.mobile-nav-active {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
   border: 1px solid #446857 !important;
   box-shadow: 0 2px 8px rgba(86, 125, 107, 0.25) !important;
+  outline: none !important;
 }
 
-html[data-theme="sage-bento"] header nav button#main-nav-clients.bg-sky-500 svg,
-html[data-theme="sage-bento"] header nav button#main-nav-quotes.bg-sky-500 svg,
-html[data-theme="sage-bento"] header nav button#main-nav-finance.bg-emerald-500 svg,
-html[data-theme="sage-bento"] #mobile-nav-clients.bg-sky-500 svg,
-html[data-theme="sage-bento"] #mobile-nav-quotes.bg-sky-500 svg,
-html[data-theme="sage-bento"] #mobile-nav-finance.bg-emerald-500 svg {
+/* Active Mobile Nav Buttons - Hover / Mouse Over */
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active:hover,
+html[data-theme="sage-bento"] .mobile-nav-btn.mobile-nav-active:hover,
+html[data-theme="sage-bento"] .mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-analyzer.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-calculator.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-products.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-clients.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-stock.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-quotes.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-production.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-sales.mobile-nav-active:hover,
+html[data-theme="sage-bento"] #mobile-nav-finance.mobile-nav-active:hover,
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active:focus,
+html[data-theme="sage-bento"] .mobile-nav-btn.mobile-nav-active:focus,
+html[data-theme="sage-bento"] .mobile-nav-active:focus {
+  background-color: #476A5A !important;
   color: #FFFFFF !important;
+  border: 1px solid #3B5A4C !important;
+  outline: none !important;
 }
 
-html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500),
-html[data-theme="sage-bento"] header nav button#main-nav-quotes:not(.bg-sky-500),
-html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500) {
-  color: #465B51 !important;
-}
-
-html[data-theme="sage-bento"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
-html[data-theme="sage-bento"] header nav button#main-nav-quotes:not(.bg-sky-500):hover,
-html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
-  background-color: rgba(86, 125, 107, 0.12) !important;
-  color: #192C23 !important;
+html[data-theme="sage-bento"] .mobile-nav-active svg,
+html[data-theme="sage-bento"] .mobile-nav-active span,
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active svg,
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active span,
+html[data-theme="sage-bento"] .mobile-nav-active:hover svg,
+html[data-theme="sage-bento"] .mobile-nav-active:hover span,
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active:hover svg,
+html[data-theme="sage-bento"] .mobile-nav-bar button.mobile-nav-active:hover span {
+  color: #FFFFFF !important;
 }
 
 /* Sage Bento: Finance, Pessoas, Fornecedores, Ajustes, Estoque e Calculadora sub-elements */
@@ -4710,67 +5003,209 @@ html[data-theme="high-contrast-dark"] .admin-profile-active {
 }
 
 /* High Contrast Dark: Main Navigation & Submenus */
-html[data-theme="high-contrast-dark"] nav {
+html[data-theme="high-contrast-dark"] nav,
+html[data-theme="high-contrast-dark"] .main-nav-container {
   background-color: #050505 !important;
   border: 1.5px solid #3F3F46 !important;
 }
 
-html[data-theme="high-contrast-dark"] nav button {
+/* Inactive Nav Buttons */
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active),
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active) {
   color: #A1A1AA !important;
+  background-color: transparent !important;
+  border: 1.5px solid transparent !important;
+  box-shadow: none !important;
   font-weight: 700 !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-dark"] nav button:hover {
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active) svg,
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active) span,
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active) svg,
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active) span {
+  color: #A1A1AA !important;
+}
+
+/* Inactive Nav Buttons - Hover */
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active):not(:disabled):hover,
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover {
   background-color: #27272A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #52525B !important;
+}
+
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-dark"] nav button:not(.main-nav-active):not(:disabled):hover span,
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-dark"] .main-nav-btn:not(.main-nav-active):not(:disabled):hover span {
   color: #FFFFFF !important;
 }
 
-html[data-theme="high-contrast-dark"] nav button.bg-sky-500,
-html[data-theme="high-contrast-dark"] #main-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-dark"] #main-nav-quotes.bg-sky-500 {
+/* Inactive Disabled Nav Buttons */
+html[data-theme="high-contrast-dark"] nav button:disabled,
+html[data-theme="high-contrast-dark"] .main-nav-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  background-color: transparent !important;
+  color: #71717A !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Active Nav Button: Resting, Hover, Focus, Active - VIBRANT SKY BLUE, NEVER TURNS GRAY/WHITE */
+html[data-theme="high-contrast-dark"] nav button.main-nav-active,
+html[data-theme="high-contrast-dark"] .main-nav-btn.main-nav-active,
+html[data-theme="high-contrast-dark"] .main-nav-active,
+html[data-theme="high-contrast-dark"] #btn-open-settings.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-analyzer.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-calculator.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-products.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-clients.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-stock.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-quotes.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-production.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-sales.main-nav-active,
+html[data-theme="high-contrast-dark"] #main-nav-finance.main-nav-active {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 1.5px solid #38BDF8 !important;
   box-shadow: 0 0 10px rgba(2, 132, 199, 0.35) !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-dark"] nav button.bg-emerald-500,
-html[data-theme="high-contrast-dark"] #main-nav-finance.bg-emerald-500 {
-  background-color: #059669 !important;
+/* Active Nav Button - Hover / Mouse Over - Retains Darker High-Contrast Blue */
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] .main-nav-btn.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] .main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #btn-open-settings.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-analyzer.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-calculator.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-products.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-clients.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-stock.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-quotes.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-production.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-sales.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] #main-nav-finance.main-nav-active:hover,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:focus,
+html[data-theme="high-contrast-dark"] .main-nav-btn.main-nav-active:focus,
+html[data-theme="high-contrast-dark"] .main-nav-active:focus,
+html[data-theme="high-contrast-dark"] #btn-open-settings.main-nav-active:focus,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:active,
+html[data-theme="high-contrast-dark"] .main-nav-btn.main-nav-active:active,
+html[data-theme="high-contrast-dark"] .main-nav-active:active {
+  background-color: #0369A1 !important;
   color: #FFFFFF !important;
-  border: 1.5px solid #34D399 !important;
-  box-shadow: 0 0 10px rgba(5, 150, 105, 0.35) !important;
+  border: 1.5px solid #7DD3FC !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45) !important;
+  outline: none !important;
 }
 
+html[data-theme="high-contrast-dark"] .main-nav-active svg,
+html[data-theme="high-contrast-dark"] .main-nav-active span,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active svg,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active span,
+html[data-theme="high-contrast-dark"] .main-nav-active:hover svg,
+html[data-theme="high-contrast-dark"] .main-nav-active:hover span,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:hover svg,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:hover span,
+html[data-theme="high-contrast-dark"] .main-nav-active:focus svg,
+html[data-theme="high-contrast-dark"] .main-nav-active:focus span,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:focus svg,
+html[data-theme="high-contrast-dark"] nav button.main-nav-active:focus span {
+  color: #FFFFFF !important;
+}
+
+/* HIGH CONTRAST DARK: Mobile Navigation Bar */
 html[data-theme="high-contrast-dark"] .mobile-nav-bar {
   background-color: #050505 !important;
   border-top: 1.5px solid #3F3F46 !important;
 }
 
-html[data-theme="high-contrast-dark"] .mobile-nav-bar button {
+/* Inactive Mobile Nav Buttons */
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active),
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active) {
   color: #A1A1AA !important;
   background-color: #121215 !important;
   border: 1px solid #27272A !important;
+  font-weight: 700 !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-dark"] .mobile-nav-bar button:hover {
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active) svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active) span,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active) svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active) span {
+  color: #A1A1AA !important;
+}
+
+/* Inactive Mobile Nav Buttons - Hover */
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover {
   background-color: #27272A !important;
+  color: #FFFFFF !important;
+  border: 1px solid #52525B !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button:not(.mobile-nav-active):not(:disabled):hover span,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn:not(.mobile-nav-active):not(:disabled):hover span {
   color: #FFFFFF !important;
 }
 
-html[data-theme="high-contrast-dark"] .mobile-nav-bar button.bg-sky-500,
-html[data-theme="high-contrast-dark"] #mobile-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-dark"] #mobile-nav-quotes.bg-sky-500 {
+/* Active Mobile Nav Buttons - VIBRANT SKY BLUE, NEVER TURNS GRAY/WHITE */
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn.mobile-nav-active,
+html[data-theme="high-contrast-dark"] .mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-analyzer.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-calculator.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-products.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-clients.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-stock.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-quotes.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-production.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-sales.mobile-nav-active,
+html[data-theme="high-contrast-dark"] #mobile-nav-finance.mobile-nav-active {
   background-color: #0284C7 !important;
   color: #FFFFFF !important;
   border: 1.5px solid #38BDF8 !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.35) !important;
+  outline: none !important;
 }
 
-html[data-theme="high-contrast-dark"] .mobile-nav-bar button.bg-emerald-500,
-html[data-theme="high-contrast-dark"] #mobile-nav-finance.bg-emerald-500 {
-  background-color: #059669 !important;
+/* Active Mobile Nav Buttons - Hover / Mouse Over */
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] .mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-analyzer.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-calculator.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-products.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-clients.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-stock.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-quotes.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-production.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-sales.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] #mobile-nav-finance.mobile-nav-active:hover,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active:focus,
+html[data-theme="high-contrast-dark"] .mobile-nav-btn.mobile-nav-active:focus,
+html[data-theme="high-contrast-dark"] .mobile-nav-active:focus {
+  background-color: #0369A1 !important;
   color: #FFFFFF !important;
-  border: 1.5px solid #34D399 !important;
+  border: 1.5px solid #7DD3FC !important;
+  outline: none !important;
+}
+
+html[data-theme="high-contrast-dark"] .mobile-nav-active svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-active span,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active span,
+html[data-theme="high-contrast-dark"] .mobile-nav-active:hover svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-active:hover span,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active:hover svg,
+html[data-theme="high-contrast-dark"] .mobile-nav-bar button.mobile-nav-active:hover span {
+  color: #FFFFFF !important;
 }
 
 /* High Contrast Dark: Finance, Pessoas, Fornecedores, Ajustes e Estoque sub-elements */
@@ -4915,51 +5350,6 @@ html[data-theme="high-contrast-dark"] .clients-filter-active {
 /* =========================================================================
    HIGH CONTRAST LIGHT: MENU PRINCIPAL & SUB-ITENS FINANÇAS E PESSOAS
    ========================================================================= */
-
-/* Header Nav Buttons (Desktop & Mobile) */
-html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-light"] header nav button#main-nav-quotes.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500,
-html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 {
-  background-color: #0284C7 !important;
-  color: #FFFFFF !important;
-  border: 2px solid #0369A1 !important;
-  font-weight: 800 !important;
-}
-
-html[data-theme="high-contrast-light"] header nav button#main-nav-clients.bg-sky-500 svg,
-html[data-theme="high-contrast-light"] header nav button#main-nav-quotes.bg-sky-500 svg,
-html[data-theme="high-contrast-light"] #mobile-nav-clients.bg-sky-500 svg,
-html[data-theme="high-contrast-light"] #mobile-nav-quotes.bg-sky-500 svg {
-  color: #FFFFFF !important;
-}
-
-html[data-theme="high-contrast-light"] header nav button#main-nav-finance.bg-emerald-500,
-html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 {
-  background-color: #059669 !important;
-  color: #FFFFFF !important;
-  border: 2px solid #047857 !important;
-  font-weight: 800 !important;
-}
-
-html[data-theme="high-contrast-light"] header nav button#main-nav-finance.bg-emerald-500 svg,
-html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 svg {
-  color: #FFFFFF !important;
-}
-
-html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500),
-html[data-theme="high-contrast-light"] header nav button#main-nav-quotes:not(.bg-sky-500),
-html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500) {
-  color: #334155 !important;
-  font-weight: 700 !important;
-}
-
-html[data-theme="high-contrast-light"] header nav button#main-nav-clients:not(.bg-sky-500):hover,
-html[data-theme="high-contrast-light"] header nav button#main-nav-quotes:not(.bg-sky-500):hover,
-html[data-theme="high-contrast-light"] header nav button#main-nav-finance:not(.bg-emerald-500):hover {
-  background-color: #F1F5F9 !important;
-  color: #0F172A !important;
-}
 
 /* Sub-navegação e containers de abas */
 html[data-theme="high-contrast-light"] .finance-subtabs-container,

@@ -544,28 +544,29 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
             {/* Brand Logo - Clean & Uncluttered */}
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-sm border border-white/20 shrink-0">
+            <div className="brand-logo-container flex items-center gap-2.5 sm:gap-3 shrink-0">
+              <div className="brand-logo-icon w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-sm border border-white/20 shrink-0">
                 <Layers className="w-4 h-4" />
               </div>
-              <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none whitespace-nowrap">
-                PrintCraft <span className="text-sky-400 font-extrabold">3D</span>
+              <span className="brand-logo-text text-sm sm:text-base font-black text-white tracking-tight leading-none whitespace-nowrap">
+                PrintCraft <span className="brand-logo-accent text-sky-400 font-extrabold">3D</span>
               </span>
             </div>
 
             {/* Main Navigation Tabs - Desktop (Fixed structure with all modules, restricted ones disabled) */}
-            <nav className="hidden lg:flex items-center gap-1 bg-[#131316] p-1.5 rounded-xl border border-white/[0.08] shadow-inner shrink-0">
+            <nav className="main-nav-container hidden lg:flex items-center gap-1 bg-[#131316] p-1.5 rounded-xl border border-white/[0.08] shadow-inner shrink-0">
               {/* Analisador */}
               <button
                 type="button"
+                id="main-nav-analyzer"
                 disabled={!canAccess('analyzer')}
                 onClick={() => canAccess('analyzer') && setActiveTab('analyzer')}
                 title={canAccess('analyzer') ? 'Analisador 3D de Arquivos' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('analyzer')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'analyzer'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -574,19 +575,18 @@ export default function App() {
                 {!canAccess('analyzer') && <Lock className="w-3 h-3 text-slate-500/80" />}
               </button>
 
-
-
               {/* Calculadora */}
               <button
                 type="button"
+                id="main-nav-calculator"
                 disabled={!canAccess('calculator')}
                 onClick={() => canAccess('calculator') && setActiveTab('calculator')}
                 title={canAccess('calculator') ? 'Calculadora de Custos & Orçamentos' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('calculator')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'calculator'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -598,14 +598,15 @@ export default function App() {
               {/* Catálogo */}
               <button
                 type="button"
+                id="main-nav-products"
                 disabled={!canAccess('products')}
                 onClick={() => canAccess('products') && setActiveTab('products')}
                 title={canAccess('products') ? 'Catálogo de Modelos & Peças Prontas' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('products')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'products'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -621,11 +622,11 @@ export default function App() {
                 disabled={!canAccess('clients')}
                 onClick={() => canAccess('clients') && setActiveTab('clients')}
                 title={canAccess('clients') ? 'Cadastros: Clientes & Lojas, Fornecedores e Equipe da Oficina' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('clients')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'clients'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -637,14 +638,15 @@ export default function App() {
               {/* Estoque */}
               <button
                 type="button"
+                id="main-nav-stock"
                 disabled={!canAccess('stock')}
                 onClick={() => canAccess('stock') && setActiveTab('stock')}
                 title={canAccess('stock') ? 'Estoque de Filamentos, Insumos, Alerta Inteligente e Cotações' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`relative px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn relative px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('stock')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'stock'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -668,11 +670,11 @@ export default function App() {
                 disabled={!canAccess('quotes')}
                 onClick={() => canAccess('quotes') && setActiveTab('quotes')}
                 title={canAccess('quotes') ? 'Central de Cotações em Lote (RFP), Propostas e Reposição' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('quotes')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'quotes'
-                    ? 'bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
@@ -684,15 +686,16 @@ export default function App() {
               {/* Produção */}
               <button
                 type="button"
+                id="main-nav-production"
                 disabled={!canAccess('production')}
                 onClick={() => canAccess('production') && setActiveTab('production')}
                 title={canAccess('production') ? 'PCP & Linha de Impressão 3D' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3.5 py-2 rounded-lg text-xs sm:text-[13px] font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('production')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'production'
-                    ? 'bg-emerald-500 text-slate-950 shadow-xs font-bold cursor-pointer'
-                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
                 <Factory className="w-4 h-4" />
@@ -716,15 +719,16 @@ export default function App() {
               {/* Vendas */}
               <button
                 type="button"
+                id="main-nav-sales"
                 disabled={!canAccess('sales')}
                 onClick={() => canAccess('sales') && setActiveTab('sales')}
                 title={canAccess('sales') ? 'Vendas & Faturamento' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('sales')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'sales'
-                    ? 'bg-emerald-500 text-slate-950 shadow-xs font-bold cursor-pointer'
-                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
@@ -739,12 +743,12 @@ export default function App() {
                 disabled={!canAccess('finance')}
                 onClick={() => canAccess('finance') && setActiveTab('finance')}
                 title={canAccess('finance') ? 'Finanças & Contabilidade' : 'Módulo restrito: sem permissão de acesso para seu usuário'}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
+                className={`main-nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
                   !canAccess('finance')
                     ? 'opacity-35 cursor-not-allowed text-slate-500 hover:text-slate-500 hover:bg-transparent select-none'
                     : activeTab === 'finance'
-                    ? 'bg-emerald-500 text-slate-950 shadow-xs font-bold cursor-pointer'
-                    : 'text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] cursor-pointer'
+                    ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold cursor-pointer'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04] cursor-pointer'
                 }`}
               >
                 <DollarSign className="w-3.5 h-3.5" />
@@ -814,10 +818,10 @@ export default function App() {
                     setSettingsSubTab('costs');
                     setActiveTab('settings');
                   }}
-                  className={`p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer ${
+                  className={`main-nav-btn p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-150 shrink-0 cursor-pointer ${
                     activeTab === 'settings'
-                      ? 'bg-sky-500 text-white shadow-xs font-bold'
-                      : 'text-slate-400 hover:text-sky-300 hover:bg-white/[0.05]'
+                      ? 'main-nav-active bg-sky-500 text-white shadow-xs font-bold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                   }`}
                   title="Configurações do Sistema"
                 >
@@ -874,14 +878,15 @@ export default function App() {
             {/* Analisador */}
             <button
               type="button"
+              id="mobile-nav-analyzer"
               disabled={!canAccess('analyzer')}
               onClick={() => canAccess('analyzer') && setActiveTab('analyzer')}
               title={canAccess('analyzer') ? 'Analisador' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('analyzer')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'analyzer'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -890,19 +895,18 @@ export default function App() {
               {!canAccess('analyzer') && <Lock className="w-2.5 h-2.5 text-slate-500" />}
             </button>
 
-
-
             {/* Calculadora */}
             <button
               type="button"
+              id="mobile-nav-calculator"
               disabled={!canAccess('calculator')}
               onClick={() => canAccess('calculator') && setActiveTab('calculator')}
               title={canAccess('calculator') ? 'Calculadora' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('calculator')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'calculator'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -914,14 +918,15 @@ export default function App() {
             {/* Catálogo */}
             <button
               type="button"
+              id="mobile-nav-products"
               disabled={!canAccess('products')}
               onClick={() => canAccess('products') && setActiveTab('products')}
               title={canAccess('products') ? 'Catálogo' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('products')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'products'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -937,11 +942,11 @@ export default function App() {
               disabled={!canAccess('clients')}
               onClick={() => canAccess('clients') && setActiveTab('clients')}
               title={canAccess('clients') ? 'Cadastros (Clientes, Fornecedores, Equipe)' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('clients')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'clients'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -953,14 +958,15 @@ export default function App() {
             {/* Estoque */}
             <button
               type="button"
+              id="mobile-nav-stock"
               disabled={!canAccess('stock')}
               onClick={() => canAccess('stock') && setActiveTab('stock')}
               title={canAccess('stock') ? 'Estoque' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('stock')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'stock'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -984,11 +990,11 @@ export default function App() {
               disabled={!canAccess('quotes')}
               onClick={() => canAccess('quotes') && setActiveTab('quotes')}
               title={canAccess('quotes') ? 'Cotações em Lote (RFP)' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('quotes')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'quotes'
-                  ? 'bg-sky-500 text-white font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -1000,14 +1006,15 @@ export default function App() {
             {/* Produção */}
             <button
               type="button"
+              id="mobile-nav-production"
               disabled={!canAccess('production')}
               onClick={() => canAccess('production') && setActiveTab('production')}
               title={canAccess('production') ? 'Produção' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('production')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'production'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -1019,14 +1026,15 @@ export default function App() {
             {/* Vendas */}
             <button
               type="button"
+              id="mobile-nav-sales"
               disabled={!canAccess('sales')}
               onClick={() => canAccess('sales') && setActiveTab('sales')}
               title={canAccess('sales') ? 'Vendas' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('sales')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'sales'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
@@ -1042,11 +1050,11 @@ export default function App() {
               disabled={!canAccess('finance')}
               onClick={() => canAccess('finance') && setActiveTab('finance')}
               title={canAccess('finance') ? 'Finanças' : 'Módulo restrito'}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`mobile-nav-btn px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 !canAccess('finance')
                   ? 'opacity-35 cursor-not-allowed text-slate-500 bg-white/[0.02]'
                   : activeTab === 'finance'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  ? 'mobile-nav-active bg-sky-500 text-white font-bold'
                   : 'text-slate-400 bg-white/[0.03]'
               }`}
             >
