@@ -56,6 +56,7 @@ body {
   overflow-y: hidden !important;
   -webkit-overflow-scrolling: touch !important;
   max-width: 100% !important;
+  border-radius: 1.25rem !important;
 }
 
 .settings-subtab-btn,
@@ -362,8 +363,9 @@ html[data-theme="high-contrast-light"] #mobile-nav-finance.bg-emerald-500 {
 html[data-theme="high-contrast-light"] .finance-subtabs-container,
 html[data-theme="high-contrast-light"] .clients-subtabs-container,
 html[data-theme="high-contrast-light"] .suppliers-subtabs-container {
-  border-color: #09090B !important;
+  border: 2px solid #09090B !important;
   background-color: #F1F5F9 !important;
+  border-radius: 1.25rem !important;
 }
 
 html[data-theme="high-contrast-light"] .finance-subtab-btn,
@@ -939,8 +941,9 @@ html[data-theme="sage-bento"] .suppliers-subtabs-container,
 html[data-theme="sage-bento"] .settings-subtabs-container,
 html[data-theme="sage-bento"] .stock-subtabs-container,
 html[data-theme="sage-bento"] .calc-subtabs-container {
-  border-color: #DFD9CB !important;
+  border: 1.5px solid #DFD9CB !important;
   background-color: #EDE7DC !important;
+  border-radius: 1.25rem !important;
 }
 
 html[data-theme="sage-bento"] .finance-subtab-btn,
@@ -2254,6 +2257,11 @@ html[data-theme="high-contrast-light"] .production-table-btn-postprocess {
 }
 
 /* Printers Sub-Tabs Theme Adaptation */
+.printers-subtab-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
 html[data-theme="sage-bento"] .printers-subtabs-bar {
   background-color: #FFFFFF !important;
   border: 1.5px solid #E4DDD2 !important;
@@ -2787,6 +2795,191 @@ html[data-theme="sage-bento"] .direct-print-log-box {
   color: #244636 !important;
 }
 
+/* --- Alertas e Manutenção (Sage Bento) --- */
+html[data-theme="sage-bento"] .maintenance-warning-card {
+  background-color: #FEF9EE !important;
+  border: 1.5px solid #F3DBA8 !important;
+  color: #78350F !important;
+  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.05) !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-warning-icon {
+  color: #B45309 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-warning-title {
+  color: #78350F !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-warning-desc {
+  color: #92400E !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-empty-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px dashed #DCD5C6 !important;
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-empty-icon {
+  color: #8C9F95 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-empty-text {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-empty-btn {
+  color: #2D5642 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-item-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  box-shadow: 0 4px 14px rgba(78, 120, 100, 0.05) !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-item-active {
+  background-color: #FEF9EE !important;
+  border: 1.5px solid #F3DBA8 !important;
+}
+
+html[data-theme="sage-bento"] .maintenance-item-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+/* Modal de Agendar/Registrar Manutenção em Sage Bento */
+html[data-theme="sage-bento"] .production-modal-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #DCD5C6 !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 25px 60px -15px rgba(78, 120, 100, 0.25) !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-header {
+  background: #F8F6F1 !important;
+  border-color: #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-title {
+  color: #192C23 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-title-icon {
+  color: #D97706 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-close {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-close:hover {
+  background-color: #EDE7DC !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-label {
+  color: #192C23 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-input,
+html[data-theme="sage-bento"] .production-modal-select {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #D8D1C4 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-input:focus,
+html[data-theme="sage-bento"] .production-modal-select:focus {
+  border-color: #567D6B !important;
+  outline: none !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-footer {
+  border-color: #E4DDD2 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-btn-cancel {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #2D5642 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-btn-cancel:hover {
+  background-color: #E2DBD0 !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-btn-submit {
+  background-color: #567D6B !important;
+  border: 1.5px solid #456656 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(86, 125, 107, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .production-modal-btn-submit:hover {
+  background-color: #466A5A !important;
+}
+
+/* --- Controle de Depreciação de Máquinas & Equipamentos (Sage Bento) --- */
+html[data-theme="sage-bento"] .depreciation-header-card {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07) !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-title {
+  color: #192C23 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-subtitle {
+  color: #465B51 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-btn-secondary {
+  background-color: #EDE7DC !important;
+  border: 1.5px solid #DFD9CB !important;
+  color: #244636 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-btn-secondary:hover {
+  background-color: #E2DBD0 !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-btn-sync {
+  background-color: #EAF2EC !important;
+  border: 1.5px solid #C8DDD0 !important;
+  color: #2D5642 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-btn-sync:hover {
+  background-color: #DFECDE !important;
+  border-color: #567D6B !important;
+  color: #192C23 !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-stat-card {
+  background-color: #F8F6F1 !important;
+  border: 1.5px solid #EDE8DE !important;
+  border-radius: 0.875rem !important;
+}
+
+html[data-theme="sage-bento"] .depreciation-filter-bar {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E4DDD2 !important;
+}
 
 /* --- HIGH-CONTRAST LIGHT (Branco Puro / Preto Sólido Alto Contraste) --- */
 html[data-theme="high-contrast-light"] .printer-scan-btn {
@@ -3228,6 +3421,180 @@ html[data-theme="high-contrast-light"] .direct-print-log-box {
   color: #09090B !important;
 }
 
+/* --- Alertas e Manutenção (High-Contrast Light) --- */
+html[data-theme="high-contrast-light"] .maintenance-warning-card {
+  background-color: #FFFBEB !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-warning-icon {
+  color: #B45309 !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-warning-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-warning-desc {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-empty-card {
+  background-color: #FFFFFF !important;
+  border: 2px dashed #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-empty-icon {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-empty-text {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-empty-btn {
+  color: #09090B !important;
+  font-weight: 800 !important;
+  text-decoration: underline !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-item-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-item-active {
+  background-color: #FEF3C7 !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .maintenance-item-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+/* Modal de Agendar/Registrar Manutenção em High-Contrast Light */
+html[data-theme="high-contrast-light"] .production-modal-box {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-header {
+  background: #F4F4F5 !important;
+  border-color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-title-icon {
+  color: #B45309 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-close {
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-close:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-label {
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-input,
+html[data-theme="high-contrast-light"] .production-modal-select {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-input:focus,
+html[data-theme="high-contrast-light"] .production-modal-select:focus {
+  border-color: #0284C7 !important;
+  outline: none !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-footer {
+  border-color: #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-btn-cancel {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-btn-cancel:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-btn-submit {
+  background-color: #09090B !important;
+  border: 2px solid #09090B !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .production-modal-btn-submit:hover {
+  background-color: #27272A !important;
+}
+
+/* --- Controle de Depreciação de Máquinas & Equipamentos (High-Contrast Light) --- */
+html[data-theme="high-contrast-light"] .depreciation-header-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-title {
+  color: #09090B !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-subtitle {
+  color: #3F3F46 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-btn-secondary {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+  color: #09090B !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-btn-secondary:hover {
+  background-color: #E4E4E7 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-btn-sync {
+  background-color: #DCFCE7 !important;
+  border: 2px solid #16A34A !important;
+  color: #166534 !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-btn-sync:hover {
+  background-color: #BBF7D0 !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-stat-card {
+  background-color: #F4F4F5 !important;
+  border: 2px solid #09090B !important;
+}
+
+html[data-theme="high-contrast-light"] .depreciation-filter-bar {
+  background-color: #FFFFFF !important;
+  border: 2px solid #09090B !important;
+}
 
 /* --- HIGH-CONTRAST DARK (Preto Absoluto / Bordas Sólidas) --- */
 html[data-theme="high-contrast-dark"] .printer-scan-btn {
@@ -3667,6 +4034,182 @@ html[data-theme="high-contrast-dark"] .direct-print-log-box {
   background-color: #000000 !important;
   border: 1.5px solid #27272A !important;
   color: #34D399 !important;
+}
+
+/* --- Alertas e Manutenção (High-Contrast Dark) --- */
+html[data-theme="high-contrast-dark"] .maintenance-warning-card {
+  background-color: #1A120B !important;
+  border: 2px solid #F59E0B !important;
+  color: #FDE68A !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-warning-icon {
+  color: #F59E0B !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-warning-title {
+  color: #FCD34D !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-warning-desc {
+  color: #FDE68A !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-empty-card {
+  background-color: #09090B !important;
+  border: 2px dashed #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-empty-icon {
+  color: #71717A !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-empty-text {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-empty-btn {
+  color: #38BDF8 !important;
+  font-weight: 800 !important;
+  text-decoration: underline !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-item-card {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-item-active {
+  background-color: #1C1208 !important;
+  border: 2px solid #F59E0B !important;
+}
+
+html[data-theme="high-contrast-dark"] .maintenance-item-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+/* Modal de Agendar/Registrar Manutenção em High-Contrast Dark */
+html[data-theme="high-contrast-dark"] .production-modal-box {
+  background-color: #000000 !important;
+  border: 2px solid #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-header {
+  background: #09090B !important;
+  border-color: #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-title-icon {
+  color: #F59E0B !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-close {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-close:hover {
+  background-color: #18181B !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-label {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-input,
+html[data-theme="high-contrast-dark"] .production-modal-select {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-input:focus,
+html[data-theme="high-contrast-dark"] .production-modal-select:focus {
+  border-color: #38BDF8 !important;
+  outline: none !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-footer {
+  border-color: #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-btn-cancel {
+  background-color: #18181B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-btn-cancel:hover {
+  background-color: #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-btn-submit {
+  background-color: #0284C7 !important;
+  border: 2px solid #38BDF8 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .production-modal-btn-submit:hover {
+  background-color: #0369A1 !important;
+}
+
+/* --- Controle de Depreciação de Máquinas & Equipamentos (High-Contrast Dark) --- */
+html[data-theme="high-contrast-dark"] .depreciation-header-card {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-subtitle {
+  color: #A1A1AA !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-btn-secondary {
+  background-color: #18181B !important;
+  border: 1.5px solid #3F3F46 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-btn-secondary:hover {
+  background-color: #27272A !important;
+  border-color: #38BDF8 !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-btn-sync {
+  background-color: #064E3B !important;
+  border: 1.5px solid #34D399 !important;
+  color: #A7F3D0 !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-btn-sync:hover {
+  background-color: #065F46 !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-stat-card {
+  background-color: #18181B !important;
+  border: 1.5px solid #27272A !important;
+}
+
+html[data-theme="high-contrast-dark"] .depreciation-filter-bar {
+  background-color: #09090B !important;
+  border: 2px solid #27272A !important;
 }
 
 /* =========================================================================
@@ -4236,8 +4779,9 @@ html[data-theme="high-contrast-dark"] .clients-subtabs-container,
 html[data-theme="high-contrast-dark"] .suppliers-subtabs-container,
 html[data-theme="high-contrast-dark"] .settings-subtabs-container,
 html[data-theme="high-contrast-dark"] .stock-subtabs-container {
-  border-color: #3F3F46 !important;
+  border: 2px solid #3F3F46 !important;
   background-color: #09090B !important;
+  border-radius: 1.25rem !important;
 }
 
 html[data-theme="high-contrast-dark"] .finance-subtab-btn,
@@ -4423,6 +4967,7 @@ html[data-theme="high-contrast-light"] .clients-subtabs-container,
 html[data-theme="high-contrast-light"] .suppliers-subtabs-container {
   background-color: #F8FAFC !important;
   border-color: #CBD5E1 !important;
+  border-radius: 1.25rem !important;
 }
 
 html[data-theme="high-contrast-light"] .finance-subtab-btn,

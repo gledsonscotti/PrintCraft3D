@@ -663,8 +663,8 @@ export function FinanceView({
         </div>
       </div>
 
-      {/* Sub-abas de Finanças Otimizadas e 100% Visíveis em Linha Única */}
-      <div className="finance-subtabs-container flex flex-nowrap items-center gap-1 sm:gap-1.5 border-b border-white/[0.08] pb-2.5 overflow-x-auto no-scrollbar max-w-full">
+      {/* Sub-abas de Finanças com Cantos Arredondados */}
+      <div className="finance-subtabs-container flex flex-nowrap items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 bg-[#121215] border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-xs overflow-x-auto no-scrollbar max-w-full">
         {/* FLUXO DE CAIXA (LIVRO CAIXA REALIZADO) */}
         <button
           type="button"

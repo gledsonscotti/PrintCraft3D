@@ -579,49 +579,49 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       )}
 
       {/* Sub-Tabs Header */}
-      <div className="printers-subtabs-bar flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121215] border border-white/[0.08] p-4 sm:p-5 rounded-3xl">
-        <div className="printers-subtabs-inner flex items-center gap-2 bg-[#1a1a20] p-1.5 rounded-2xl border border-white/[0.06]">
+      <div className="printers-subtabs-bar flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 sm:p-3 bg-[#121215] border border-white/[0.08] rounded-2xl sm:rounded-3xl">
+        <div className="printers-subtabs-inner flex items-center gap-1.5 sm:gap-2 bg-[#1a1a20] p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-white/[0.06] overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
             onClick={() => setSubTab('printers')}
-            className={`printers-subtab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+            className={`printers-subtab-btn px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
               subTab === 'printers'
                 ? 'printers-subtab-active bg-sky-500 text-white shadow-md shadow-sky-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <PrinterIcon className="w-4 h-4" />
-            Impressoras 3D
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 font-mono">{printers.length}</span>
+            <PrinterIcon className="w-4 h-4 shrink-0" />
+            <span>Impressoras 3D</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-black/30 font-mono">{printers.length}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('ams_heaters')}
-            className={`printers-subtab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+            className={`printers-subtab-btn px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
               subTab === 'ams_heaters'
                 ? 'printers-subtab-active bg-sky-500 text-white shadow-md shadow-sky-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Cpu className="w-4 h-4" />
-            AMS & Aquecedores
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 font-mono">{amsHeaters.length}</span>
+            <Cpu className="w-4 h-4 shrink-0" />
+            <span>AMS & Aquecedores</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-black/30 font-mono">{amsHeaters.length}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('maintenance')}
-            className={`printers-subtab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer relative ${
+            className={`printers-subtab-btn px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition cursor-pointer relative whitespace-nowrap shrink-0 ${
               subTab === 'maintenance'
                 ? 'printers-subtab-active bg-sky-500 text-white shadow-md shadow-sky-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Wrench className="w-4 h-4" />
-            Alertas e Manutenção
+            <Wrench className="w-4 h-4 shrink-0" />
+            <span>Alertas e Manutenção</span>
             {activeMaintenanceCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-slate-950 rounded-full text-[10px] font-bold flex items-center justify-center shadow">
+              <span className="w-4 h-4 bg-amber-500 text-slate-950 rounded-full text-[9px] font-bold flex items-center justify-center shadow">
                 {activeMaintenanceCount}
               </span>
             )}
@@ -631,36 +631,37 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
             type="button"
             id="btn-printers-depreciation-tab"
             onClick={() => setSubTab('depreciation')}
-            className={`printers-subtab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+            className={`printers-subtab-btn px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
               subTab === 'depreciation'
                 ? 'printers-subtab-active bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Scale className="w-4 h-4" />
-            Depreciação & Patrimônio
+            <Scale className="w-4 h-4 shrink-0" />
+            <span>Depreciação & Patrimônio</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
           {subTab === 'printers' && (
             <>
               <button
                 type="button"
                 onClick={() => setShowDiscoveryModal(true)}
-                className="printer-scan-btn bg-[#1e1e24] hover:bg-[#282830] text-sky-400 border border-sky-500/30 px-3.5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm"
+                className="printer-scan-btn bg-[#1e1e24] hover:bg-[#282830] text-sky-400 border border-sky-500/30 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition cursor-pointer shadow-sm whitespace-nowrap shrink-0"
                 title="Escanear a rede local em busca de impressoras 3D automáticas"
               >
-                <Wifi className="w-4 h-4 text-sky-400 animate-pulse" />
+                <Wifi className="w-3.5 h-3.5 text-sky-400" />
                 <span>Varredura de Rede (LAN)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleOpenModal()}
-                className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
+                className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer whitespace-nowrap shrink-0"
               >
-                <Plus className="w-4 h-4" /> Nova Impressora
+                <Plus className="w-4 h-4" />
+                <span>Nova Impressora</span>
               </button>
             </>
           )}
@@ -668,18 +669,20 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
             <button
               type="button"
               onClick={() => handleOpenAmsModal()}
-              className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer"
+              className="printer-new-btn bg-sky-500 hover:bg-sky-400 text-white px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition shadow-md shadow-sky-500/20 cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Plus className="w-4 h-4" /> Cadastrar AMS / Aquecedor
+              <Plus className="w-4 h-4" />
+              <span>Cadastrar AMS / Aquecedor</span>
             </button>
           )}
           {subTab === 'maintenance' && (
             <button
               type="button"
               onClick={() => handleOpenMntModal()}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-amber-500/20 cursor-pointer"
+              className="printer-new-btn bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Wrench className="w-4 h-4" /> Registrar Manutenção
+              <Wrench className="w-4 h-4" />
+              <span>Registrar Manutenção</span>
             </button>
           )}
         </div>
@@ -958,11 +961,11 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
       {/* GUIA 3: ALERTAS E MANUTENÇÃO */}
       {subTab === 'maintenance' && (
         <div className="space-y-4">
-          <div className="p-4 bg-amber-950/20 border border-amber-500/30 rounded-3xl flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="maintenance-warning-card p-3.5 sm:p-4 bg-amber-950/20 border border-amber-500/30 rounded-2xl sm:rounded-3xl flex items-start gap-3">
+            <ShieldAlert className="maintenance-warning-icon w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-amber-200">Regra de Bloqueio de Produção por Manutenção</h4>
-              <p className="text-xs text-amber-300/80 leading-relaxed">
+              <h4 className="maintenance-warning-title text-xs font-bold text-amber-200">Regra de Bloqueio de Produção por Manutenção</h4>
+              <p className="maintenance-warning-desc text-xs text-amber-300/80 leading-relaxed">
                 Durante o período de manutenção agendada ou em andamento, a impressora correspondente é automaticamente bloqueada pelo sistema e <strong>não pode ser selecionada para novos cadastros de produção (OPs)</strong> até que a manutenção seja concluída e resolvida.
               </p>
             </div>
@@ -970,13 +973,13 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
 
           <div className="grid grid-cols-1 gap-4">
             {maintenanceRecords.length === 0 ? (
-              <div className="py-16 text-center border border-dashed border-white/[0.1] rounded-3xl bg-[#121215]/50 space-y-3">
-                <Wrench className="w-10 h-10 text-slate-600 mx-auto" />
-                <p className="text-xs text-slate-400">Nenhum registro de manutenção ou alerta cadastrado.</p>
+              <div className="maintenance-empty-card py-12 sm:py-16 text-center border border-dashed border-white/[0.1] rounded-2xl sm:rounded-3xl bg-[#121215]/50 space-y-3">
+                <Wrench className="maintenance-empty-icon w-10 h-10 text-slate-600 mx-auto" />
+                <p className="maintenance-empty-text text-xs text-slate-400">Nenhum registro de manutenção ou alerta cadastrado.</p>
                 <button
                   type="button"
                   onClick={() => handleOpenMntModal()}
-                  className="text-amber-400 text-xs font-semibold hover:underline"
+                  className="maintenance-empty-btn text-amber-400 hover:text-amber-300 text-xs font-semibold hover:underline cursor-pointer"
                 >
                   + Agendar primeira manutenção
                 </button>
@@ -987,8 +990,8 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                 return (
                   <div
                     key={m.id}
-                    className={`bg-[#121215] border rounded-3xl p-5 transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                      isActive ? 'border-amber-500/40 bg-amber-950/10' : 'border-white/[0.08]'
+                    className={`maintenance-item-card bg-[#121215] border rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                      isActive ? 'maintenance-item-active border-amber-500/40 bg-amber-950/10' : 'border-white/[0.08]'
                     }`}
                   >
                     <div className="space-y-2">
@@ -1015,9 +1018,9 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                       </div>
 
                       <div>
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          <PrinterIcon className="w-4 h-4 text-sky-400" />
-                          {m.printer_name} — {m.title}
+                        <h3 className="maintenance-item-title text-sm font-bold text-white flex items-center gap-2">
+                          <PrinterIcon className="w-4 h-4 text-sky-400 shrink-0" />
+                          <span>{m.printer_name} — {m.title}</span>
                         </h3>
                         {m.description && (
                           <p className="text-xs text-slate-400 mt-1">{m.description}</p>
@@ -1546,18 +1549,18 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="production-modal-box bg-[#16161a] border border-white/[0.12] rounded-3xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
             <div className="production-modal-header flex items-center justify-between border-b border-white/[0.08] pb-4 px-1 -mx-6 -mt-6 p-6 rounded-t-3xl">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-amber-400" />
+              <h3 className="production-modal-title text-base font-bold text-white flex items-center gap-2">
+                <Wrench className="production-modal-title-icon w-5 h-5 text-amber-400" />
                 {editingMnt ? 'Editar Manutenção' : 'Agendar / Registrar Manutenção'}
               </h3>
-              <button type="button" onClick={() => setShowMntModal(false)} className="text-slate-400 hover:text-white p-1">
+              <button type="button" onClick={() => setShowMntModal(false)} className="production-modal-close text-slate-400 hover:text-white p-1 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveMnt} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Selecionar Impressora 3D</label>
+                <label className="production-modal-label text-xs font-semibold text-slate-300">Selecionar Impressora 3D</label>
                 <select
                   required
                   value={mntPrinterId}
@@ -1573,7 +1576,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Tipo de Manutenção</label>
+                  <label className="production-modal-label text-xs font-semibold text-slate-300">Tipo de Manutenção</label>
                   <select
                     value={mntType}
                     onChange={(e) => setMntType(e.target.value as any)}
@@ -1589,7 +1592,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Urgência / Severidade</label>
+                  <label className="production-modal-label text-xs font-semibold text-slate-300">Urgência / Severidade</label>
                   <select
                     value={mntSeverity}
                     onChange={(e) => setMntSeverity(e.target.value as any)}
@@ -1604,7 +1607,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Título / Assunto</label>
+                <label className="production-modal-label text-xs font-semibold text-slate-300">Título / Assunto</label>
                 <input
                   type="text"
                   required
@@ -1617,7 +1620,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Início (Data e Hora)</label>
+                  <label className="production-modal-label text-xs font-semibold text-slate-300">Início (Data e Hora)</label>
                   <input
                     type="datetime-local"
                     required
@@ -1628,7 +1631,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Fim (Data e Hora)</label>
+                  <label className="production-modal-label text-xs font-semibold text-slate-300">Fim (Data e Hora)</label>
                   <input
                     type="datetime-local"
                     value={mntEndDate}
@@ -1638,7 +1641,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Status</label>
+                  <label className="production-modal-label text-xs font-semibold text-slate-300">Status</label>
                   <select
                     value={mntStatus}
                     onChange={(e) => setMntStatus(e.target.value as any)}
@@ -1652,7 +1655,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Técnico Responsável</label>
+                <label className="production-modal-label text-xs font-semibold text-slate-300">Técnico Responsável</label>
                 <input
                   type="text"
                   placeholder="Ex: Gledson Scotti / Oficina 3D"
@@ -1663,7 +1666,7 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Descrição Detalhada</label>
+                <label className="production-modal-label text-xs font-semibold text-slate-300">Descrição Detalhada</label>
                 <textarea
                   rows={2}
                   placeholder="Descreva o problema encontrado ou o procedimento realizado..."
@@ -1673,17 +1676,17 @@ export const PrintersView: React.FC<PrintersViewProps> = ({ printers, onRefreshD
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">
+              <div className="production-modal-footer flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowMntModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#222228]"
+                  className="production-modal-btn-cancel px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#222228]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20"
+                  className="production-modal-btn-submit px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20"
                 >
                   {editingMnt ? 'Salvar Alterações' : 'Salvar e Bloquear Impressora'}
                 </button>

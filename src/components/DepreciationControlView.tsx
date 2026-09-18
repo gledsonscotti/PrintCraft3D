@@ -486,34 +486,34 @@ export function DepreciationControlView({
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Controls */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1.5">
+      <div className="depreciation-header-card bg-[#121215] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 via-sky-500/20 to-indigo-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 via-sky-500/20 to-indigo-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xs shrink-0">
                 <Cpu className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
-                  Controle de Depreciação de Máquinas & Equipamentos
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                <h2 className="depreciation-title text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2 flex-wrap">
+                  <span>Controle de Depreciação de Máquinas & Equipamentos</span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
                     Ativo Imobilizado
                   </span>
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="depreciation-subtitle text-xs text-slate-400">
                   Gestão patrimonial, amortização contábil mensal, cálculo de taxa horária (R$/h) para fatiadores e provisão de fundo de reposição.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 self-start xl:self-center">
             <button
               type="button"
               id="btn-import-printers"
               onClick={handleImportPrinters}
               disabled={importingPrinters}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1a1a1f] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="depreciation-btn-secondary px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1a1a1f] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
               title="Importa impressoras cadastradas que ainda não possuem ficha patrimonial"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${importingPrinters ? 'animate-spin' : ''}`} />
@@ -525,7 +525,7 @@ export function DepreciationControlView({
               id="btn-sync-printers-depreciation"
               onClick={handleSyncPrinters}
               disabled={syncingPrinters}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="depreciation-btn-sync px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
               title="Atualiza automaticamente o campo hourly_depreciation de cada impressora vinculada"
             >
               <Zap className={`w-3.5 h-3.5 text-emerald-400 ${syncingPrinters ? 'animate-bounce' : ''}`} />
@@ -536,7 +536,7 @@ export function DepreciationControlView({
               type="button"
               id="btn-new-machine-asset"
               onClick={handleOpenCreateModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer"
+              className="printer-new-btn depreciation-btn-primary px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Equipamento</span>
@@ -546,9 +546,9 @@ export function DepreciationControlView({
 
         {/* Executive Summary Cards */}
         {summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/[0.06]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-5 pt-4 border-t border-white/[0.06]">
             {/* Total Imobilizado */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 Custo Ativado
                 <Building className="w-3.5 h-3.5 text-slate-500" />
@@ -562,7 +562,7 @@ export function DepreciationControlView({
             </div>
 
             {/* Depreciação Acumulada */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 Deprec. Acumulada
                 <TrendingDown className="w-3.5 h-3.5 text-amber-400" />
@@ -578,7 +578,7 @@ export function DepreciationControlView({
             </div>
 
             {/* Valor Contábil Líquido Atual */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 Valor Contábil (VCL)
                 <Scale className="w-3.5 h-3.5 text-sky-400" />
@@ -592,7 +592,7 @@ export function DepreciationControlView({
             </div>
 
             {/* Provisão Mensal */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 Provisão Mensal
                 <Calendar className="w-3.5 h-3.5 text-emerald-400" />
@@ -606,7 +606,7 @@ export function DepreciationControlView({
             </div>
 
             {/* Média Horária (R$/h) */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 Depreciação Média
                 <Clock className="w-3.5 h-3.5 text-purple-400" />
@@ -620,7 +620,7 @@ export function DepreciationControlView({
             </div>
 
             {/* 100% Amortizadas (Lucro Máximo) */}
-            <div className="bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
+            <div className="depreciation-stat-card bg-[#18181c] border border-white/[0.06] rounded-xl p-3.5">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
                 100% Amortizadas
                 <Sparkles className="w-3.5 h-3.5 text-blue-400" />
@@ -637,7 +637,7 @@ export function DepreciationControlView({
       </div>
 
       {/* Filters Bar & View Switcher */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] p-3 rounded-xl">
+      <div className="depreciation-filter-bar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] p-3 rounded-xl">
         <div className="flex flex-1 items-center gap-2.5">
           <div className="relative flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
