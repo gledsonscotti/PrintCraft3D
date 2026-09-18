@@ -453,75 +453,45 @@ export function ProductionControlView({
       </div>
 
       {/* Bento KPI Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        <div className="production-kpi-card p-4 rounded-3xl bg-[#141417] border border-white/[0.08] shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="production-kpi-card p-3.5 sm:p-4 rounded-2xl bg-[#141417] border border-white/[0.06] shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Em Impressão</span>
-            <div className="w-7 h-7 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-              <PrinterIcon className="w-3.5 h-3.5" />
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium block truncate">Em Impressão</span>
+            <span className="text-[10px] text-sky-400 font-mono font-medium">{printerUtilizationPercent}% ({activePrintersCount}/{totalPrintersCount})</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white font-mono">{activeOrders.length}</span>
-            <span className="text-xs text-slate-400 font-mono">OPs ativas</span>
-          </div>
-          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-white/[0.06] pt-2">
-            <span>Ocupação do Parque:</span>
-            <strong className="text-sky-400 font-mono">{printerUtilizationPercent}% ({activePrintersCount}/{totalPrintersCount})</strong>
-          </div>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-white mt-1 block tracking-tight">
+            {activeOrders.length} <span className="text-xs font-normal text-slate-400">OPs ativas</span>
+          </span>
         </div>
 
-        <div className="production-kpi-card p-4 rounded-3xl bg-[#141417] border border-white/[0.08] shadow-sm flex flex-col justify-between">
+        <div className="production-kpi-card p-3.5 sm:p-4 rounded-2xl bg-[#141417] border border-white/[0.06] shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Na Fila de Espera</span>
-            <div className="w-7 h-7 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Clock className="w-3.5 h-3.5" />
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium block truncate">Na Fila de Espera</span>
+            <span className="text-[10px] text-amber-300 font-mono font-medium">{hoursInQueue}h {remainingMinsInQueue}m</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-amber-300 font-mono">{pendingOrders.length}</span>
-            <span className="text-xs text-slate-400 font-mono">OPs aguardando</span>
-          </div>
-          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-white/[0.06] pt-2">
-            <span>Tempo estimado:</span>
-            <strong className="text-amber-300 font-mono">{hoursInQueue}h {remainingMinsInQueue}m</strong>
-          </div>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-amber-300 mt-1 block tracking-tight">
+            {pendingOrders.length} <span className="text-xs font-normal text-slate-400">OPs aguardando</span>
+          </span>
         </div>
 
-        <div className="production-kpi-card p-4 rounded-3xl bg-[#141417] border border-white/[0.08] shadow-sm flex flex-col justify-between">
+        <div className="production-kpi-card p-3.5 sm:p-4 rounded-2xl bg-[#141417] border border-white/[0.06] shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Pós-Processamento</span>
-            <div className="w-7 h-7 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <Wrench className="w-3.5 h-3.5" />
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium block truncate">Pós-Processamento</span>
+            <span className="text-[10px] text-purple-300 font-mono font-medium">{postProcessingOrders.reduce((acc, o) => acc + o.quantity, 0)} peças</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-purple-300 font-mono">{postProcessingOrders.length}</span>
-            <span className="text-xs text-slate-400 font-mono">em acabamento</span>
-          </div>
-          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-white/[0.06] pt-2">
-            <span>Peças na bancada:</span>
-            <strong className="text-purple-300 font-mono">
-              {postProcessingOrders.reduce((acc, o) => acc + o.quantity, 0)} peças
-            </strong>
-          </div>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-purple-300 mt-1 block tracking-tight">
+            {postProcessingOrders.length} <span className="text-xs font-normal text-slate-400">em acabamento</span>
+          </span>
         </div>
 
-        <div className="production-kpi-card p-4 rounded-3xl bg-[#141417] border border-white/[0.08] shadow-sm flex flex-col justify-between">
+        <div className="production-kpi-card p-3.5 sm:p-4 rounded-2xl bg-[#141417] border border-white/[0.06] shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Concluídas & Lotes</span>
-            <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium block truncate">Concluídas & Lotes</span>
+            <span className="text-[10px] text-rose-400 font-mono font-medium">{failedOrders.length} perdas</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-300 font-mono">{completedOrders.length}</span>
-            <span className="text-xs text-slate-400 font-mono">finalizadas</span>
-          </div>
-          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-white/[0.06] pt-2">
-            <span>Falhas registradas:</span>
-            <strong className="text-rose-400 font-mono">{failedOrders.length} perdas</strong>
-          </div>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-emerald-400 mt-1 block tracking-tight">
+            {completedOrders.length} <span className="text-xs font-normal text-slate-400">finalizadas</span>
+          </span>
         </div>
       </div>
 

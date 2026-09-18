@@ -47,7 +47,8 @@ body {
 .stock-subtabs-container,
 .suppliers-subtabs-container,
 .clients-subtabs-container,
-.finance-subtabs-container {
+.finance-subtabs-container,
+.calc-subtabs-container {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
@@ -61,7 +62,8 @@ body {
 .stock-subtab-btn,
 .suppliers-subtab-btn,
 .clients-subtab-btn,
-.finance-subtab-btn {
+.finance-subtab-btn,
+.calc-subtab-btn {
   flex-shrink: 0 !important;
   white-space: nowrap !important;
 }
@@ -930,12 +932,13 @@ html[data-theme="sage-bento"] header nav button#main-nav-finance:not(.bg-emerald
   color: #192C23 !important;
 }
 
-/* Sage Bento: Finance, Pessoas, Fornecedores, Ajustes e Estoque sub-elements */
+/* Sage Bento: Finance, Pessoas, Fornecedores, Ajustes, Estoque e Calculadora sub-elements */
 html[data-theme="sage-bento"] .finance-subtabs-container,
 html[data-theme="sage-bento"] .clients-subtabs-container,
 html[data-theme="sage-bento"] .suppliers-subtabs-container,
 html[data-theme="sage-bento"] .settings-subtabs-container,
-html[data-theme="sage-bento"] .stock-subtabs-container {
+html[data-theme="sage-bento"] .stock-subtabs-container,
+html[data-theme="sage-bento"] .calc-subtabs-container {
   border-color: #DFD9CB !important;
   background-color: #EDE7DC !important;
 }
@@ -944,7 +947,8 @@ html[data-theme="sage-bento"] .finance-subtab-btn,
 html[data-theme="sage-bento"] .clients-subtab-btn,
 html[data-theme="sage-bento"] .suppliers-subtab-btn,
 html[data-theme="sage-bento"] .settings-subtab-btn,
-html[data-theme="sage-bento"] .stock-subtab-btn {
+html[data-theme="sage-bento"] .stock-subtab-btn,
+html[data-theme="sage-bento"] .calc-subtab-btn {
   background-color: #FFFFFF !important;
   border: 1px solid #DFD9CB !important;
   color: #4A6054 !important;
@@ -955,7 +959,8 @@ html[data-theme="sage-bento"] .finance-subtab-btn:hover,
 html[data-theme="sage-bento"] .clients-subtab-btn:hover,
 html[data-theme="sage-bento"] .suppliers-subtab-btn:hover,
 html[data-theme="sage-bento"] .settings-subtab-btn:hover,
-html[data-theme="sage-bento"] .stock-subtab-btn:hover {
+html[data-theme="sage-bento"] .stock-subtab-btn:hover,
+html[data-theme="sage-bento"] .calc-subtab-btn:hover {
   background-color: #F8F6F1 !important;
   color: #192C23 !important;
 }
@@ -965,7 +970,9 @@ html[data-theme="sage-bento"] .finance-subtab-active,
 html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active,
 html[data-theme="sage-bento"] .settings-subtab-active,
 html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active,
-html[data-theme="sage-bento"] .stock-subtab-active {
+html[data-theme="sage-bento"] .stock-subtab-active,
+html[data-theme="sage-bento"] .calc-subtab-btn.calc-subtab-active,
+html[data-theme="sage-bento"] .calc-subtab-active {
   background-color: #567D6B !important;
   color: #FFFFFF !important;
   border: 1px solid #446857 !important;
@@ -977,7 +984,9 @@ html[data-theme="sage-bento"] .finance-subtab-btn.finance-subtab-active svg,
 html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active span,
 html[data-theme="sage-bento"] .settings-subtab-btn.settings-subtab-active svg,
 html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active span,
-html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active svg {
+html[data-theme="sage-bento"] .stock-subtab-btn.stock-subtab-active svg,
+html[data-theme="sage-bento"] .calc-subtab-btn.calc-subtab-active span,
+html[data-theme="sage-bento"] .calc-subtab-btn.calc-subtab-active svg {
   color: #FFFFFF !important;
 }
 
@@ -1782,8 +1791,8 @@ html[data-theme="high-contrast-light"] .integration-modal-wrapper {
 html[data-theme="sage-bento"] .production-kpi-card {
   background-color: #FFFFFF !important;
   border: 1.5px solid #E4DDD2 !important;
-  border-radius: 1.5rem !important;
-  box-shadow: 0 10px 25px -4px rgba(78, 120, 100, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 4px 12px -2px rgba(78, 120, 100, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
 }
 
 /* Barra de Filtros, Busca e Alternador de Visão */

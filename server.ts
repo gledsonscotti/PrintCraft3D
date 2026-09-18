@@ -2817,7 +2817,10 @@ async function startServer() {
         default_loss_margin: settingsMap.default_loss_margin ?? 10,
         hourly_labor_rate: settingsMap.hourly_labor_rate ?? 20.00,
         default_infill: settingsMap.default_infill ?? 20,
-        default_layer_height: settingsMap.default_layer_height ?? 0.2
+        default_layer_height: settingsMap.default_layer_height ?? 0.2,
+        markup_default: settingsMap.markup_default ?? 100,
+        target_margin: settingsMap.target_margin ?? 40,
+        monthly_fixed_costs: settingsMap.monthly_fixed_costs ?? 500
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

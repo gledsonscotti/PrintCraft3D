@@ -1949,6 +1949,9 @@ function seedInitialData(database: Database) {
       ('hourly_labor_rate', '20.00'),
       ('default_infill', '20'),
       ('default_layer_height', '0.2'),
+      ('markup_default', '100'),
+      ('target_margin', '40'),
+      ('monthly_fixed_costs', '500'),
       ('admin_theme', 'sage-bento')
   `);
 

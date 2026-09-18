@@ -25,6 +25,7 @@ import {
   Sliders,
   Truck,
   Upload,
+  Target,
   X
 } from 'lucide-react';
 import { AiOptimizationResult, AppSettings, AppTheme, ExtraSupplyItem, Filament, Printer, Product, SetupTemplate, SlicingProfile, Supply, ShippingCarrier, AmsHeater, ProductCategory } from '../types';
@@ -32,12 +33,14 @@ import { ParsedModelResult } from '../utils/fileParsers';
 import { calculatePieceCost } from '../utils/costCalculator';
 import { ModelViewer3D } from './ModelViewer3D';
 import { FileUploadZone } from './FileUploadZone';
+import { PriceBreakEvenSimulator } from './PriceBreakEvenSimulator';
 import { safeFetchJson } from '../utils/api';
 
 interface CostCalculatorViewProps {
   printers: Printer[];
   filaments: Filament[];
   supplies: Supply[];
+  products?: Product[];
   settings: AppSettings;
   onRefreshData: () => void | Promise<void>;
   onNavigateToStock: () => void;
@@ -55,6 +58,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
   printers,
   filaments,
   supplies,
+  products = [],
   settings,
   onRefreshData,
   onNavigateToStock,
@@ -224,7 +228,7 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     if (!selectedFilamentId && filaments.length > 0) setSelectedFilamentId(filaments[0].id);
   }, [printers, filaments]);
 
-  const [calcTab, setCalcTab] = useState<'parameters' | 'setup_templates'>('parameters');
+  const [calcTab, setCalcTab] = useState<'parameters' | 'setup_templates' | 'simulator'>('parameters');
   const [setupTemplates, setSetupTemplates] = useState<SetupTemplate[]>([]);
   const [selectedSetupIds, setSelectedSetupIds] = useState<string[]>([]);
   const [newSetupName, setNewSetupName] = useState('');
@@ -699,29 +703,49 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         </div>
       )}
 
-      {/* Sub-tabs: Parâmetros vs Tempo de Setup */}
-      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
+      {/* Sub-tabs: Parâmetros vs Tempo de Setup vs Simulador & Margem */}
+      <div className="calc-subtabs-container flex flex-nowrap items-center gap-2 border-b border-white/[0.08] pb-3 overflow-x-auto no-scrollbar">
         <button
           type="button"
+          id="tab-btn-calc-parameters"
           onClick={() => setCalcTab('parameters')}
-          className={`px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`calc-subtab-btn px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             calcTab === 'parameters'
-              ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20'
+              ? 'calc-subtab-active bg-sky-500 text-white shadow-md shadow-sky-500/20'
               : 'bg-[#121215] text-slate-400 hover:text-white border border-white/[0.08]'
           }`}
         >
-          <Cpu className="w-4 h-4" /> Parâmetros & Custos
+          <Cpu className="w-4 h-4 shrink-0" />
+          <span>Parâmetros & Custos</span>
         </button>
         <button
           type="button"
+          id="tab-btn-calc-setup"
           onClick={() => setCalcTab('setup_templates')}
-          className={`px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`calc-subtab-btn px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             calcTab === 'setup_templates'
-              ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20'
+              ? 'calc-subtab-active bg-sky-500 text-white shadow-md shadow-sky-500/20'
               : 'bg-[#121215] text-slate-400 hover:text-white border border-white/[0.08]'
           }`}
         >
-          <Clock className="w-4 h-4" /> Tempo de Setup ({selectedSetupIds.length} ativos • +{setupTemplatesTotalMinutes} min)
+          <Clock className="w-4 h-4 shrink-0" />
+          <span>Tempo de Setup ({selectedSetupIds.length} ativos • +{setupTemplatesTotalMinutes} min)</span>
+        </button>
+        <button
+          type="button"
+          id="tab-btn-calc-simulator"
+          onClick={() => setCalcTab('simulator')}
+          className={`calc-subtab-btn px-4 py-2 rounded-2xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+            calcTab === 'simulator'
+              ? 'calc-subtab-active bg-emerald-500 text-white shadow-md shadow-emerald-500/25 ring-1 ring-emerald-400/40'
+              : 'bg-[#121215] text-emerald-400/90 hover:text-emerald-300 border border-emerald-500/25 hover:border-emerald-500/40'
+          }`}
+        >
+          <Target className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span className="font-bold">Simulador & Margem</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            DRE
+          </span>
         </button>
       </div>
 
@@ -847,6 +871,23 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
               </div>
             </form>
           </div>
+        </div>
+      ) : calcTab === 'simulator' ? (
+        <div className="space-y-6 animate-fadeIn">
+          <PriceBreakEvenSimulator
+            products={products}
+            filaments={filaments}
+            settings={settings}
+            monthlyFixedCosts={settings?.monthly_fixed_costs || 500}
+            targetMarginDefault={settings?.target_margin || settings?.profit_margin || 50}
+            initialPreset={{
+              filamentWeightG: effectiveWeightGrams,
+              printTimeHours: Math.round((customTimeMinutes / 60) * 10) / 10,
+              directSuppliesCost: costResult.suppliesCost,
+              sellingPrice: costResult.suggestedSalePrice,
+              productName: productName,
+            }}
+          />
         </div>
       ) : (
         <div className="space-y-6">
@@ -1562,7 +1603,19 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
               <div className="bg-gradient-to-br from-emerald-950/40 via-[#121215] to-[#0A0A0B] border border-emerald-500/30 p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-950/20">
                 <div>
-                  <span className="text-xs font-semibold text-emerald-300 block">Preço de Venda Sugerido</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-emerald-300 block">Preço de Venda Sugerido</span>
+                    <button
+                      type="button"
+                      id="btn-shortcut-to-simulator"
+                      onClick={() => setCalcTab('simulator')}
+                      className="text-[11px] font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                      title="Abrir no Simulador de Margem & Ponto de Equilíbrio"
+                    >
+                      <Target className="w-3 h-3 text-emerald-400" />
+                      <span>Simular DRE</span>
+                    </button>
+                  </div>
                   <span className="text-2xl font-extrabold text-emerald-400 tracking-tight font-mono mt-0.5 block">
                     R$ {Number(costResult?.suggestedSalePrice || 0).toFixed(2)}
                   </span>

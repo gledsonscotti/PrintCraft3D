@@ -25,7 +25,11 @@ import {
   AlertTriangle,
   Layers,
   ShieldCheck,
-  Mail
+  Mail,
+  Calculator,
+  TrendingUp,
+  Coins,
+  Building2
 } from 'lucide-react';
 import { AppSettings, AppTheme, Product, ProductSale, Printer } from '../types';
 import { IntegrationsView } from './IntegrationsView';
@@ -73,11 +77,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Form states for Cost Settings
   const [energyKwhRate, setEnergyKwhRate] = useState<number>(settings.energy_kwh_rate || 0.85);
-  const [hourlyLaborRate, setHourlyLaborRate] = useState<number>(settings.hourly_labor_rate || 35);
+  const [hourlyLaborRate, setHourlyLaborRate] = useState<number>(settings.hourly_labor_rate || 20);
   const [defaultLossMargin, setDefaultLossMargin] = useState<number>(settings.default_loss_margin || 10);
   const [defaultInfill, setDefaultInfill] = useState<number>(settings.default_infill || 20);
   const [defaultLayerHeight, setDefaultLayerHeight] = useState<number>(settings.default_layer_height || 0.2);
   const [currency, setCurrency] = useState<string>(settings.currency || 'BRL');
+
+  // Form states for Financial Settings (Unificado de Finanças)
+  const [markupDefault, setMarkupDefault] = useState<number>(settings.markup_default ?? 100);
+  const [targetMargin, setTargetMargin] = useState<number>(settings.target_margin ?? 40);
+  const [monthlyFixedCosts, setMonthlyFixedCosts] = useState<number>(settings.monthly_fixed_costs ?? 500);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
@@ -85,11 +94,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Sync state if settings prop changes
   useEffect(() => {
     setEnergyKwhRate(settings.energy_kwh_rate);
-    setHourlyLaborRate(settings.hourly_labor_rate);
+    setHourlyLaborRate(settings.hourly_labor_rate || 20);
     setDefaultLossMargin(settings.default_loss_margin);
     setDefaultInfill(settings.default_infill || 20);
     setDefaultLayerHeight(settings.default_layer_height || 0.2);
     setCurrency(settings.currency || 'BRL');
+    setMarkupDefault(settings.markup_default ?? 100);
+    setTargetMargin(settings.target_margin ?? 40);
+    setMonthlyFixedCosts(settings.monthly_fixed_costs ?? 500);
   }, [settings]);
 
   const handleSaveCosts = async (e?: React.FormEvent) => {
@@ -99,12 +111,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     try {
       const updated: AppSettings = {
+        ...settings,
         energy_kwh_rate: Number(energyKwhRate),
         currency,
         default_loss_margin: Number(defaultLossMargin),
         hourly_labor_rate: Number(hourlyLaborRate),
         default_infill: Number(defaultInfill),
         default_layer_height: Number(defaultLayerHeight),
+        markup_default: Number(markupDefault),
+        target_margin: Number(targetMargin),
+        monthly_fixed_costs: Number(monthlyFixedCosts),
       };
 
       const res = await fetch('/api/settings', {
@@ -118,7 +134,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
 
       onSaveSettings(updated);
-      setSaveSuccessMsg('Configurações globais salvas no banco de dados SQLite com sucesso!');
+      setSaveSuccessMsg('Parâmetros operacionais e financeiros sincronizados no SQLite com sucesso!');
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     } catch (err: any) {
       alert('Erro ao salvar configurações: ' + err.message);
@@ -128,12 +144,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleResetDefaults = () => {
-    if (confirm('Deseja redefinir os parâmetros de custos para os valores padrão de mercado?')) {
+    if (confirm('Deseja redefinir os parâmetros operacionais para os valores padrão de mercado?')) {
       setEnergyKwhRate(0.85);
-      setHourlyLaborRate(35);
+      setHourlyLaborRate(20);
       setDefaultLossMargin(10);
       setDefaultInfill(20);
       setDefaultLayerHeight(0.2);
+    }
+  };
+
+  const handleResetFinancialDefaults = () => {
+    if (confirm('Deseja redefinir os parâmetros financeiros para os valores padrão de precificação?')) {
+      setMarkupDefault(100);
+      setTargetMargin(40);
+      setMonthlyFixedCosts(500);
     }
   };
 
@@ -397,13 +421,118 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="integration-btn-primary bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs px-6 py-2.5 rounded-2xl shadow-sm shadow-sky-500/25 flex items-center gap-2 transition cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>{isSaving ? 'Salvando...' : 'Salvar Alterações Globais'}</span>
+                    <span>{isSaving ? 'Salvando...' : 'Salvar Alterações Operacionais'}</span>
                   </button>
                 </div>
               </form>
             </div>
 
-          {/* Card 2: Modo de Contraste da Oficina (Logo abaixo de Parâmetros Operacionais de Custos) */}
+          {/* Card 2: Parâmetros Financeiros (Unificado com Finanças) */}
+          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-emerald-400" />
+                  Parâmetros Financeiros
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Defina os índices padrão para cálculo automático de custos de impressão 3D, margens de lucro e despesas fixas
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetFinancialDefaults}
+                className="integration-btn-secondary px-3 py-1.5 rounded-xl bg-[#1A1A20] hover:bg-[#22222A] text-slate-400 hover:text-white text-xs font-semibold border border-white/[0.08] flex items-center gap-1.5 transition cursor-pointer"
+                title="Restaurar parâmetros financeiros recomendados"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Padrões</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCosts} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Markup Padrão (%) */}
+                <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-2">
+                  <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5 text-emerald-400" />
+                    Markup Padrão (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    required
+                    value={markupDefault}
+                    onChange={(e) => setMarkupDefault(Number(e.target.value))}
+                    className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-sky-400"
+                  />
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Multiplicador base sobre o custo total de produção.
+                  </p>
+                </div>
+
+                {/* Margem de Lucro Alvo (%) */}
+                <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-2">
+                  <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5 text-sky-400" />
+                    Margem de Lucro Alvo (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    required
+                    value={targetMargin}
+                    onChange={(e) => setTargetMargin(Number(e.target.value))}
+                    className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-sky-400"
+                  />
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Margem líquida desejada por peça impressa.
+                  </p>
+                </div>
+
+                {/* Custos Fixos Mensais (R$) */}
+                <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/[0.06] space-y-2">
+                  <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                    Custos Fixos Mensais (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="10"
+                    min="0"
+                    required
+                    value={monthlyFixedCosts}
+                    onChange={(e) => setMonthlyFixedCosts(Number(e.target.value))}
+                    className="w-full bg-[#141418] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-sky-400"
+                  />
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Aluguel, internet, manutenções e taxas fixas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
+                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Persistido com sincronização no SQLite
+                </span>
+                <button
+                  type="submit"
+                  id="btn-save-financial-settings"
+                  disabled={isSaving}
+                  className="integration-btn-primary bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-6 py-2.5 rounded-2xl shadow-sm shadow-emerald-500/25 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaving ? 'Salvando...' : 'Salvar Parâmetros Financeiros'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Card 3: Modo de Contraste da Oficina (Logo abaixo de Parâmetros Financeiros) */}
           <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.06] pb-4 gap-2">
               <div>

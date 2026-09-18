@@ -442,70 +442,45 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
         </div>
       )}
       {/* Top Inventory Dashboard Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
-          <div>
-            <span className="text-xs font-semibold text-slate-400">Total Filamento em Estoque</span>
-            <span className="text-2xl font-bold font-mono text-white block mt-1 tracking-tight">
-              {Number((totalFilamentsStockG || 0) / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-400">kg</span>
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">{filaments.length} carretéis cadastrados</span>
-          </div>
-          <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shadow-sm">
-            <Flame className="w-5 h-5" />
-          </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+          <span className="text-[11px] text-slate-400 font-medium block truncate">Total Filamento em Estoque</span>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-white mt-1 block tracking-tight">
+            {Number((totalFilamentsStockG || 0) / 1000).toFixed(2)} <span className="text-xs font-normal text-slate-400">kg</span>
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block font-mono truncate">{filaments.length} carretéis cadastrados</span>
         </div>
 
-        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
-          <div>
-            <span className="text-xs font-semibold text-slate-400">Valor em Filamentos</span>
-            <span className="text-2xl font-bold font-mono text-emerald-400 block mt-1 tracking-tight">
-              R$ {Number(totalFilamentValue || 0).toFixed(2)}
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Avaliado por grama</span>
-          </div>
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
-            <Scale className="w-5 h-5" />
-          </div>
+        <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+          <span className="text-[11px] text-slate-400 font-medium block truncate">Valor em Filamentos</span>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-emerald-400 mt-1 block tracking-tight">
+            R$ {Number(totalFilamentValue || 0).toFixed(2)}
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block font-mono truncate">Avaliado por grama</span>
         </div>
 
-        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
-          <div>
-            <span className="text-xs font-semibold text-slate-400">Insumos & Acessórios</span>
-            <span className="text-2xl font-bold font-mono text-white block mt-1 tracking-tight">
-              {totalSuppliesUnits} <span className="text-sm font-normal text-slate-400">un</span>
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">{supplies.length} tipos cadastrados</span>
-          </div>
-          <div className="w-11 h-11 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center shadow-sm">
-            <Package className="w-5 h-5" />
-          </div>
+        <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+          <span className="text-[11px] text-slate-400 font-medium block truncate">Insumos & Acessórios</span>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-white mt-1 block tracking-tight">
+            {totalSuppliesUnits} <span className="text-xs font-normal text-slate-400">un</span>
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block font-mono truncate">{supplies.length} tipos cadastrados</span>
         </div>
 
-        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40">
-          <div>
-            <span className="text-xs font-semibold text-slate-400">Valor em Insumos</span>
-            <span className="text-2xl font-bold font-mono text-teal-400 block mt-1 tracking-tight">
-              R$ {Number(totalSuppliesValue || 0).toFixed(2)}
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">Argolas, embalagens</span>
-          </div>
-          <div className="w-11 h-11 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center shadow-sm">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
+        <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+          <span className="text-[11px] text-slate-400 font-medium block truncate">Valor em Insumos</span>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-teal-400 mt-1 block tracking-tight">
+            R$ {Number(totalSuppliesValue || 0).toFixed(2)}
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block font-mono truncate">Argolas, embalagens</span>
         </div>
 
-        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between shadow-sm shadow-black/40 sm:col-span-2 lg:col-span-1">
-          <div>
-            <span className="text-xs font-semibold text-slate-400">Produtos Acabados</span>
-            <span className="text-2xl font-bold font-mono text-emerald-300 block mt-1 tracking-tight">
-              {totalFinishedUnits} <span className="text-sm font-normal text-slate-400">un</span>
-            </span>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">R$ {Number(totalFinishedValue || 0).toFixed(2)} em custo</span>
-          </div>
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
-            <Tag className="w-5 h-5" />
-          </div>
+        <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm col-span-2 sm:col-span-1">
+          <span className="text-[11px] text-slate-400 font-medium block truncate">Produtos Acabados</span>
+          <span className="text-lg sm:text-xl font-extrabold font-mono text-emerald-300 mt-1 block tracking-tight">
+            {totalFinishedUnits} <span className="text-xs font-normal text-slate-400">un</span>
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block font-mono truncate">R$ {Number(totalFinishedValue || 0).toFixed(2)} em custo</span>
         </div>
       </div>
 
@@ -625,16 +600,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               <Plus className="w-4 h-4" />
               Cadastrar Novo Insumo
             </button>
-          ) : activeTab === 'smart_alerts' ? (
-            <div className="hidden sm:flex text-xs text-amber-300 font-medium items-center gap-1.5 bg-amber-500/10 px-3.5 py-2 rounded-2xl border border-amber-500/25 whitespace-nowrap">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Previsão & Sugestão de Reposição
-            </div>
-          ) : activeTab === 'products' ? (
-            <div className="hidden sm:flex text-xs text-slate-400 font-mono whitespace-nowrap">
-              Resultado da produção prontas para envio/venda
-            </div>
-          ) : (
+          ) : activeTab === 'entries' ? (
             <button
               type="button"
               id="btn-stock-entry-action"
@@ -645,7 +611,7 @@ export const StockManagementView: React.FC<StockManagementViewProps> = ({
               <Plus className="w-4 h-4" />
               <span>Nova Entrada no Estoque</span>
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 

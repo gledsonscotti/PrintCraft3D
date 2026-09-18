@@ -27,6 +27,13 @@ interface PriceBreakEvenSimulatorProps {
   settings: AppSettings;
   monthlyFixedCosts?: number;
   targetMarginDefault?: number;
+  initialPreset?: {
+    filamentWeightG?: number;
+    printTimeHours?: number;
+    directSuppliesCost?: number;
+    sellingPrice?: number;
+    productName?: string;
+  };
 }
 
 export function PriceBreakEvenSimulator({
@@ -35,17 +42,26 @@ export function PriceBreakEvenSimulator({
   settings,
   monthlyFixedCosts = 800,
   targetMarginDefault = 50,
+  initialPreset,
 }: PriceBreakEvenSimulatorProps) {
   // Preset or selected product
   const [selectedProductId, setSelectedProductId] = useState<string>('');
 
   // Cost Drivers
-  const [filamentWeightG, setFilamentWeightG] = useState<number>(85);
-  const [filamentKgPrice, setFilamentKgPrice] = useState<number>(110);
-  const [printTimeHours, setPrintTimeHours] = useState<number>(3.5);
+  const [filamentWeightG, setFilamentWeightG] = useState<number>(initialPreset?.filamentWeightG ?? 85);
+  const [filamentKgPrice, setFilamentKgPrice] = useState<number>(() => {
+    if (filaments && filaments.length > 0) {
+      const fil = filaments[0];
+      if (fil.cost_per_spool && fil.total_weight_g) {
+        return Math.round((fil.cost_per_spool / fil.total_weight_g) * 1000 * 100) / 100;
+      }
+    }
+    return 110;
+  });
+  const [printTimeHours, setPrintTimeHours] = useState<number>(initialPreset?.printTimeHours ?? 3.5);
   const [printerPowerWatts, setPrinterPowerWatts] = useState<number>(180);
   const [energyKwhRate, setEnergyKwhRate] = useState<number>(settings.energy_kwh_rate || 0.95);
-  const [directSuppliesCost, setDirectSuppliesCost] = useState<number>(2.50); // packaging, screws, keyrings, etc.
+  const [directSuppliesCost, setDirectSuppliesCost] = useState<number>(initialPreset?.directSuppliesCost ?? 2.50); // packaging, screws, keyrings, etc.
   const [lossRatePercent, setLossRatePercent] = useState<number>(settings.default_loss_margin || 5);
   const [laborHourlyRate, setLaborHourlyRate] = useState<number>(settings.hourly_labor_rate || 20);
   const [laborPrepMinutes, setLaborPrepMinutes] = useState<number>(10); // prep + post-processing
@@ -54,7 +70,7 @@ export function PriceBreakEvenSimulator({
   const [pricingMode, setPricingMode] = useState<'by_margin' | 'by_markup' | 'custom_price'>('by_margin');
   const [targetMarginPercent, setTargetMarginPercent] = useState<number>(targetMarginDefault);
   const [targetMarkupPercent, setTargetMarkupPercent] = useState<number>(100);
-  const [customSellingPrice, setCustomSellingPrice] = useState<number>(45);
+  const [customSellingPrice, setCustomSellingPrice] = useState<number>(initialPreset?.sellingPrice ?? 45);
 
   // Commercial Channel & Taxes
   const [channelFeePercent, setChannelFeePercent] = useState<number>(0); // e.g. 14% for Meli/Shopee
@@ -274,7 +290,7 @@ export function PriceBreakEvenSimulator({
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               Simulador Dinâmico
             </span>
-            <span className="text-xs text-slate-400">Finanças & Precificação</span>
+            <span className="text-xs text-slate-400">Calculadora & Precificação Estratégica</span>
           </div>
           <h2 className="text-lg font-bold text-white mt-1 flex items-center gap-2">
             <Calculator className="w-5 h-5 text-emerald-400" />
@@ -296,7 +312,9 @@ export function PriceBreakEvenSimulator({
                 onChange={(e) => handleSelectProduct(e.target.value)}
                 className="bg-transparent text-white font-semibold outline-none cursor-pointer text-xs"
               >
-                <option value="" className="bg-[#1c1c20] text-slate-400">-- Peça Personalizada / Avulsa --</option>
+                <option value="" className="bg-[#1c1c20] text-slate-400">
+                  {initialPreset?.productName ? `-- Peça Atual: ${initialPreset.productName} --` : '-- Peça Personalizada / Avulsa --'}
+                </option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id} className="bg-[#1c1c20] text-white">
                     {p.name} ({p.filament_weight_g}g • R$ {p.suggested_price || 0})

@@ -570,6 +570,9 @@ export interface AppSettings {
   hourly_labor_rate: number;
   default_infill: number;
   default_layer_height: number;
+  markup_default?: number;
+  target_margin?: number;
+  monthly_fixed_costs?: number;
 }
 
 export interface CostCalculationResult {

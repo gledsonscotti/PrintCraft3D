@@ -22,7 +22,6 @@ import {
   Clock,
   ShieldCheck,
   ShoppingBag,
-  Calculator,
   Tag,
   PieChart,
   Plus,
@@ -33,14 +32,12 @@ import {
   Coins,
   Check,
   CalendarClock,
-  Target,
   Scale,
   Cpu
 } from 'lucide-react';
 import { ProductSale, Consignment, Product, Filament, Supply, MaterialPurchase, FinancialAccount, Client, Printer } from '../types';
 import { safeFetchJson } from '../utils/api';
 import { AccountsAging } from './AccountsAging';
-import { PriceBreakEvenSimulator } from './PriceBreakEvenSimulator';
 import { CostCentersProjectsView } from './CostCentersProjectsView';
 import { DepreciationControlView } from './DepreciationControlView';
 
@@ -69,8 +66,7 @@ export function FinanceView({
   onRefreshData,
   theme = 'standard',
 }: FinanceViewProps) {
-  const [activeFinanceTab, setActiveFinanceTab] = useState<'overview' | 'cashflow' | 'aging' | 'breakeven' | 'projects' | 'depreciation' | 'consignments' | 'marketplaces' | 'transactions' | 'settings'>('cashflow');
-  const [cashflowSubTab, setCashflowSubTab] = useState<'flow' | 'aging'>('flow');
+  const [activeFinanceTab, setActiveFinanceTab] = useState<'overview' | 'cashflow' | 'aging' | 'projects' | 'depreciation' | 'consignments' | 'marketplaces' | 'transactions'>('cashflow');
   
   // Financial Accounts / Aging List State
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([]);
@@ -108,12 +104,6 @@ export function FinanceView({
   const [paymentMethod, setPaymentMethod] = useState<string>('Acerto PIX');
   const [settleMsg, setSettleMsg] = useState<string | null>(null);
   const [isSettling, setIsSettling] = useState<boolean>(false);
-
-  // Financial Settings local state
-  const [markup, setMarkup] = useState<number>(settings?.markup_default || 100);
-  const [targetMargin, setTargetMargin] = useState<number>(settings?.target_margin || 40);
-  const [electricityKwh, setElectricityKwh] = useState<number>(settings?.electricity_cost_kwh || 0.95);
-  const [monthlyFixedCosts, setMonthlyFixedCosts] = useState<number>(settings?.monthly_fixed_costs || 500);
 
   useEffect(() => {
     fetchConsignments();
@@ -282,19 +272,6 @@ export function FinanceView({
     } catch (e: any) {
       alert('Erro ao excluir: ' + (e.message || 'Erro desconhecido'));
     }
-  };
-
-  const handleSaveFinancialSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    const updated = {
-      ...settings,
-      markup_default: Number(markup),
-      target_margin: Number(targetMargin),
-      electricity_cost_kwh: Number(electricityKwh),
-      monthly_fixed_costs: Number(monthlyFixedCosts),
-    };
-    onSaveSettings(updated);
-    alert('Configurações financeiras salvas com sucesso!');
   };
 
   // Select existing stock item in purchase modal
@@ -686,42 +663,42 @@ export function FinanceView({
         </div>
       </div>
 
-      {/* Sub-abas de Finanças Otimizadas e 100% Visíveis */}
-      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 border-b border-white/[0.08] pb-3 finance-subtabs-container">
-        {/* FLUXO DE CAIXA (INTEGRADO COM CONTAS A PAGAR & RECEBER E ALERTA DE ATRASO) */}
+      {/* Sub-abas de Finanças Otimizadas e 100% Visíveis em Linha Única */}
+      <div className="finance-subtabs-container flex flex-nowrap items-center gap-1 sm:gap-1.5 border-b border-white/[0.08] pb-2.5 overflow-x-auto no-scrollbar max-w-full">
+        {/* FLUXO DE CAIXA (LIVRO CAIXA REALIZADO) */}
         <button
           type="button"
           id="tab-btn-cashflow"
           onClick={() => setActiveFinanceTab('cashflow')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-            activeFinanceTab === 'cashflow' || activeFinanceTab === 'aging'
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
+            activeFinanceTab === 'cashflow'
               ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
           <Wallet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <span>Fluxo de Caixa</span>
-          {overdueAccounts.length > 0 && (
-            <span className="finance-alert-badge px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-1">
-              <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-              <span>{overdueAccounts.length}</span>
-            </span>
-          )}
         </button>
 
-        {/* SIMULADOR & MARGEM */}
+        {/* CONTAS A PAGAR & RECEBER */}
         <button
           type="button"
-          id="tab-btn-breakeven"
-          onClick={() => setActiveFinanceTab('breakeven')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-            activeFinanceTab === 'breakeven'
+          id="tab-btn-aging"
+          onClick={() => setActiveFinanceTab('aging')}
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
+            activeFinanceTab === 'aging'
               ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
           }`}
         >
-          <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>Simulador & Margem</span>
+          <CalendarClock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span>Contas Pagar/Receber</span>
+          {overdueAccounts.length > 0 && (
+            <span className="finance-alert-badge px-1 py-0.2 rounded-full text-[10px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-0.5">
+              <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+              <span>{overdueAccounts.length}</span>
+            </span>
+          )}
         </button>
 
         {/* CENTROS DE CUSTO */}
@@ -729,7 +706,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-projects"
           onClick={() => setActiveFinanceTab('projects')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'projects'
               ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -744,7 +721,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-depreciation"
           onClick={() => setActiveFinanceTab('depreciation')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'depreciation'
               ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -759,7 +736,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-overview"
           onClick={() => setActiveFinanceTab('overview')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'overview'
               ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -774,7 +751,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-consignments"
           onClick={() => setActiveFinanceTab('consignments')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'consignments'
               ? 'finance-subtab-active bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -782,7 +759,7 @@ export function FinanceView({
         >
           <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>Consignados</span>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          <span className="px-1 py-0.2 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
             {consignments.filter((c) => c.status === 'active').length}
           </span>
         </button>
@@ -792,7 +769,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-marketplaces"
           onClick={() => setActiveFinanceTab('marketplaces')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'marketplaces'
               ? 'finance-subtab-active bg-purple-500/15 text-purple-300 border border-purple-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -807,7 +784,7 @@ export function FinanceView({
           type="button"
           id="tab-btn-transactions"
           onClick={() => setActiveFinanceTab('transactions')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`finance-subtab-btn px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
             activeFinanceTab === 'transactions'
               ? 'finance-subtab-active bg-sky-500/15 text-sky-300 border border-sky-500/40 shadow-xs'
               : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
@@ -816,70 +793,12 @@ export function FinanceView({
           <Receipt className="w-3.5 h-3.5 text-sky-400 shrink-0" />
           <span>Extrato Vendas</span>
         </button>
-
-        {/* PARÂMETROS */}
-        <button
-          type="button"
-          id="tab-btn-settings"
-          onClick={() => setActiveFinanceTab('settings')}
-          className={`finance-subtab-btn px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-            activeFinanceTab === 'settings'
-              ? 'finance-subtab-active bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-xs'
-              : 'text-slate-400 hover:text-white bg-[#1c1c20] border border-white/[0.06]'
-          }`}
-        >
-          <Calculator className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>Parâmetros</span>
-        </button>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL: FLUXO DE CAIXA (UNIFICADO COM CONTAS A PAGAR & RECEBER) */}
-      {(activeFinanceTab === 'cashflow' || activeFinanceTab === 'aging') && (
+      {/* CONTEÚDO PRINCIPAL: FLUXO DE CAIXA (LIVRO CAIXA REALIZADO) */}
+      {activeFinanceTab === 'cashflow' && (
         <div className="space-y-6">
-          {/* Sub-navegação do Fluxo de Caixa: Livro Caixa Realizado vs Contas a Pagar & Receber */}
-          <div className="flex items-center gap-1.5 p-1 bg-[#141417] rounded-xl border border-white/[0.08] w-fit finance-toggle-container">
-            <button
-              type="button"
-              id="subtab-cashflow-flow"
-              onClick={() => setCashflowSubTab('flow')}
-              className={`finance-toggle-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                cashflowSubTab === 'flow'
-                  ? 'finance-toggle-active bg-emerald-500 text-slate-950 shadow-sm font-black'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>Livro Caixa & Realizado</span>
-            </button>
-
-            <button
-              type="button"
-              id="subtab-cashflow-aging"
-              onClick={() => setCashflowSubTab('aging')}
-              className={`finance-toggle-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                cashflowSubTab === 'aging'
-                  ? 'finance-toggle-active bg-emerald-500 text-slate-950 shadow-sm font-black'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <CalendarClock className="w-3.5 h-3.5" />
-              <span>Contas a Pagar & Receber</span>
-              {overdueAccounts.length > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
-                  cashflowSubTab === 'aging'
-                    ? 'bg-slate-950 text-rose-300'
-                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                }`}>
-                  <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                  <span>{overdueAccounts.length}</span>
-                </span>
-              )}
-            </button>
-          </div>
-
-          {cashflowSubTab === 'flow' ? (
-            <div className="space-y-6">
-              {/* Barra de Filtros e Ações Rápidas */}
+          {/* Barra de Filtros e Ações Rápidas */}
           <div className="bg-[#141417] p-4 sm:p-5 rounded-2xl border border-white/[0.08] flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4">
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
               {/* Seletor de Mês */}
@@ -989,87 +908,69 @@ export function FinanceView({
           </div>
 
           {/* Cards Indicadores de Fluxo de Caixa */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Card 1: Receitas de Vendas */}
-            <div className="bg-[#141417] p-4 sm:p-5 rounded-2xl border border-white/[0.08] space-y-2">
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Receita Vendas (Entradas)</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
-                  <ArrowDownRight className="w-4 h-4" />
-                </div>
+                <span className="text-[11px] text-slate-400 font-medium block truncate">Receita Vendas (Entradas)</span>
+                <span className="text-[10px] text-slate-500 font-medium">{activeMonthData.salesCount} vendas</span>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-400">
+              <span className="text-lg sm:text-xl font-extrabold text-emerald-400 mt-1 block tracking-tight">
                 R$ {activeMonthData.grossSalesRevenue.toFixed(2)}
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
-                <span>{activeMonthData.salesCount} vendas</span>
-                <span className="text-emerald-400 font-semibold">
-                  Líq.: R$ {activeMonthData.netReceivedRevenue.toFixed(2)}
-                </span>
-              </div>
+              </span>
+              <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                Líq.: <strong className="text-emerald-400 font-medium">R$ {activeMonthData.netReceivedRevenue.toFixed(2)}</strong>
+              </span>
             </div>
 
             {/* Card 2: Compras de Filamentos */}
-            <div className="bg-[#141417] p-4 sm:p-5 rounded-2xl border border-white/[0.08] space-y-2">
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Compras de Filamentos</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-400 shrink-0">
-                  <Package className="w-4 h-4" />
-                </div>
+                <span className="text-[11px] text-slate-400 font-medium block truncate">Compras de Filamentos</span>
+                <span className="text-[10px] text-rose-400 font-medium">Matéria-Prima</span>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-rose-400">
+              <span className="text-lg sm:text-xl font-extrabold text-rose-400 mt-1 block tracking-tight">
                 R$ {activeMonthData.filamentExpenses.toFixed(2)}
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
-                <span>{activeMonthData.filamentCount} carretéis</span>
-                <span className="text-rose-400 font-semibold">Matéria-Prima</span>
-              </div>
+              </span>
+              <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                {activeMonthData.filamentCount} carretéis
+              </span>
             </div>
 
             {/* Card 3: Compras de Suprimentos */}
-            <div className="bg-[#141417] p-4 sm:p-5 rounded-2xl border border-white/[0.08] space-y-2">
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Compras de Suprimentos</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0">
-                  <Tag className="w-4 h-4" />
-                </div>
+                <span className="text-[11px] text-slate-400 font-medium block truncate">Compras de Suprimentos</span>
+                <span className="text-[10px] text-amber-400 font-medium">Insumos & Emb.</span>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-amber-400">
+              <span className="text-lg sm:text-xl font-extrabold text-amber-400 mt-1 block tracking-tight">
                 R$ {activeMonthData.supplyExpenses.toFixed(2)}
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-white/[0.06]">
-                <span>{activeMonthData.supplyCount} itens / insumos</span>
-                <span className="text-amber-400 font-semibold">Insumos & Embalagens</span>
-              </div>
+              </span>
+              <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                {activeMonthData.supplyCount} itens cadastrados
+              </span>
             </div>
 
             {/* Card 4: Saldo Líquido Mensal */}
-            <div className={`p-4 sm:p-5 rounded-2xl border space-y-2 ${
+            <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm ${
               activeMonthData.netCashFlow >= 0
                 ? 'bg-emerald-950/20 border-emerald-500/30'
                 : 'bg-rose-950/20 border-rose-500/30'
             }`}>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300">Saldo Líquido Mensal</span>
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                  activeMonthData.netCashFlow >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                }`}>
-                  <Wallet className="w-4 h-4" />
-                </div>
+                <span className="text-[11px] text-slate-300 font-medium block truncate">Saldo Líquido Mensal</span>
+                <span className={`text-[10px] font-medium font-mono ${activeMonthData.netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {activeMonthData.netCashFlow >= 0 ? 'Superávit' : 'Déficit'} ({activeMonthData.marginPercent.toFixed(1)}%)
+                </span>
               </div>
-              <div className={`text-xl sm:text-2xl font-black ${
+              <span className={`text-lg sm:text-xl font-extrabold mt-1 block tracking-tight ${
                 activeMonthData.netCashFlow >= 0 ? 'text-emerald-300' : 'text-rose-300'
               }`}>
                 {activeMonthData.netCashFlow >= 0 ? '+' : ''}R$ {activeMonthData.netCashFlow.toFixed(2)}
-              </div>
-              <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-white/[0.06]">
-                <span className={`font-extrabold ${activeMonthData.netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {activeMonthData.netCashFlow >= 0 ? 'Superávit Operacional' : 'Déficit no Período'}
-                </span>
-                <span className="text-slate-400 font-mono">
-                  {activeMonthData.marginPercent.toFixed(1)}% margem
-                </span>
-              </div>
+              </span>
+              <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                Margem de caixa do período
+              </span>
             </div>
           </div>
 
@@ -1275,67 +1176,53 @@ export function FinanceView({
             </div>
           </div>
         </div>
-      ) : (
-        <AccountsAging
-          accounts={financialAccounts}
-          loading={loadingAccounts}
-          onRefresh={fetchAccounts}
-          onAddAccount={handleAddAccount}
-          onSettleAccount={handleSettleAccount}
-          onReopenAccount={handleReopenAccount}
-          onDeleteAccount={handleDeleteAccount}
-        />
       )}
-    </div>
-  )}
+
+      {/* CONTEÚDO: CONTAS A PAGAR & RECEBER */}
+      {activeFinanceTab === 'aging' && (
+        <div className="space-y-6">
+          <AccountsAging
+            accounts={financialAccounts}
+            loading={loadingAccounts}
+            onRefresh={fetchAccounts}
+            onAddAccount={handleAddAccount}
+            onSettleAccount={handleSettleAccount}
+            onReopenAccount={handleReopenAccount}
+            onDeleteAccount={handleDeleteAccount}
+          />
+        </div>
+      )}
 
       {/* CONTEÚDO 2: VISÃO GERAL & DRE */}
       {activeFinanceTab === 'overview' && (
         <div className="space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-[#141417] p-5 rounded-3xl border border-white/[0.08] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Faturamento Bruto</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl font-black text-white">R$ {totalRevenue.toFixed(2)}</div>
-              <p className="text-[11px] text-emerald-400 font-medium">Soma de todas as vendas e canais</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+              <span className="text-[11px] text-slate-400 font-medium block truncate">Faturamento Bruto</span>
+              <span className="text-lg sm:text-xl font-extrabold text-white mt-1 block tracking-tight">R$ {totalRevenue.toFixed(2)}</span>
+              <span className="text-[10px] text-emerald-400 block truncate mt-0.5 font-medium">Vendas e canais</span>
             </div>
 
-            <div className="bg-[#141417] p-5 rounded-3xl border border-white/[0.08] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Custos de Produção</span>
-                <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-400">
-                  <TrendingDown className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl font-black text-white">R$ {totalCost.toFixed(2)}</div>
-              <p className="text-[11px] text-rose-400 font-medium">Insumos, energia e depreciação</p>
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+              <span className="text-[11px] text-slate-400 font-medium block truncate">Custos de Produção</span>
+              <span className="text-lg sm:text-xl font-extrabold text-rose-400 mt-1 block tracking-tight">R$ {totalCost.toFixed(2)}</span>
+              <span className="text-[10px] text-rose-400/80 block truncate mt-0.5 font-medium">Insumos e energia</span>
             </div>
 
-            <div className="bg-[#141417] p-5 rounded-3xl border border-white/[0.08] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Taxas & Comissões</span>
-                <div className="w-8 h-8 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400">
-                  <Percent className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl font-black text-white">R$ {totalPlatformFees.toFixed(2)}</div>
-              <p className="text-[11px] text-purple-400 font-medium">Retido por Marketplaces e Gateways</p>
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+              <span className="text-[11px] text-slate-400 font-medium block truncate">Taxas & Comissões</span>
+              <span className="text-lg sm:text-xl font-extrabold text-purple-400 mt-1 block tracking-tight">R$ {totalPlatformFees.toFixed(2)}</span>
+              <span className="text-[10px] text-purple-400/80 block truncate mt-0.5 font-medium">Marketplaces e gateways</span>
             </div>
 
-            <div className="bg-[#141417] p-5 rounded-3xl border border-white/[0.08] space-y-2">
+            <div className="bg-[#141417] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Lucro Líquido Real</span>
-                <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400">
-                  <Wallet className="w-4 h-4" />
-                </div>
+                <span className="text-[11px] text-slate-400 font-medium block truncate">Lucro Líquido Real</span>
+                <span className="text-[10px] text-sky-400 font-medium font-mono">{averageMargin.toFixed(1)}%</span>
               </div>
-              <div className="text-2xl font-black text-sky-300">R$ {netProfit.toFixed(2)}</div>
-              <p className="text-[11px] text-sky-400 font-medium">Margem Média: {averageMargin.toFixed(1)}%</p>
+              <span className="text-lg sm:text-xl font-extrabold text-sky-300 mt-1 block tracking-tight">R$ {netProfit.toFixed(2)}</span>
+              <span className="text-[10px] text-slate-500 block truncate mt-0.5">Margem média calculada</span>
             </div>
           </div>
 
@@ -1551,81 +1438,6 @@ export function FinanceView({
             </div>
           </div>
         </div>
-      )}
-
-      {/* CONTEÚDO 6: PARÂMETROS */}
-      {activeFinanceTab === 'settings' && (
-        <div className="space-y-6">
-          <form onSubmit={handleSaveFinancialSettings} className="bg-[#141417] p-6 rounded-3xl border border-white/[0.08] space-y-5">
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-emerald-400" />
-                <span>Parâmetros Globais de Precificação & Custos</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Defina os índices padrão para cálculo automático de custos de impressão 3D e margens de lucro.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Markup Padrão (%)</label>
-                <input
-                  type="number"
-                  step="1"
-                  value={markup}
-                  onChange={(e) => setMarkup(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#1c1c20] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-emerald-500"
-                />
-                <span className="text-[10px] text-slate-500">Multiplicador base sobre o custo total de produção.</span>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Margem de Lucro Alvo (%)</label>
-                <input
-                  type="number"
-                  step="1"
-                  value={targetMargin}
-                  onChange={(e) => setTargetMargin(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#1c1c20] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-emerald-500"
-                />
-                <span className="text-[10px] text-slate-500">Margem líquida desejada por peça impressa.</span>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Custos Fixos Mensais (R$)</label>
-                <input
-                  type="number"
-                  step="10"
-                  value={monthlyFixedCosts}
-                  onChange={(e) => setMonthlyFixedCosts(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#1c1c20] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-emerald-500"
-                />
-                <span className="text-[10px] text-slate-500">Aluguel, internet, manutenções e taxas fixas.</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg cursor-pointer"
-              >
-                Salvar Configurações Financeiras
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ABA: SIMULADOR DE PREÇO & PONTO DE EQUILÍBRIO (BREAK-EVEN) */}
-      {activeFinanceTab === 'breakeven' && (
-        <PriceBreakEvenSimulator
-          products={products}
-          filaments={filaments}
-          settings={settings}
-          monthlyFixedCosts={monthlyFixedCosts}
-          targetMarginDefault={targetMargin}
-        />
       )}
 
       {/* ABA: CENTROS DE CUSTO & ALOCAÇÃO DE INSUMOS POR PROJETO */}
