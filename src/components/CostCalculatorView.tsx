@@ -137,27 +137,42 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
     if (initialParams) {
       if ((initialParams as any).editMode && (initialParams as any).productId) {
         setEditingProductId((initialParams as any).productId);
-        if ((initialParams as any).name) setProductName((initialParams as any).name);
-        if ((initialParams as any).category) setProductCategory((initialParams as any).category);
-        if ((initialParams as any).subcategory) setProductSubcategory((initialParams as any).subcategory);
-        if ((initialParams as any).image_url) setProductImageUrl((initialParams as any).image_url);
-        if ((initialParams as any).filament_weight_g !== undefined) setCustomWeightGrams((initialParams as any).filament_weight_g);
-        if ((initialParams as any).print_time_minutes !== undefined) setCustomTimeMinutes((initialParams as any).print_time_minutes);
-        if ((initialParams as any).markup_percent !== undefined) setMarkupPercent((initialParams as any).markup_percent);
-        if ((initialParams as any).printer_id) setSelectedPrinterId((initialParams as any).printer_id);
-        if ((initialParams as any).filament_id) setSelectedFilamentId((initialParams as any).filament_id);
-        if ((initialParams as any).loss_margin_percent !== undefined) setLossMarginPercent((initialParams as any).loss_margin_percent);
-        if ((initialParams as any).extra_supplies_json) {
-          try {
-            const parsed = JSON.parse((initialParams as any).extra_supplies_json);
-            if (Array.isArray(parsed)) setProductSupplies(parsed);
-          } catch {}
-        }
       } else {
-        if (initialParams.weightG !== undefined) setCustomWeightGrams(initialParams.weightG);
-        if (initialParams.printTimeMinutes !== undefined) setCustomTimeMinutes(initialParams.printTimeMinutes);
-        if (initialParams.modelName) setProductName(initialParams.modelName);
+        setEditingProductId(null);
       }
+      if ((initialParams as any).name) setProductName((initialParams as any).name);
+      if ((initialParams as any).category) setProductCategory((initialParams as any).category);
+      if ((initialParams as any).subcategory) setProductSubcategory((initialParams as any).subcategory);
+      if ((initialParams as any).image_url) setProductImageUrl((initialParams as any).image_url);
+      if ((initialParams as any).filament_weight_g !== undefined) setCustomWeightGrams((initialParams as any).filament_weight_g);
+      if ((initialParams as any).print_time_minutes !== undefined) setCustomTimeMinutes((initialParams as any).print_time_minutes);
+      if ((initialParams as any).markup_percent !== undefined) setMarkupPercent((initialParams as any).markup_percent);
+      if ((initialParams as any).printer_id) setSelectedPrinterId((initialParams as any).printer_id);
+      if ((initialParams as any).filament_id) setSelectedFilamentId((initialParams as any).filament_id);
+      if ((initialParams as any).loss_margin_percent !== undefined) setLossMarginPercent((initialParams as any).loss_margin_percent);
+      if ((initialParams as any).extra_supplies_json) {
+        try {
+          const parsed = JSON.parse((initialParams as any).extra_supplies_json);
+          if (Array.isArray(parsed)) setProductSupplies(parsed);
+        } catch {}
+      }
+      if ((initialParams as any).plates_json) {
+        try {
+          const parsedPlates = JSON.parse((initialParams as any).plates_json);
+          if (parsedPlates && typeof parsedPlates === 'object' && !Array.isArray(parsedPlates)) {
+            if (parsedPlates.printMode) {
+              setPrintMode(parsedPlates.printMode);
+            }
+            if (Array.isArray(parsedPlates.multiColorItems) && parsedPlates.multiColorItems.length > 0) {
+              setMultiColorItems(parsedPlates.multiColorItems);
+              setPrintMode('multicolor');
+            }
+          }
+        } catch {}
+      }
+      if ((initialParams as any).weightG !== undefined) setCustomWeightGrams((initialParams as any).weightG);
+      if ((initialParams as any).printTimeMinutes !== undefined) setCustomTimeMinutes((initialParams as any).printTimeMinutes);
+      if ((initialParams as any).modelName) setProductName((initialParams as any).modelName);
     }
   }, [initialParams]);
 
@@ -410,20 +425,44 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
   // Save as Product
   const handleSaveProduct = async () => {
+    const trimmedName = productName.trim().toLowerCase();
+    const existingProduct = (products || []).find(
+      (p) => p.name.trim().toLowerCase() === trimmedName && (!editingProductId || p.id !== editingProductId)
+    );
+
+    let targetEditingId = editingProductId;
+
+    if (existingProduct) {
+      const shouldOverwrite = window.confirm(
+        `Já existe um produto com o nome "${existingProduct.name}" no catálogo.\n\nDeseja sobrescrevê-lo?\n\n• Clique em [OK] para sobrescrever o produto existente.\n• Clique em [Cancelar] para voltar à calculadora e alterar o nome.`
+      );
+      if (!shouldOverwrite) {
+        return; // Retorna para a calculadora para alterar o nome
+      } else {
+        targetEditingId = existingProduct.id;
+      }
+    }
+
     setSavingProduct(true);
     setSaveSuccessMessage(null);
     try {
+      const platesPayload = JSON.stringify({
+        printMode,
+        multiColorItems,
+        plates: []
+      });
+
       const payload = {
         name: productName,
         category: productCategory,
         subcategory: productSubcategory,
         image_url: productImageUrl,
-        description: `Produto formado com ${customWeightGrams}g de ${activeFilament?.material || 'filamento'} e ${productSupplies.length} insumos adicionais.`,
+        description: `Produto formado com ${effectiveWeightGrams}g de filamento (${printMode === 'multicolor' ? 'Multicolorido' : activeFilament?.material || 'Monocromático'}) e ${productSupplies.length} insumos adicionais.`,
         stl_filename: parsedModel.fileType === 'stl' ? parsedModel.fileName : '',
         gcode_filename: parsedModel.fileType === 'gcode' ? parsedModel.fileName : '',
         printer_id: activePrinter?.id || '',
         filament_id: activeFilament?.id || '',
-        filament_weight_g: customWeightGrams,
+        filament_weight_g: effectiveWeightGrams,
         print_time_minutes: customTimeMinutes,
         energy_cost: costResult.energyCost,
         filament_cost: costResult.filamentCost,
@@ -436,11 +475,12 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
         markup_percent: markupPercent,
         suggested_price: costResult.suggestedSalePrice,
         sale_price: costResult.suggestedSalePrice,
+        plates_json: platesPayload,
       };
 
       let res: Response;
-      if (editingProductId) {
-        res = await fetch(`/api/products/${editingProductId}`, {
+      if (targetEditingId) {
+        res = await fetch(`/api/products/${targetEditingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -455,12 +495,18 @@ export const CostCalculatorView: React.FC<CostCalculatorViewProps> = ({
 
       if (res.ok) {
         setSaveSuccessMessage(
-          editingProductId
-            ? `"${productName}" atualizado com sucesso no catálogo!`
+          targetEditingId
+            ? `"${productName}" atualizado/sobrescrito com sucesso no catálogo!`
             : `"${productName}" salvo com sucesso no catálogo!`
         );
+        if (targetEditingId && !editingProductId) {
+          setEditingProductId(targetEditingId);
+        }
         await onRefreshData();
         setTimeout(() => setSaveSuccessMessage(null), 4000);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao salvar produto');
       }
     } catch (err: any) {
       alert('Erro ao salvar produto: ' + err.message);
